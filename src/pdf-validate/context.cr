@@ -39,6 +39,73 @@ module PDF
       def resolve(obj : PDF::Objects::Base) : PDF::Objects::Base
         @reader.resolve(obj)
       end
+
+      # Names of fonts whose glyph program is NOT embedded. PDF/A
+      # requires every font to be embedded (ISO 19005-2 § 6.3.4-5) ;
+      # veraPDF flags the standard-14 Type1 fonts and any descriptor
+      # lacking a FontFile/FontFile2/FontFile3.
+      #
+      # Walks every Font object :
+      # * Type0 wrappers are skipped — their descendant CIDFont
+      #   carries the FontDescriptor and is checked directly.
+      # * Type3 fonts are embedded by construction (glyphs are content
+      #   streams) → never flagged.
+      # * Type1 / TrueType / CIDFontType0 / CIDFontType2 must have a
+      #   FontDescriptor with one of FontFile, FontFile2, FontFile3.
+      getter non_embedded_fonts : Array(String) do
+        result = [] of String
+        each_font_dict do |dict|
+          subtype = dict["Subtype"]?.try(&.as?(PDF::Objects::Name)).try(&.to_pdf)
+          next if subtype == "/Type0" # composite wrapper — descendant visited too
+          next if subtype == "/Type3" # glyphs are content streams
+
+          base = dict["BaseFont"]?.try(&.as?(PDF::Objects::Name)).try(&.to_pdf) || "(unnamed)"
+
+          fd = dict["FontDescriptor"]?
+          unless fd
+            result << base # simple font with no descriptor = standard-14, not embedded
+            next
+          end
+          descriptor = resolve(fd).as?(PDF::Objects::Dictionary)
+          unless descriptor
+            result << base
+            next
+          end
+          embedded = descriptor.has_key?("FontFile") ||
+                     descriptor.has_key?("FontFile2") ||
+                     descriptor.has_key?("FontFile3")
+          result << base unless embedded
+        end
+        result.uniq
+      end
+
+      # Walks the object graph from the catalog, resolving references,
+      # and yields every `/Type /Font` dictionary it reaches (page
+      # resources, XObject resources, AcroForm /DR, annotation
+      # appearances, Type0 descendant fonts…). `reader.objects` is a
+      # lazy cache that does not hold every font, so a graph traversal
+      # is the robust way to enumerate them.
+      private def each_font_dict(&)
+        visited = Set(UInt64).new
+        stack = [catalog.as(PDF::Objects::Base)]
+        until stack.empty?
+          obj = stack.pop
+          obj = resolve(obj) if obj.is_a?(PDF::Objects::Reference)
+          next unless visited.add?(obj.object_id)
+
+          case obj
+          when PDF::Objects::Dictionary
+            if obj["Type"]?.try(&.as?(PDF::Objects::Name)).try(&.to_pdf) == "/Font"
+              yield obj
+            end
+            obj.each { |_k, v| stack << v }
+          when PDF::Objects::Stream
+            obj.dictionary.each { |_k, v| stack << v }
+          when PDF::Objects::Array
+            obj.each { |e| stack << e }
+          end
+        end
+      end
     end
   end
 end

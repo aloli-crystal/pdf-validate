@@ -43,9 +43,23 @@
   check: trailer_key_absent
   args: ["Encrypt"]
 
+- id: pdfa2-6.1.3-file-id
+  clause: "ISO 19005-2 § 6.1.3"
+  title: "Trailer contains a file identifier (/ID)"
+  severity: error
+  check: trailer_key_present
+  args: ["ID"]
+
 - id: pdfa2-6.1.2-metadata-present
   clause: "ISO 19005-2 § 6.1.2"
   title: "Document catalog has an XMP /Metadata stream"
   severity: error
   check: catalog_key_present
   args: ["Metadata"]
+
+- id: pdfa2-6.3.4-fonts-embedded
+  clause: "ISO 19005-2 § 6.3.4"
+  title: "All fonts are embedded"
+  severity: error
+  check: all_fonts_embedded
+  args: []

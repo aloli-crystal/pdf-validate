@@ -7,6 +7,38 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.3.0 — 2026-06-02 — Règles polices & /ID ; 60/60 vs veraPDF
+
+=== Ajouté
+
+* **Check `all_fonts_embedded`** — parcourt le graphe d'objets depuis
+  le catalog (en résolvant les références ; `reader.objects` est un
+  cache paresseux non fiable) et visite chaque dict `/Type /Font`.
+  Signale les polices simples sans FontDescriptor (les standard-14)
+  et tout descripteur sans FontFile/FontFile2/FontFile3. Nouvelle
+  règle `pdf-a-2b` `pdfa2-6.3.4-fonts-embedded`.
+* **Règle `/ID` du trailer** (`pdfa2-6.1.3-file-id`) — PDF/A exige un
+  identifiant de fichier dans le trailer.
+
+=== Validation croisée contre veraPDF 1.30.1
+
+Sur un corpus de 60 PDF généré par `pdf-a` (36 conformes PDF/A-2b +
+24 violant chacun une exigence : police non embarquée, pas d'output
+intent, pas de pdfaid, pas de /ID, chiffrement), `pdf-validate` et
+**veraPDF 1.30.1 sont d'accord sur 60/60 verdicts (100 %)** —
+dépassant le critère de sortie J5 (≥ 95 % sur 60 PDF).
+
+RÉSERVE, dite clairement : ce corpus est *généré par les shards
+ALOLI* (provenance homogène), et `pdf-validate` implémente ~8 règles
+de niveau document/police contre les 144 de veraPDF. Les 100 %
+d'accord ici démontrent que le moteur est en phase avec veraPDF
+**pour les documents dans le périmètre des règles implémentées** — ce
+n'est PAS une revendication de parité veraPDF sur des PDF tiers
+arbitraires sur toutes les clauses ISO 19005-2. L'atteindre demande
+les règles par ressource (espaces de couleur, transparence,
+annotations…) ajoutées au fil du temps, idéalement croisées avec un
+corpus tiers diversifié.
+
 == v0.2.0 — 2026-06-02 — Profil PDF/UA-1
 
 === Ajouté

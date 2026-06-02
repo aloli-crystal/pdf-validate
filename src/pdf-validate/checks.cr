@@ -43,6 +43,12 @@ module PDF
           re = Regex.new(args[0])
           found = !(ctx.xmp =~ re).nil?
           Outcome.new(found, found ? nil : "XMP metadata does not match /#{args[0]}/")
+        when "all_fonts_embedded"
+          non_embedded = ctx.non_embedded_fonts
+          Outcome.new(
+            non_embedded.empty?,
+            non_embedded.empty? ? nil : "non-embedded font(s): #{non_embedded.join(", ")}"
+          )
         else
           raise "Unknown check #{check.inspect} (rule set references a primitive the engine does not implement)"
         end

@@ -8,6 +8,7 @@ private def pdfa_bytes : Bytes
   pdf.pdfa_part = 2
   pdf.pdfa_conformance = "B"
   pdf.output_intent = PDF::OutputIntent.srgb
+  pdf.file_id # /ID required by PDF/A (ISO 19005-2 § 6.1.3)
   pdf.page { |_| }
   pdf.to_slice
 end
@@ -54,6 +55,28 @@ describe PDF::Validate do
 
     # Every failure carries its ISO clause.
     report.failures.all? { |r| r.rule.clause.starts_with?("ISO 19005") }.should be_true
+  end
+
+  it "detects a non-embedded standard-14 font as a violation" do
+    pdf = PDF::Document.new
+    pdf.pdfa_part = 2
+    pdf.pdfa_conformance = "B"
+    pdf.output_intent = PDF::OutputIntent.srgb
+    pdf.file_id
+    pdf.page { |p| p.font "Helvetica", size: 12; p.text "x", at: {72, 700} }
+    report = PDF::Validate.bytes(pdf.to_slice, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.3.4-fonts-embedded")
+  end
+
+  it "detects a missing /ID in the trailer as a violation" do
+    pdf = PDF::Document.new
+    pdf.pdfa_part = 2
+    pdf.pdfa_conformance = "B"
+    pdf.output_intent = PDF::OutputIntent.srgb
+    # deliberately NOT calling file_id → no /ID
+    pdf.page { |_| }
+    report = PDF::Validate.bytes(pdf.to_slice, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.1.3-file-id")
   end
 
   it "detects encryption as a violation" do
