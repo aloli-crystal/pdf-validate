@@ -7,6 +7,46 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.6.0 — 2026-06-02 — Règles § 6.2 Graphiques (ExtGState, blend modes, XObjects)
+
+=== Ajouté
+
+* **Trois règles PDF/A-2b de niveau § 6.2 Graphiques**, toutes
+  vérifiables au niveau dictionnaire (aucun interpréteur de content
+  stream requis) :
+** `extgstate_no_transfer_functions` (§ 6.2.5) — un ExtGState ne doit
+   pas contenir `/TR` ni `/HTP`, et `/TR2` uniquement avec la valeur
+   `/Default`.
+** `no_forbidden_xobjects` (§ 6.2.9) — pas de XObject PostScript
+   (`/Subtype /PS`, `/Subtype2 /PS`, clé `/PS`), de XObject de
+   référence (`/Ref`) ni d'`/OPI`.
+** `standard_blend_modes` (§ 6.2.10, test 1) — les blend modes
+   (`/BM`, nom ou tableau de noms) d'un ExtGState doivent être des
+   modes standard ISO 32000-1.
+* Nouveaux accesseurs `Context` parcourant le graphe d'objets via
+  `each_object` : `extgstate_transfer_violations`,
+  `nonstandard_blend_modes`, `forbidden_xobject_violations`, plus le
+  helper privé `each_extgstate`.
+* Specs de détection positive : un PDF minimal forgé à la main (table
+  xref classique, offsets calculés) exerçant les trois violations,
+  pour prouver que les règles se déclenchent réellement — le corpus
+  généré étant propre, il ne peut pas couvrir le chemin d'échec.
+
+=== Couverture (régénérée via `doc/gap-analysis/run.sh`)
+
+La section Graphiques passe de **7 à 16** règles veraPDF couvertes
+(sur 56, soit 29 %). La couverture clause-level totale passe de
+**26/144 (18 %) à 35/144 (24 %)**. `doc/iso-19005-2-gap-analysis.adoc`
+est mis à jour en conséquence.
+
+=== Validation croisée (inchangée)
+
+* Corpus généré (sortie pdf-a) : **60/60** d'accord avec veraPDF
+  1.30.1 — les nouvelles règles ne produisent **aucun faux positif**
+  sur les 36 conformes ni ne modifient les 24 verdicts non conformes.
+* Fixture tierce Ghostscript : reste conforme (les trois règles
+  passent).
+
 == v0.5.0 — 2026-06-02 — État des lieux ISO 19005-2 + clauses corrigées
 
 === Ajouté

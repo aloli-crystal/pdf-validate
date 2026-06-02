@@ -50,6 +50,27 @@
   check: all_fonts_embedded
   args: []
 
+- id: pdfa2-6.2.5-extgstate-no-transfer
+  clause: "ISO 19005-2 § 6.2.5"
+  title: "ExtGState shall not contain /TR or /HTP, and /TR2 only with value /Default"
+  severity: error
+  check: extgstate_no_transfer_functions
+  args: []
+
+- id: pdfa2-6.2.9-no-forbidden-xobjects
+  clause: "ISO 19005-2 § 6.2.9"
+  title: "No PostScript, reference (/Ref) or OPI XObjects"
+  severity: error
+  check: no_forbidden_xobjects
+  args: []
+
+- id: pdfa2-6.2.10-standard-blend-modes
+  clause: "ISO 19005-2 § 6.2.10"
+  title: "ExtGState blend modes (/BM) shall be ISO 32000-1 standard modes"
+  severity: error
+  check: standard_blend_modes
+  args: []
+
 # --- § 6.5 Actions ---
 
 - id: pdfa2-6.5.1-no-javascript

@@ -20,6 +20,39 @@ private def plain_bytes : Bytes
   pdf.to_slice
 end
 
+# Hand-authors a minimal but well-formed PDF (classic xref table with
+# computed byte offsets) whose page resources deliberately violate the
+# § 6.2 graphics rules : an ExtGState carrying /TR + /TR2 (non-Default)
+# + a non-standard /BM, and a form XObject with /Subtype2 /PS, /OPI and
+# /Ref. Used to prove the new rules actually fire — the generated
+# corpus is clean and cannot exercise the failure path.
+private def pdf_with_graphics_violations : Bytes
+  bodies = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] " \
+    "/Resources << /ExtGState << /GS0 4 0 R >> /XObject << /Fm0 5 0 R >> >> >>",
+    "<< /Type /ExtGState /TR /Identity /TR2 /Foo /BM /Fancy >>",
+    "<< /Type /XObject /Subtype /Form /BBox [0 0 1 1] " \
+    "/Subtype2 /PS /OPI << >> /Ref << >> >>",
+  ]
+  io = IO::Memory.new
+  io << "%PDF-1.7\n"
+  offsets = [] of Int32
+  bodies.each_with_index do |body, i|
+    offsets << io.pos
+    io << (i + 1) << " 0 obj\n" << body << "\nendobj\n"
+  end
+  xref_offset = io.pos
+  count = bodies.size + 1
+  io << "xref\n0 " << count << "\n"
+  io << "0000000000 65535 f \n"
+  offsets.each { |off| io << off.to_s.rjust(10, '0') << " 00000 n \n" }
+  io << "trailer\n<< /Size " << count << " /Root 1 0 R >>\n"
+  io << "startxref\n" << xref_offset << "\n%%EOF\n"
+  io.to_slice
+end
+
 describe PDF::Validate::RuleSet do
   it "knows the pdf-a-2b profile" do
     PDF::Validate::RuleSet.profiles.should contain("pdf-a-2b")
@@ -28,7 +61,7 @@ describe PDF::Validate::RuleSet do
   it "parses the embedded pdf-a-2b rule set" do
     rules = PDF::Validate::RuleSet.for("pdf-a-2b")
     rules.size.should be > 0
-    rules.all? { |r| !r.clause.empty? }.should be_true
+    rules.all? { |rule| !rule.clause.empty? }.should be_true
   end
 
   it "raises for an unknown profile" do
@@ -54,7 +87,7 @@ describe PDF::Validate do
     failed_ids.should contain("pdfa2-6.2.10-output-intent")
 
     # Every failure carries its ISO clause.
-    report.failures.all? { |r| r.rule.clause.starts_with?("ISO 19005") }.should be_true
+    report.failures.all?(&.rule.clause.starts_with?("ISO 19005")).should be_true
   end
 
   it "detects a non-embedded standard-14 font as a violation" do
@@ -63,7 +96,7 @@ describe PDF::Validate do
     pdf.pdfa_conformance = "B"
     pdf.output_intent = PDF::OutputIntent.srgb
     pdf.file_id
-    pdf.page { |p| p.font "Helvetica", size: 12; p.text "x", at: {72, 700} }
+    pdf.page { |page| page.font "Helvetica", size: 12; page.text "x", at: {72, 700} }
     report = PDF::Validate.bytes(pdf.to_slice, "pdf-a-2b")
     report.failures.map(&.rule.id).should contain("pdfa2-6.2.11.4.1-fonts-embedded")
   end
@@ -88,6 +121,22 @@ describe PDF::Validate do
     pdf.encrypt(owner_password: "x", level: :aes_256)
     report = PDF::Validate.bytes(pdf.to_slice, "pdf-a-2b")
     report.failures.map(&.rule.id).should contain("pdfa2-6.1.3-no-encryption")
+  end
+
+  it "detects § 6.2 graphics violations (ExtGState, blend modes, XObjects)" do
+    report = PDF::Validate.bytes(pdf_with_graphics_violations, "pdf-a-2b")
+    failed = report.failures.map(&.rule.id)
+    failed.should contain("pdfa2-6.2.5-extgstate-no-transfer")
+    failed.should contain("pdfa2-6.2.10-standard-blend-modes")
+    failed.should contain("pdfa2-6.2.9-no-forbidden-xobjects")
+  end
+
+  it "does not flag a clean document under the § 6.2 graphics rules" do
+    report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
+    failed = report.failures.map(&.rule.id)
+    failed.should_not contain("pdfa2-6.2.5-extgstate-no-transfer")
+    failed.should_not contain("pdfa2-6.2.10-standard-blend-modes")
+    failed.should_not contain("pdfa2-6.2.9-no-forbidden-xobjects")
   end
 
   it "produces JSON with the expected shape" do

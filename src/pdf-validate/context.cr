@@ -106,6 +106,84 @@ module PDF
         end
       end
 
+      # The blend modes ISO 32000-1 defines ; any other value in an
+      # ExtGState /BM is forbidden in PDF/A (ISO 19005-2 § 6.2.10).
+      STANDARD_BLEND_MODES = %w[
+        Normal Compatible Multiply Screen Overlay Darken Lighten
+        ColorDodge ColorBurn HardLight SoftLight Difference Exclusion
+        Hue Saturation Color Luminosity
+      ]
+
+      # ExtGState transfer/halftone violations (ISO 19005-2 § 6.2.5) :
+      # an ExtGState dictionary shall not contain /TR or /HTP, and /TR2
+      # only with the value /Default.
+      getter extgstate_transfer_violations : Array(String) do
+        issues = [] of String
+        each_extgstate do |gstate|
+          issues << "/TR present" if gstate.has_key?("TR")
+          issues << "/HTP present" if gstate.has_key?("HTP")
+          if tr2 = gstate["TR2"]?
+            name = tr2.as?(PDF::Objects::Name).try(&.to_pdf)
+            issues << "/TR2 = #{name || "<non-name>"} (only /Default allowed)" unless name == "/Default"
+          end
+        end
+        issues.uniq
+      end
+
+      # Non-standard blend modes found in any ExtGState /BM
+      # (ISO 19005-2 § 6.2.10, test 1). /BM may be a name or an array
+      # of names ; every entry must be a standard blend mode.
+      getter nonstandard_blend_modes : Array(String) do
+        bad = [] of String
+        each_extgstate do |gstate|
+          bm = gstate["BM"]?
+          next unless bm
+          names = case bm
+                  when PDF::Objects::Name  then [bm.value]
+                  when PDF::Objects::Array then bm.compact_map(&.as?(PDF::Objects::Name).try(&.value))
+                  else                          [] of String
+                  end
+          names.each do |mode|
+            bad << "/#{mode}" unless STANDARD_BLEND_MODES.includes?(mode)
+          end
+        end
+        bad.uniq
+      end
+
+      # Forbidden XObject constructs (ISO 19005-2 § 6.2.9) : PostScript
+      # XObjects (`/Subtype /PS` or form `/Subtype2 /PS` / `/PS` key),
+      # reference XObjects (`/Ref`), and `/OPI`.
+      getter forbidden_xobject_violations : Array(String) do
+        issues = [] of String
+        each_object do |obj|
+          d = obj.as?(PDF::Objects::Dictionary) ||
+              obj.as?(PDF::Objects::Stream).try(&.dictionary)
+          next unless d
+          next unless d["Type"]?.try(&.as?(PDF::Objects::Name)).try(&.to_pdf) == "/XObject"
+          sub = d["Subtype"]?.try(&.as?(PDF::Objects::Name)).try(&.to_pdf)
+          issues << "PostScript XObject (/Subtype /PS)" if sub == "/PS"
+          if sub == "/Form"
+            sub2 = d["Subtype2"]?.try(&.as?(PDF::Objects::Name)).try(&.to_pdf)
+            issues << "form XObject with /Subtype2 /PS" if sub2 == "/PS"
+            issues << "form XObject with /PS key" if d.has_key?("PS")
+            issues << "reference XObject (/Ref)" if d.has_key?("Ref")
+            issues << "form XObject with /OPI" if d.has_key?("OPI")
+          end
+        end
+        issues.uniq
+      end
+
+      # Yields every `/Type /ExtGState` dictionary reachable.
+      private def each_extgstate(&)
+        each_object do |obj|
+          d = obj.as?(PDF::Objects::Dictionary)
+          next unless d
+          if d["Type"]?.try(&.as?(PDF::Objects::Name)).try(&.to_pdf) == "/ExtGState"
+            yield d
+          end
+        end
+      end
+
       # Yields every `/Type /Font` dictionary reachable from the
       # catalog.
       private def each_font_dict(&)

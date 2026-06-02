@@ -7,6 +7,44 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.6.0 — 2026-06-02 — § 6.2 Graphics rules (ExtGState, blend modes, XObjects)
+
+=== Added
+
+* **Three § 6.2 Graphics PDF/A-2b rules**, all checkable at the
+  dictionary level (no content-stream interpreter required) :
+** `extgstate_no_transfer_functions` (§ 6.2.5) — an ExtGState shall
+   not contain `/TR` or `/HTP`, and `/TR2` only with value `/Default`.
+** `no_forbidden_xobjects` (§ 6.2.9) — no PostScript XObjects
+   (`/Subtype /PS`, `/Subtype2 /PS`, `/PS` key), reference XObjects
+   (`/Ref`) or `/OPI`.
+** `standard_blend_modes` (§ 6.2.10, test 1) — an ExtGState's blend
+   modes (`/BM`, a name or array of names) shall be ISO 32000-1
+   standard modes.
+* New `Context` accessors walking the object graph via `each_object` :
+  `extgstate_transfer_violations`, `nonstandard_blend_modes`,
+  `forbidden_xobject_violations`, plus the private `each_extgstate`
+  helper.
+* Positive-detection specs : a hand-authored minimal PDF (classic
+  xref table, computed offsets) exercising all three violations, to
+  prove the rules actually fire — the generated corpus is clean and
+  cannot exercise the failure path.
+
+=== Coverage (regenerated via `doc/gap-analysis/run.sh`)
+
+The Graphics section rises from **7 to 16** veraPDF rules covered
+(of 56, i.e. 29 %). Total clause-level coverage rises from
+**26/144 (18 %) to 35/144 (24 %)**.
+`doc/iso-19005-2-gap-analysis.adoc` is updated accordingly.
+
+=== Cross-validation (unchanged)
+
+* Generated corpus (pdf-a output) : **60/60** agreement with veraPDF
+  1.30.1 — the new rules produce **no false positives** on the 36
+  conformant files and do not change the 24 non-conformant verdicts.
+* Ghostscript third-party fixture : stays conformant (all three rules
+  pass).
+
 == v0.5.0 — 2026-06-02 — ISO 19005-2 gap analysis + clause reconciliation
 
 === Added

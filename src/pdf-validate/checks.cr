@@ -74,6 +74,24 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : "uncalibrated device colour space without OutputIntent: #{bad.join(", ")}"
           )
+        when "extgstate_no_transfer_functions"
+          bad = ctx.extgstate_transfer_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : "ExtGState transfer/halftone keys forbidden in PDF/A: #{bad.join(", ")}"
+          )
+        when "standard_blend_modes"
+          bad = ctx.nonstandard_blend_modes
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : "non-standard blend mode(s): #{bad.join(", ")}"
+          )
+        when "no_forbidden_xobjects"
+          bad = ctx.forbidden_xobject_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : "forbidden XObject construct(s): #{bad.join(", ")}"
+          )
         else
           raise "Unknown check #{check.inspect} (rule set references a primitive the engine does not implement)"
         end
