@@ -12,22 +12,22 @@
   clause: "ISO 19005-2 § 6.7.11"
   title: "PDF/A version identification (pdfaid:part) present in XMP"
   severity: error
-  check: xmp_contains
-  args: ["<pdfaid:part>"]
+  check: xmp_property_present
+  args: ["pdfaid:part"]
 
 - id: pdfa2-6.7.11-pdfaid-conformance
   clause: "ISO 19005-2 § 6.7.11"
   title: "PDF/A conformance level (pdfaid:conformance) present in XMP"
   severity: error
-  check: xmp_contains
-  args: ["<pdfaid:conformance>"]
+  check: xmp_property_present
+  args: ["pdfaid:conformance"]
 
 - id: pdfa2-6.7.11-pdfaid-part-2
   clause: "ISO 19005-2 § 6.7.11"
   title: "Declared PDF/A part is 2"
   severity: error
-  check: xmp_matches
-  args: ["<pdfaid:part>\\s*2\\s*</pdfaid:part>"]
+  check: xmp_property_equals
+  args: ["pdfaid:part", "2"]
 
 - id: pdfa2-6.2.2-output-intent
   clause: "ISO 19005-2 § 6.2.2"
@@ -62,4 +62,25 @@
   title: "All fonts are embedded"
   severity: error
   check: all_fonts_embedded
+  args: []
+
+- id: pdfa2-6.6.1-no-javascript
+  clause: "ISO 19005-2 § 6.6.1"
+  title: "Document contains no JavaScript actions"
+  severity: error
+  check: no_javascript
+  args: []
+
+- id: pdfa2-6.6.2-no-catalog-aa
+  clause: "ISO 19005-2 § 6.6.2"
+  title: "Document catalog has no additional-actions (/AA)"
+  severity: error
+  check: catalog_key_absent
+  args: ["AA"]
+
+- id: pdfa2-6.2.4-image-colorspaces
+  clause: "ISO 19005-2 § 6.2.4"
+  title: "Image colour spaces are calibrated (no bare DeviceRGB/CMYK without OutputIntent)"
+  severity: error
+  check: image_colorspaces_calibrated
   args: []

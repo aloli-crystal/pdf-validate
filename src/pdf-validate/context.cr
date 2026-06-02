@@ -79,13 +79,13 @@ module PDF
         result.uniq
       end
 
-      # Walks the object graph from the catalog, resolving references,
-      # and yields every `/Type /Font` dictionary it reaches (page
-      # resources, XObject resources, AcroForm /DR, annotation
-      # appearances, Type0 descendant fonts…). `reader.objects` is a
-      # lazy cache that does not hold every font, so a graph traversal
-      # is the robust way to enumerate them.
-      private def each_font_dict(&)
+      # Walks the whole object graph from the catalog, resolving
+      # references (with cycle protection), and yields every reachable
+      # object. `reader.objects` is a lazy cache that does not hold
+      # every object, so a graph traversal is the robust way to
+      # enumerate them. This is the shared primitive every
+      # graph-scanning check builds on.
+      def each_object(&)
         visited = Set(UInt64).new
         stack = [catalog.as(PDF::Objects::Base)]
         until stack.empty?
@@ -93,11 +93,10 @@ module PDF
           obj = resolve(obj) if obj.is_a?(PDF::Objects::Reference)
           next unless visited.add?(obj.object_id)
 
+          yield obj
+
           case obj
           when PDF::Objects::Dictionary
-            if obj["Type"]?.try(&.as?(PDF::Objects::Name)).try(&.to_pdf) == "/Font"
-              yield obj
-            end
             obj.each { |_k, v| stack << v }
           when PDF::Objects::Stream
             obj.dictionary.each { |_k, v| stack << v }
@@ -105,6 +104,65 @@ module PDF
             obj.each { |e| stack << e }
           end
         end
+      end
+
+      # Yields every `/Type /Font` dictionary reachable from the
+      # catalog.
+      private def each_font_dict(&)
+        each_object do |obj|
+          dict = obj.as?(PDF::Objects::Dictionary)
+          next unless dict
+          if dict["Type"]?.try(&.as?(PDF::Objects::Name)).try(&.to_pdf) == "/Font"
+            yield dict
+          end
+        end
+      end
+
+      # `true` if any JavaScript action is reachable in the document —
+      # a dictionary whose `/S` is `/JavaScript`, or a `/JavaScript`
+      # entry under the catalog `/Names` name tree. PDF/A forbids all
+      # JavaScript (ISO 19005-2 § 6.6.1).
+      getter? has_javascript : Bool do
+        # /Names /JavaScript name tree present?
+        if names = catalog["Names"]?
+          nd = resolve(names).as?(PDF::Objects::Dictionary)
+          return true if nd && nd.has_key?("JavaScript")
+        end
+        result = false
+        each_object do |obj|
+          dict = obj.as?(PDF::Objects::Dictionary)
+          next unless dict
+          if dict["S"]?.try(&.as?(PDF::Objects::Name)).try(&.to_pdf) == "/JavaScript"
+            result = true
+          end
+        end
+        result
+      end
+
+      # Names of image XObjects whose colour space is an uncalibrated
+      # DeviceRGB / DeviceCMYK while the document declares no output
+      # intent that could anchor them (ISO 19005-2 § 6.2.4). DeviceGray
+      # is always allowed. A conservative check : only flags image
+      # XObjects (the clearest case), not content-stream operators.
+      getter uncalibrated_image_colorspaces : Array(String) do
+        has_output_intent = catalog.has_key?("OutputIntents")
+        flagged = [] of String
+        return flagged if has_output_intent # an output intent anchors device spaces
+
+        idx = 0
+        each_object do |obj|
+          stream = obj.as?(PDF::Objects::Stream)
+          next unless stream
+          d = stream.dictionary
+          next unless d["Subtype"]?.try(&.as?(PDF::Objects::Name)).try(&.to_pdf) == "/Image"
+          cs = d["ColorSpace"]?.try { |space| resolve(space) }
+          name = cs.try(&.as?(PDF::Objects::Name)).try(&.to_pdf)
+          if name == "/DeviceRGB" || name == "/DeviceCMYK"
+            idx += 1
+            flagged << "image##{idx} #{name}"
+          end
+        end
+        flagged
       end
     end
   end

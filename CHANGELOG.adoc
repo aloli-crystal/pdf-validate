@@ -7,6 +7,48 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.4.0 — 2026-06-02 — More rules ; serialization-robust XMP ; third-party corpus
+
+=== Added
+
+* **More PDF/A-2b rules** :
+** `no_javascript` (§ 6.6.1) — fails if any JavaScript action is
+   reachable (a dict with `/S /JavaScript`, or `/Names /JavaScript`).
+** `/AA` forbidden in the catalog (§ 6.6.2).
+** `image_colorspaces_calibrated` (§ 6.2.4) — flags image XObjects in
+   bare DeviceRGB/DeviceCMYK when the document has no OutputIntent.
+* New check primitives : `no_javascript`, `image_colorspaces_calibrated`,
+  and the serialization-robust `xmp_property_present` /
+  `xmp_property_equals`.
+* `Context#each_object` — the shared object-graph walker the
+  graph-scanning checks build on.
+
+=== Fixed — false positive on third-party PDF/A
+
+* **`xmp_property_present` / `xmp_property_equals` match both RDF
+  serialisations.** The 0.3.0 pdfaid rules used a literal
+  `xmp_contains("<pdfaid:part>")`, which only matched the *element*
+  form. Ghostscript / ocrmypdf write the equally-valid *attribute*
+  form `pdfaid:part="2"`, so `pdf-validate` wrongly rejected genuine
+  third-party PDF/A files that veraPDF accepts. The pdfaid (and
+  pdfuaid) rules now use the serialization-robust primitives.
+
+=== Cross-validation — now including third-party documents
+
+* Generated corpus (pdf-a output) : **60/60** agreement with veraPDF
+  1.30.1, unchanged.
+* **Third-party corpus** : PDF/A-2b files produced by Ghostscript via
+  `ocrmypdf --output-type pdfa` (an independent writer). Before the
+  fix : 0/4 (all wrongly rejected). After : **4/4** agreement with
+  veraPDF. A Ghostscript fixture is committed as a regression guard.
+
+This is exactly the loop the RATIONALE describes : a diverse,
+third-party corpus surfaced a real false positive that a
+self-generated corpus could never reveal. The honest takeaway —
+generated-corpus agreement (100 %) measures the engine ; third-party
+agreement measures *coverage*, and that is where the remaining work
+lives (per-resource colour, transparency, annotations…).
+
 == v0.3.0 — 2026-06-02 — Font-embedding & /ID rules ; 60/60 vs veraPDF
 
 === Added

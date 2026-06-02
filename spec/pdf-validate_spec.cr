@@ -139,6 +139,20 @@ describe "pdf-ua-1 profile" do
   end
 end
 
+describe "third-party PDF/A (serialization robustness)" do
+  # A PDF/A-2b produced by Ghostscript/ocrmypdf — a completely
+  # different writer than the ALOLI shards. Its XMP serialises
+  # pdfaid in *attribute* form (pdfaid:part="2") rather than element
+  # form. veraPDF reports it conformant ; pdf-validate must agree
+  # (regression guard for the false-positive bug fixed in 0.4.0).
+  it "accepts attribute-form pdfaid (Ghostscript output)" do
+    path = "#{__DIR__}/fixtures/ghostscript_pdfa2b.pdf"
+    pending! "fixture missing" unless File.exists?(path)
+    report = PDF::Validate.file(path, "pdf-a-2b")
+    report.conformant?.should be_true
+  end
+end
+
 describe PDF::Validate::Checks do
   it "raises on an unknown check primitive" do
     pdf = PDF::Document.new

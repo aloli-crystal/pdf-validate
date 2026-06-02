@@ -43,11 +43,36 @@ module PDF
           re = Regex.new(args[0])
           found = !(ctx.xmp =~ re).nil?
           Outcome.new(found, found ? nil : "XMP metadata does not match /#{args[0]}/")
+        when "xmp_property_present"
+          # An RDF property is present whether serialised in element
+          # form (<ns:prop>…</ns:prop>) or attribute form
+          # (ns:prop="…"). Tools differ : pdf writes element form,
+          # Ghostscript/ocrmypdf write attribute form. Match both.
+          prop = Regex.escape(args[0])
+          re = Regex.new(%(#{prop}\\s*(?:>|=)))
+          found = !(ctx.xmp =~ re).nil?
+          Outcome.new(found, found ? nil : "XMP property #{args[0]} not present")
+        when "xmp_property_equals"
+          prop = Regex.escape(args[0])
+          val = Regex.escape(args[1])
+          # element : <ns:prop>val</ns:prop> ; attribute : ns:prop="val"
+          re = Regex.new(%(#{prop}\\s*(?:>\\s*#{val}\\s*<|=\\s*["']\\s*#{val}\\s*["'])))
+          found = !(ctx.xmp =~ re).nil?
+          Outcome.new(found, found ? nil : "XMP property #{args[0]} is not #{args[1]}")
         when "all_fonts_embedded"
           non_embedded = ctx.non_embedded_fonts
           Outcome.new(
             non_embedded.empty?,
             non_embedded.empty? ? nil : "non-embedded font(s): #{non_embedded.join(", ")}"
+          )
+        when "no_javascript"
+          js = ctx.has_javascript?
+          Outcome.new(!js, js ? "document contains JavaScript action(s)" : nil)
+        when "image_colorspaces_calibrated"
+          bad = ctx.uncalibrated_image_colorspaces
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : "uncalibrated device colour space without OutputIntent: #{bad.join(", ")}"
           )
         else
           raise "Unknown check #{check.inspect} (rule set references a primitive the engine does not implement)"

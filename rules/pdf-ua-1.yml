@@ -9,8 +9,8 @@
   clause: "ISO 14289-1 § 5"
   title: "PDF/UA identification (pdfuaid:part) present in XMP"
   severity: error
-  check: xmp_contains
-  args: ["<pdfuaid:part>"]
+  check: xmp_property_present
+  args: ["pdfuaid:part"]
 
 - id: pdfua1-7.1-struct-tree-root
   clause: "ISO 14289-1 § 7.1"

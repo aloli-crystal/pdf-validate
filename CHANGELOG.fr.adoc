@@ -7,6 +7,50 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.4.0 — 2026-06-02 — Plus de règles ; XMP robuste ; corpus tiers
+
+=== Ajouté
+
+* **Nouvelles règles PDF/A-2b** :
+** `no_javascript` (§ 6.6.1) — échoue si une action JavaScript est
+   atteignable (dict avec `/S /JavaScript`, ou `/Names /JavaScript`).
+** `/AA` interdit dans le catalog (§ 6.6.2).
+** `image_colorspaces_calibrated` (§ 6.2.4) — signale les images
+   XObject en DeviceRGB/DeviceCMYK nu quand le document n'a pas
+   d'OutputIntent.
+* Nouvelles primitives : `no_javascript`, `image_colorspaces_calibrated`,
+  et les robustes `xmp_property_present` / `xmp_property_equals`.
+* `Context#each_object` — le walker du graphe d'objets partagé par
+  les checks qui scannent le graphe.
+
+=== Corrigé — faux positif sur PDF/A tiers
+
+* **`xmp_property_present` / `xmp_property_equals` reconnaissent les
+  deux sérialisations RDF.** Les règles pdfaid de 0.3.0 utilisaient
+  un `xmp_contains("<pdfaid:part>")` littéral, qui ne matchait que la
+  forme *élément*. Ghostscript / ocrmypdf écrivent la forme
+  *attribut* — tout aussi valide — `pdfaid:part="2"`, si bien que
+  `pdf-validate` rejetait à tort de vrais PDF/A tiers que veraPDF
+  accepte. Les règles pdfaid (et pdfuaid) utilisent désormais les
+  primitives robustes.
+
+=== Validation croisée — incluant désormais des documents tiers
+
+* Corpus généré (sortie pdf-a) : **60/60** d'accord avec veraPDF
+  1.30.1, inchangé.
+* **Corpus tiers** : PDF/A-2b produits par Ghostscript via
+  `ocrmypdf --output-type pdfa` (un écrivain indépendant). Avant le
+  fix : 0/4 (tous rejetés à tort). Après : **4/4** d'accord avec
+  veraPDF. Une fixture Ghostscript est committée en garde de
+  non-régression.
+
+C'est exactement la boucle décrite par le RATIONALE : un corpus tiers
+diversifié a révélé un vrai faux positif qu'un corpus auto-généré ne
+pouvait pas montrer. Le constat honnête — l'accord sur corpus généré
+(100 %) mesure le moteur ; l'accord tiers mesure la *couverture*, et
+c'est là que vit le travail restant (couleur par ressource,
+transparence, annotations…).
+
 == v0.3.0 — 2026-06-02 — Règles polices & /ID ; 60/60 vs veraPDF
 
 === Ajouté
