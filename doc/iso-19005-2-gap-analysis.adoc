@@ -1,0 +1,123 @@
+= État des lieux PDF/A-2b — pdf-validate vs ISO 19005-2
+:toc: left
+:toclevels: 2
+:icons: font
+:date: 2026-06-02
+
+[abstract]
+Comparaison clause par clause entre le jeu de règles de
+`pdf-validate` et l'encodage de référence d'ISO 19005-2:2011
+(PDF/A-2b). Objectif : savoir précisément ce qui nous manque
+vis-à-vis de la norme, et prioriser la suite.
+
+== Méthode et honnêteté de la source
+
+Le texte de la norme ISO 19005-2 est **payant et sous copyright** ;
+il n'est pas reproduit ici. La référence utilisée est l'**encodage
+ouvert et machine-lisible** des clauses par le consortium veraPDF
+(profil de validation PDF/A-2b, veraPDF 1.30.1, maintenu sous l'égide
+de la PDF Association). C'est la même base qui sert à *certifier* un
+PDF/A. Pour chaque règle veraPDF on dispose : la clause ISO, un
+numéro de test, l'objet PDF visé et une description factuelle courte.
+
+L'énumération a été obtenue par :
+
+[source,console]
+----
+verapdf -f 2b --passed --format xml conforme.pdf > vera_full.xml
+----
+
+soit **144 règles** appliquées par veraPDF pour PDF/A-2b. La
+couverture ci-dessous est *clause-level* : une clause est comptée
+« couverte » si `pdf-validate` possède au moins un check qui l'adresse
+— pas que nous répliquions chacun des numéros de test internes.
+
+== Tableau de couverture par section (ISO 19005-2 § 6)
+
+[cols="1,4,2,2,2",options="header"]
+|===
+| Section | Thème | Règles veraPDF | Couvertes | %
+
+| § 6.1  | Structure de fichier (trailer, /ID, chiffrement, xref)     | 27  | 3   | 11 %
+| § 6.2  | Graphiques — couleur, polices, transparence, images        | 56  | 7   | 13 %
+| § 6.3  | Annotations                                                | 7   | 0   | 0 %
+| § 6.4  | Signatures numériques                                      | 8   | 0   | 0 %
+| § 6.5  | Actions (JavaScript, /AA, actions nommées)                 | 4   | 4   | 100 %
+| § 6.6  | Métadonnées (XMP, schéma d'extension PDF/A, pdfaid)        | 33  | 12  | 36 %
+| § 6.8  | Fichiers embarqués                                         | 2   | 0   | 0 %
+| § 6.9  | Contenu optionnel (calques OCG)                            | 4   | 0   | 0 %
+| § 6.10 | Présentations alternatives                                 | 2   | 0   | 0 %
+| § 6.11 | Clé Requirements                                          | 1   | 0   | 0 %
+| *Total* | *PDF/A-2b*                                                | *144* | *26* | *18 %*
+|===
+
+== Lecture honnête du chiffre
+
+* **18 % clause-level** est la couverture réelle de `pdf-validate`
+  vis-à-vis de la norme telle que veraPDF l'encode.
+* Cela ne contredit PAS le « 60/60 » et le « 4/4 » mesurés
+  précédemment : ces scores disent que sur les documents *générés
+  par la suite ALOLI* et un échantillon tiers, `pdf-validate` donne
+  le **même verdict** que veraPDF. C'est vrai parce que les défauts
+  que nos documents peuvent avoir tombent dans les 18 % couverts.
+* Sur un PDF tiers exerçant une clause non couverte (transparence non
+  isolée, annotation non conforme, signature, calque…), `pdf-validate`
+  pourrait dire « conforme » là où veraPDF dirait « non conforme » :
+  un **faux négatif de couverture**. C'est la limite à combler.
+
+== Ce qui manque, par priorité
+
+=== Priorité haute (fréquent, fort impact conformité)
+
+* **§ 6.2 transparence** — groupes de transparence isolés, blend
+  modes autorisés, /SMask. Très commun dès qu'il y a des effets
+  graphiques.
+* **§ 6.2 couleur dans les content streams** — opérateurs `rg`/`k`
+  (DeviceRGB/CMYK posés directement, pas seulement via images).
+  Notre check couleur ne regarde aujourd'hui que les images XObject.
+* **§ 6.2.11 polices, vérifs fines** — largeurs de glyphes cohérentes
+  (Widths vs hmtx), CIDSet/CIDToGIDMap, ToUnicode, encodages TrueType
+  (MacRoman/WinAnsi). On vérifie l'embarquement, pas ces détails.
+* **§ 6.6 XMP bien formé** — le flux XMP doit être conforme à la
+  spec XMP et cohérent avec /Info. On vérifie la présence, pas la
+  validité.
+
+=== Priorité moyenne
+
+* **§ 6.3 annotations** — types autorisés, drapeaux (pas /Hidden,
+  Print requis), apparences normales présentes.
+* **§ 6.1 structure** — détails xref/objets, permissions, en-tête
+  de version, objets libres.
+* **§ 6.9 contenu optionnel** — clé /Name des configurations OCG.
+
+=== Priorité basse (rare en pratique ALOLI)
+
+* **§ 6.4 signatures**, **§ 6.10 présentations alternatives**,
+  **§ 6.11 Requirements** — peu probables dans les documents générés ;
+  à couvrir surtout pour valider des PDF tiers.
+
+== Comment progresser (rappel de la boucle)
+
+. Élargir le corpus tiers (ocrmypdf, PDF réels variés).
+. Pour chaque divergence veraPDF ↔ pdf-validate, identifier la clause.
+. L'implémenter : règle YAML seule si une primitive suffit, sinon une
+  nouvelle primitive dans `Checks` + accesseur `Context` (s'appuyant
+  sur `each_object`).
+. Re-mesurer. La couverture clause-level monte, l'accord tiers monte.
+
+Le « 100 % de conformité à la norme » au sens strict = répliquer les
+144 règles (et idéalement les numéros de test internes) et le
+démontrer sur un corpus tiers diversifié. veraPDF reste l'oracle
+faisant autorité ; `pdf-validate` est la première ligne rapide,
+traçable à la clause, et volontairement focalisée.
+
+== Reproductibilité
+
+Le tableau ci-dessus est régénérable :
+
+[source,console]
+----
+doc/gap-analysis/run.sh /chemin/vers/un-pdfa2b-conforme.pdf
+----
+
+(nécessite veraPDF 1.30.1 sur le PATH et python3).

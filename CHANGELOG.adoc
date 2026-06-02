@@ -7,6 +7,41 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.5.0 — 2026-06-02 — ISO 19005-2 gap analysis + clause reconciliation
+
+=== Added
+
+* **`doc/iso-19005-2-gap-analysis.adoc`** — an état des lieux of
+  `pdf-validate` versus the full ISO 19005-2 rule set, using
+  veraPDF 1.30.1's open validation profile as the authoritative
+  (machine-readable) encoding of the standard. Clause-level coverage
+  by section, an honest reading of the number, and a prioritised
+  backlog of what is missing.
+* **`doc/gap-analysis/run.sh`** — regenerates the coverage table from
+  a veraPDF run, so the analysis is reproducible.
+
+=== Headline
+
+Clause-level coverage : **26 / 144 ≈ 18 %** of the rules veraPDF
+applies for PDF/A-2b. Per section : Actions 100 %, Metadata 36 %,
+Graphics 13 %, File structure 11 %, and 0 % for Annotations,
+Signatures, Embedded files, Optional content, Alternate
+presentations, Requirements. The 60/60 and 4/4 agreement scores hold
+*within* this covered subset ; the gap is where third-party PDFs
+exercising uncovered clauses could slip through.
+
+=== Fixed — clause references reconciled with the standard
+
+* The hand-assigned ISO clause numbers in `rules/pdf-a-2b.yml` were
+  wrong in several places (pdfaid was tagged § 6.7.11 — which does
+  not exist ; fonts § 6.3.4 ; JavaScript/AA § 6.6). Reconciled with
+  the real ISO 19005-2 structure as encoded by veraPDF :
+  pdfaid → § 6.6.4, metadata → § 6.6.2.1, fonts → § 6.2.11.4.1,
+  output intent → § 6.2.10, image colour → § 6.2.4.3, JavaScript
+  → § 6.5.1, /AA → § 6.5.2. Rule ids updated accordingly. This makes
+  every `pdf-validate` report cite the correct ISO clause — the whole
+  point of an audit trail.
+
 == v0.4.0 — 2026-06-02 — More rules ; serialization-robust XMP ; third-party corpus
 
 === Added

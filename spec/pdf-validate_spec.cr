@@ -50,8 +50,8 @@ describe PDF::Validate do
     report.conformant?.should be_false
 
     failed_ids = report.failures.map(&.rule.id)
-    failed_ids.should contain("pdfa2-6.7.11-pdfaid-part")
-    failed_ids.should contain("pdfa2-6.2.2-output-intent")
+    failed_ids.should contain("pdfa2-6.6.4-pdfaid-part")
+    failed_ids.should contain("pdfa2-6.2.10-output-intent")
 
     # Every failure carries its ISO clause.
     report.failures.all? { |r| r.rule.clause.starts_with?("ISO 19005") }.should be_true
@@ -65,7 +65,7 @@ describe PDF::Validate do
     pdf.file_id
     pdf.page { |p| p.font "Helvetica", size: 12; p.text "x", at: {72, 700} }
     report = PDF::Validate.bytes(pdf.to_slice, "pdf-a-2b")
-    report.failures.map(&.rule.id).should contain("pdfa2-6.3.4-fonts-embedded")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.2.11.4.1-fonts-embedded")
   end
 
   it "detects a missing /ID in the trailer as a violation" do

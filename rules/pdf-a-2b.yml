@@ -1,86 +1,97 @@
-# PDF/A-2b conformance rule set (ISO 19005-2, level B).
+# PDF/A-2b conformance rule set (ISO 19005-2:2011, level B).
 #
-# First palier : document-level requirements checkable from the
-# catalog, trailer and XMP metadata. Per-resource rules (font
-# embedding/subsetting, calibrated colour spaces, transparency,
-# glyph-level checks) are added in later paliers.
+# Clause numbers are reconciled with the veraPDF 1.30.1 validation
+# profile (the open, authoritative encoding of ISO 19005-2 maintained
+# by the veraPDF consortium / PDF Association). The ISO standard text
+# itself is paywalled and is NOT reproduced here ; only clause numbers
+# and short factual rule labels are used.
 #
-# Each rule names a primitive from the engine's check vocabulary
-# (see src/pdf-validate/checks.cr) and traces to its ISO clause.
+# This rule set covers the document- and resource-level requirements
+# the engine can currently check. It is a *focused subset* of the 144
+# rules veraPDF applies — see doc/iso-19005-2-gap-analysis.adoc for
+# the full état des lieux and the prioritised backlog.
 
-- id: pdfa2-6.7.11-pdfaid-part
-  clause: "ISO 19005-2 § 6.7.11"
-  title: "PDF/A version identification (pdfaid:part) present in XMP"
-  severity: error
-  check: xmp_property_present
-  args: ["pdfaid:part"]
-
-- id: pdfa2-6.7.11-pdfaid-conformance
-  clause: "ISO 19005-2 § 6.7.11"
-  title: "PDF/A conformance level (pdfaid:conformance) present in XMP"
-  severity: error
-  check: xmp_property_present
-  args: ["pdfaid:conformance"]
-
-- id: pdfa2-6.7.11-pdfaid-part-2
-  clause: "ISO 19005-2 § 6.7.11"
-  title: "Declared PDF/A part is 2"
-  severity: error
-  check: xmp_property_equals
-  args: ["pdfaid:part", "2"]
-
-- id: pdfa2-6.2.2-output-intent
-  clause: "ISO 19005-2 § 6.2.2"
-  title: "Document declares an OutputIntent"
-  severity: error
-  check: catalog_key_present
-  args: ["OutputIntents"]
+# --- § 6.1 File structure ---
 
 - id: pdfa2-6.1.3-no-encryption
   clause: "ISO 19005-2 § 6.1.3"
-  title: "Document is not encrypted"
+  title: "The trailer shall not contain the Encrypt key"
   severity: error
   check: trailer_key_absent
   args: ["Encrypt"]
 
 - id: pdfa2-6.1.3-file-id
   clause: "ISO 19005-2 § 6.1.3"
-  title: "Trailer contains a file identifier (/ID)"
+  title: "The trailer shall contain a file identifier (/ID)"
   severity: error
   check: trailer_key_present
   args: ["ID"]
 
-- id: pdfa2-6.1.2-metadata-present
-  clause: "ISO 19005-2 § 6.1.2"
-  title: "Document catalog has an XMP /Metadata stream"
+# --- § 6.2 Graphics (colour & fonts) ---
+
+- id: pdfa2-6.2.10-output-intent
+  clause: "ISO 19005-2 § 6.2.10"
+  title: "Device colour spaces require a PDF/A OutputIntent (present)"
   severity: error
   check: catalog_key_present
-  args: ["Metadata"]
+  args: ["OutputIntents"]
 
-- id: pdfa2-6.3.4-fonts-embedded
-  clause: "ISO 19005-2 § 6.3.4"
-  title: "All fonts are embedded"
+- id: pdfa2-6.2.4.3-image-colorspaces
+  clause: "ISO 19005-2 § 6.2.4.3"
+  title: "Image DeviceRGB/DeviceCMYK requires a device-independent default (OutputIntent)"
+  severity: error
+  check: image_colorspaces_calibrated
+  args: []
+
+- id: pdfa2-6.2.11.4.1-fonts-embedded
+  clause: "ISO 19005-2 § 6.2.11.4.1"
+  title: "Font programs for all rendered fonts shall be embedded"
   severity: error
   check: all_fonts_embedded
   args: []
 
-- id: pdfa2-6.6.1-no-javascript
-  clause: "ISO 19005-2 § 6.6.1"
-  title: "Document contains no JavaScript actions"
+# --- § 6.5 Actions ---
+
+- id: pdfa2-6.5.1-no-javascript
+  clause: "ISO 19005-2 § 6.5.1"
+  title: "No JavaScript (or other forbidden) actions"
   severity: error
   check: no_javascript
   args: []
 
-- id: pdfa2-6.6.2-no-catalog-aa
-  clause: "ISO 19005-2 § 6.6.2"
-  title: "Document catalog has no additional-actions (/AA)"
+- id: pdfa2-6.5.2-no-catalog-aa
+  clause: "ISO 19005-2 § 6.5.2"
+  title: "The document Catalog shall not include an /AA additional-actions entry"
   severity: error
   check: catalog_key_absent
   args: ["AA"]
 
-- id: pdfa2-6.2.4-image-colorspaces
-  clause: "ISO 19005-2 § 6.2.4"
-  title: "Image colour spaces are calibrated (no bare DeviceRGB/CMYK without OutputIntent)"
+# --- § 6.6 Metadata ---
+
+- id: pdfa2-6.6.2.1-metadata-present
+  clause: "ISO 19005-2 § 6.6.2.1"
+  title: "The Catalog shall contain an XMP /Metadata stream"
   severity: error
-  check: image_colorspaces_calibrated
-  args: []
+  check: catalog_key_present
+  args: ["Metadata"]
+
+- id: pdfa2-6.6.4-pdfaid-part
+  clause: "ISO 19005-2 § 6.6.4"
+  title: "PDF/A version identification (pdfaid:part) present in XMP"
+  severity: error
+  check: xmp_property_present
+  args: ["pdfaid:part"]
+
+- id: pdfa2-6.6.4-pdfaid-conformance
+  clause: "ISO 19005-2 § 6.6.4"
+  title: "PDF/A conformance level (pdfaid:conformance) present in XMP"
+  severity: error
+  check: xmp_property_present
+  args: ["pdfaid:conformance"]
+
+- id: pdfa2-6.6.4-pdfaid-part-2
+  clause: "ISO 19005-2 § 6.6.4"
+  title: "Declared PDF/A part is 2"
+  severity: error
+  check: xmp_property_equals
+  args: ["pdfaid:part", "2"]
