@@ -1,0 +1,85 @@
+= pdf-validate
+:toc: macro
+:icons: font
+
+Declarative PDF conformance validator for the ALOLI ISO PDF suite —
+milestone **J5** (see `pdf/doc/RATIONALE.adoc`). A generic engine
+evaluates rule sets (YAML, one per profile) against a parsed PDF;
+every rule traces to its ISO clause, so a report doubles as an audit
+trail. A focused, veraPDF-style validator restricted to the profiles
+ALOLI targets.
+
+toc::[]
+
+== Status
+
+First palier (0.1.0) : the engine is real. It parses the PDF via
+`PDF::Reader` and evaluates a vocabulary of checks against the actual
+catalog, trailer and XMP metadata. The shipped `pdf-a-2b` rule set
+covers the document-level PDF/A-2b requirements (PDF/A
+identification, output intent, no encryption, metadata present).
+
+It is **not yet** the full veraPDF-parity validator. Per-resource
+rules (font embedding/subsetting, calibrated colour spaces,
+transparency groups, glyph-level checks) and the 95 %-agreement
+corpus criterion come in later paliers. A `conformant?` result
+therefore reflects the *implemented* rules, not a complete ISO 19005
+certificate — and the report says so.
+
+== Installation
+
+[source,yaml]
+----
+dependencies:
+  pdf-validate:
+    github: aloli-crystal/pdf-validate
+    version: "~> 0.1.0"
+----
+
+== Library usage
+
+[source,crystal]
+----
+require "pdf-validate"
+
+report = PDF::Validate.file("doc.pdf", profile: "pdf-a-2b")
+puts report                # human-readable
+puts report.to_json        # machine-readable
+report.conformant?         # => true / false
+report.failures            # => Array(Result) of failed rules
+----
+
+== CLI
+
+[source,console]
+----
+$ pdf-validate doc.pdf -p pdf-a-2b
+$ pdf-validate doc.pdf --json
+$ pdf-validate help
+----
+
+Exit codes : `0` conformant, `1` violations found, `2` usage / IO error.
+
+== Adding rules
+
+A rule set is a YAML list. Each rule names a primitive from the
+engine's check vocabulary and traces to its ISO clause:
+
+[source,yaml]
+----
+- id: pdfa2-6.2.2-output-intent
+  clause: "ISO 19005-2 § 6.2.2"
+  title: "Document declares an OutputIntent"
+  severity: error
+  check: catalog_key_present
+  args: ["OutputIntents"]
+----
+
+Check vocabulary (current) : `catalog_key_present`,
+`catalog_key_absent`, `trailer_key_present`, `trailer_key_absent`,
+`xmp_contains`, `xmp_matches`. New ISO requirements are expressed by
+adding primitives in `src/pdf-validate/checks.cr`.
+
+== License
+
+MIT. See `LICENSE`.

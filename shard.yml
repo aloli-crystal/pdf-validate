@@ -1,0 +1,30 @@
+name: pdf-validate
+version: 0.1.0
+
+description: |
+  Declarative PDF conformance validator for the ALOLI ISO PDF suite.
+  A generic engine evaluates rule sets (YAML, one per profile) that
+  trace each requirement to its ISO clause — a focused, veraPDF-style
+  validator restricted to the profiles ALOLI targets (PDF/A first).
+  Milestone J5 of the ISO PDF trajectory; gates pdf 1.0.0.
+
+authors:
+  - Philippe Nénert <philippe@aloli.fr>
+
+crystal: ">= 1.10.0"
+
+license: MIT
+
+targets:
+  pdf-validate:
+    main: src/cli.cr
+
+dependencies:
+  pdf:
+    github: aloli-crystal/pdf
+    version: "~> 0.7.4"
+
+development_dependencies:
+  ameba:
+    github: crystal-ameba/ameba
+    version: "~> 1.6"

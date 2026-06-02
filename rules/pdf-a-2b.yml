@@ -1,0 +1,51 @@
+# PDF/A-2b conformance rule set (ISO 19005-2, level B).
+#
+# First palier : document-level requirements checkable from the
+# catalog, trailer and XMP metadata. Per-resource rules (font
+# embedding/subsetting, calibrated colour spaces, transparency,
+# glyph-level checks) are added in later paliers.
+#
+# Each rule names a primitive from the engine's check vocabulary
+# (see src/pdf-validate/checks.cr) and traces to its ISO clause.
+
+- id: pdfa2-6.7.11-pdfaid-part
+  clause: "ISO 19005-2 § 6.7.11"
+  title: "PDF/A version identification (pdfaid:part) present in XMP"
+  severity: error
+  check: xmp_contains
+  args: ["<pdfaid:part>"]
+
+- id: pdfa2-6.7.11-pdfaid-conformance
+  clause: "ISO 19005-2 § 6.7.11"
+  title: "PDF/A conformance level (pdfaid:conformance) present in XMP"
+  severity: error
+  check: xmp_contains
+  args: ["<pdfaid:conformance>"]
+
+- id: pdfa2-6.7.11-pdfaid-part-2
+  clause: "ISO 19005-2 § 6.7.11"
+  title: "Declared PDF/A part is 2"
+  severity: error
+  check: xmp_matches
+  args: ["<pdfaid:part>\\s*2\\s*</pdfaid:part>"]
+
+- id: pdfa2-6.2.2-output-intent
+  clause: "ISO 19005-2 § 6.2.2"
+  title: "Document declares an OutputIntent"
+  severity: error
+  check: catalog_key_present
+  args: ["OutputIntents"]
+
+- id: pdfa2-6.1.3-no-encryption
+  clause: "ISO 19005-2 § 6.1.3"
+  title: "Document is not encrypted"
+  severity: error
+  check: trailer_key_absent
+  args: ["Encrypt"]
+
+- id: pdfa2-6.1.2-metadata-present
+  clause: "ISO 19005-2 § 6.1.2"
+  title: "Document catalog has an XMP /Metadata stream"
+  severity: error
+  check: catalog_key_present
+  args: ["Metadata"]

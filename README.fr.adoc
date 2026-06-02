@@ -1,0 +1,87 @@
+= pdf-validate
+:toc: macro
+:icons: font
+
+Validateur de conformité PDF déclaratif pour la suite ISO PDF
+d'ALOLI — jalon **J5** (cf. `pdf/doc/RATIONALE.adoc`). Un moteur
+générique évalue des jeux de règles (YAML, un par profil) contre un
+PDF parsé ; chaque règle est tracée à sa clause ISO, si bien qu'un
+rapport tient lieu de piste d'audit. Un validateur ciblé, façon
+veraPDF, restreint aux profils visés par ALOLI.
+
+toc::[]
+
+== État
+
+Premier palier (0.1.0) : le moteur est réel. Il parse le PDF via
+`PDF::Reader` et évalue un vocabulaire de checks contre le catalog,
+le trailer et les métadonnées XMP réels. Le jeu de règles `pdf-a-2b`
+fourni couvre les exigences PDF/A-2b de niveau document
+(identification PDF/A, output intent, absence de chiffrement,
+présence des métadonnées).
+
+Ce n'est **pas encore** le validateur à parité veraPDF complète. Les
+règles par ressource (embarquement/subsetting des polices, espaces
+de couleur calibrés, groupes de transparence, vérifs au niveau
+glyphe) et le critère des 95 % d'accord sur corpus viennent dans des
+paliers ultérieurs. Un résultat `conformant?` reflète donc les
+règles *implémentées*, pas un certificat ISO 19005 complet — et le
+rapport le dit.
+
+== Installation
+
+[source,yaml]
+----
+dependencies:
+  pdf-validate:
+    github: aloli-crystal/pdf-validate
+    version: "~> 0.1.0"
+----
+
+== Utilisation bibliothèque
+
+[source,crystal]
+----
+require "pdf-validate"
+
+report = PDF::Validate.file("doc.pdf", profile: "pdf-a-2b")
+puts report                # lisible
+puts report.to_json        # machine
+report.conformant?         # => true / false
+report.failures            # => Array(Result) des règles échouées
+----
+
+== CLI
+
+[source,console]
+----
+$ pdf-validate doc.pdf -p pdf-a-2b
+$ pdf-validate doc.pdf --json
+$ pdf-validate help
+----
+
+Codes de sortie : `0` conforme, `1` violations, `2` erreur usage / E-S.
+
+== Ajouter des règles
+
+Un jeu de règles est une liste YAML. Chaque règle nomme une
+primitive du vocabulaire de checks du moteur et trace sa clause ISO :
+
+[source,yaml]
+----
+- id: pdfa2-6.2.2-output-intent
+  clause: "ISO 19005-2 § 6.2.2"
+  title: "Document declares an OutputIntent"
+  severity: error
+  check: catalog_key_present
+  args: ["OutputIntents"]
+----
+
+Vocabulaire actuel : `catalog_key_present`, `catalog_key_absent`,
+`trailer_key_present`, `trailer_key_absent`, `xmp_contains`,
+`xmp_matches`. On exprime une nouvelle exigence ISO en ajoutant une
+primitive dans `src/pdf-validate/checks.cr`.
+
+== Licence
+
+MIT. Voir `LICENSE`.

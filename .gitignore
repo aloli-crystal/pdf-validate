@@ -1,0 +1,6 @@
+/docs/
+/lib/
+/bin/pdf-validate
+/.shards/
+*.dwarf
+/.crystal/
