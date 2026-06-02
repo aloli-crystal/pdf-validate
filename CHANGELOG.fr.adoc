@@ -1,0 +1,44 @@
+= Journal des modifications
+:toc: left
+:toc-title: Versions
+:toclevels: 2
+
+Toutes les évolutions notables de pdf-validate sont consignées ici.
+Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
+et le versionnage respecte https://semver.org/lang/fr/[SemVer].
+
+== v0.2.0 — 2026-06-02 — Profil PDF/UA-1
+
+=== Ajouté
+
+* **Profil `pdf-ua-1`** — nouveau jeu de règles
+  (`rules/pdf-ua-1.yml`) couvrant les exigences PDF/UA-1
+  (ISO 14289-1) de niveau document : identification pdfuaid, arbre
+  de structure logique (`/StructTreeRoot`), `/MarkInfo`, langue du
+  document (`/Lang`), `/ViewerPreferences`, métadonnées XMP. Le
+  validateur couvre désormais PDF/A *et* PDF/UA.
++
+[source,console]
+----
+$ pdf-validate accessible.pdf -p pdf-ua-1
+----
+
+=== Modifié
+
+* Contrainte passée à `pdf ~> 0.7.5` (hooks PDF/UA).
+
+== v0.1.0 — 2026-06-02 — Moteur déclaratif + pdf-a-2b (J5, palier 1)
+
+=== Ajouté
+
+* Moteur de validation déclaratif générique : `Rule` (YAML),
+  `Context` (parse le PDF via `PDF::Reader`, expose
+  catalog/trailer/XMP), `Checks` (vocabulaire de primitives),
+  `Engine`, `Report` (texte + JSON).
+* `RuleSet` — jeux de règles YAML embarqués dans le binaire au
+  compile-time, validateur self-contained.
+* `rules/pdf-a-2b.yml` — 6 règles PDF/A-2b de niveau document.
+* CLI `bin/pdf-validate` : `-p/--profile`, `-j/--json`,
+  `-q/--quiet`, `help` positionnel, `-h/--help`, `-v/--version` ;
+  exit 0/1/2.
+* Points d'entrée `PDF::Validate.file` / `.bytes` / `.run`.

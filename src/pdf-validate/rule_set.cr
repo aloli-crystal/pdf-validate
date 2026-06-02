@@ -9,9 +9,13 @@ module PDF
     module RuleSet
       # Embedded YAML, one constant per profile.
       PDF_A_2B = {{ read_file("#{__DIR__}/../../rules/pdf-a-2b.yml") }}
+      PDF_UA_1 = {{ read_file("#{__DIR__}/../../rules/pdf-ua-1.yml") }}
 
       # The known profile identifiers.
-      PROFILES = {"pdf-a-2b" => PDF_A_2B}
+      PROFILES = {
+        "pdf-a-2b" => PDF_A_2B,
+        "pdf-ua-1" => PDF_UA_1,
+      }
 
       # Returns the parsed rules for `profile`, or raises if the
       # profile is unknown.

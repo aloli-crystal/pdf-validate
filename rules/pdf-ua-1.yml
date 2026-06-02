@@ -1,0 +1,48 @@
+# PDF/UA-1 conformance rule set (ISO 14289-1).
+#
+# First palier : document-level accessibility requirements checkable
+# from the catalog and XMP metadata. Per-element rules (Alt on
+# figures, heading order, table headers, content tagged-or-artifact)
+# are added in later paliers.
+
+- id: pdfua1-5-pdfuaid-part
+  clause: "ISO 14289-1 § 5"
+  title: "PDF/UA identification (pdfuaid:part) present in XMP"
+  severity: error
+  check: xmp_contains
+  args: ["<pdfuaid:part>"]
+
+- id: pdfua1-7.1-struct-tree-root
+  clause: "ISO 14289-1 § 7.1"
+  title: "Document has a logical structure tree (Tagged PDF)"
+  severity: error
+  check: catalog_key_present
+  args: ["StructTreeRoot"]
+
+- id: pdfua1-7.1-mark-info
+  clause: "ISO 14289-1 § 7.1"
+  title: "Document declares /MarkInfo (marked content)"
+  severity: error
+  check: catalog_key_present
+  args: ["MarkInfo"]
+
+- id: pdfua1-7.2-lang
+  clause: "ISO 14289-1 § 7.2"
+  title: "Document declares a default natural language (/Lang)"
+  severity: error
+  check: catalog_key_present
+  args: ["Lang"]
+
+- id: pdfua1-7.1-viewer-prefs
+  clause: "ISO 14289-1 § 7.1"
+  title: "Document sets /ViewerPreferences (DisplayDocTitle)"
+  severity: error
+  check: catalog_key_present
+  args: ["ViewerPreferences"]
+
+- id: pdfua1-7.1-metadata
+  clause: "ISO 14289-1 § 7.1"
+  title: "Document catalog has an XMP /Metadata stream"
+  severity: error
+  check: catalog_key_present
+  args: ["Metadata"]

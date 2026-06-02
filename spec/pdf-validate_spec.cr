@@ -83,6 +83,39 @@ describe PDF::Validate do
   end
 end
 
+describe "pdf-ua-1 profile" do
+  it "knows the pdf-ua-1 profile" do
+    PDF::Validate::RuleSet.profiles.should contain("pdf-ua-1")
+  end
+
+  it "reports a tagged + lang + viewer-prefs + pdfuaid doc as conformant" do
+    pdf = PDF::Document.new
+    pdf.title = "Accessible"
+    pdf.lang = "fr"
+    pdf.pdfua_part = 1
+    pdf.display_doc_title = true
+    page = pdf.page { |_| }
+    pdf.struct_tree do |tree|
+      d = tree.add(PDF::Structure::Tag::DOCUMENT)
+      p = d.add(PDF::Structure::Tag::P)
+      page.tag(p) { page.font "Helvetica", size: 12; page.text "ok", at: {72, 700} }
+    end
+
+    report = PDF::Validate.bytes(pdf.to_slice, "pdf-ua-1")
+    report.conformant?.should be_true
+  end
+
+  it "flags an untagged document as non-conformant for pdf-ua-1" do
+    pdf = PDF::Document.new
+    pdf.page { |_| }
+    report = PDF::Validate.bytes(pdf.to_slice, "pdf-ua-1")
+    report.conformant?.should be_false
+    ids = report.failures.map(&.rule.id)
+    ids.should contain("pdfua1-7.1-struct-tree-root")
+    ids.should contain("pdfua1-5-pdfuaid-part")
+  end
+end
+
 describe PDF::Validate::Checks do
   it "raises on an unknown check primitive" do
     pdf = PDF::Document.new
