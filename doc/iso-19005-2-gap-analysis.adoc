@@ -38,7 +38,7 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 |===
 | Section | Thème | Règles veraPDF | Couvertes | %
 
-| § 6.1  | Structure de fichier (trailer, /ID, chiffrement, xref)     | 27  | 12  | 44 %
+| § 6.1  | Structure de fichier (trailer, /ID, chiffrement, xref)     | 27  | 20  | 74 %
 | § 6.2  | Graphiques — couleur, polices, transparence, images        | 56  | 25  | 45 %
 | § 6.3  | Annotations                                                | 7   | 7   | 100 %
 | § 6.4  | Signatures numériques                                      | 8   | 0   | 0 %
@@ -48,7 +48,7 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | § 6.9  | Contenu optionnel (calques OCG)                            | 4   | 0   | 0 %
 | § 6.10 | Présentations alternatives                                 | 2   | 2   | 100 %
 | § 6.11 | Clé Requirements                                          | 1   | 1   | 100 %
-| *Total* | *PDF/A-2b*                                                | *144* | *63* | *43 %*
+| *Total* | *PDF/A-2b*                                                | *144* | *71* | *49 %*
 |===
 
 NOTE: Chiffres régénérés le 2026-06-03. Lot 1 (§ 6.2.5 fonctions de
@@ -80,6 +80,12 @@ littérales et données de stream pour ne voir que la syntaxe PDF.
 (/Length déclaré == longueur réelle) — reporté : /Length souvent
 indirect et l'EOL avant endstream est ambigu, risque de faux positif.
 +
+Enfin lot « limites d'implémentation » (0.12.0) : § 6.1.13 via le
+graphe d'objets — plages entier/réel, longueurs de noms/chaînes,
+nombre d'objets indirects, colorants DeviceN, tailles des boîtes de
+page. Huit des dix tests couverts (t8 q/Q et t10 CID exclus). § 6.1
+passe à 20/27 (74 %), le total à 71/144 (49 %).
++
 Couverture clause-level partielle assumée pour quelques clauses : les
 contrôles « octets bruts » ne sont pas (encore) implémentés faute de
 scanner d'octets, si bien que § 6.1.3 (on couvre t1 /ID + t2 /Encrypt,
@@ -98,17 +104,24 @@ XMP) — couverture clause-level partielle, comme annoncé.
 
 == Lecture honnête du chiffre
 
-* **43 % clause-level** est la couverture réelle de `pdf-validate`
+* **49 % clause-level** est la couverture réelle de `pdf-validate`
   vis-à-vis de la norme telle que veraPDF l'encode (un *scanner
   d'octets bruts* a été introduit en 0.10.0 puis un *tokeniseur
   lexical* — `ByteScanner` — en 0.11.0, qui saute commentaires,
   chaînes littérales et données de stream pour ne tokeniser que la
   vraie syntaxe PDF).
+* `§ 6.1.13` est comptée au **niveau test** (granularité fine) plutôt
+  qu'au niveau clause, car ses dix tests sont des limites sans rapport
+  entre elles : on en couvre huit (entiers, réels, longueurs de
+  noms/chaînes, nombre d'objets, colorants DeviceN, tailles de boîtes
+  de page) et on exclut explicitement t8 (imbrication q/Q) et t10
+  (valeur CID max) du décompte — voir `not_covered_tests` dans
+  `run.sh`.
 * Cela ne contredit PAS le « 60/60 » et le « 4/4 » mesurés
   précédemment : ces scores disent que sur les documents *générés
   par la suite ALOLI* et un échantillon tiers, `pdf-validate` donne
   le **même verdict** que veraPDF. C'est vrai parce que les défauts
-  que nos documents peuvent avoir tombent dans les 43 % couverts.
+  que nos documents peuvent avoir tombent dans les 49 % couverts.
 * Sur un PDF tiers exerçant une clause non couverte (transparence non
   isolée, annotation non conforme, signature, calque…), `pdf-validate`
   pourrait dire « conforme » là où veraPDF dirait « non conforme » :
@@ -129,6 +142,10 @@ XMP) — couverture clause-level partielle, comme annoncé.
   ISO 32000-1 (LZWDecode interdit). Reste t1 (/Length exact, reporté).
 * **§ 6.1.9** — objets et références indirects séparés par un seul
   caractère blanc.
+* **§ 6.1.13** — limites d'implémentation : plages entier/réel,
+  longueur des noms (≤ 127) et chaînes (≤ 32767), nombre d'objets
+  indirects (≤ 8388607), colorants DeviceN (≤ 32), tailles des boîtes
+  de page (3 à 14400). Hors champ : t8 (q/Q) et t10 (CID).
 * **§ 6.10 / § 6.11 (100 %)** — pas d'/AlternatePresentations (Names)
   ni de /PresSteps (pages) ; pas de /Requirements dans le catalog.
 * **§ 6.2.3** — le profil ICC de l'output intent (DestOutputProfile)
@@ -175,9 +192,9 @@ XMP) — couverture clause-level partielle, comme annoncé.
 
 * **§ 6.1 structure (reste)** — § 6.1.7.1 t1 (/Length déclaré ==
   longueur réelle des données du stream ; reporté pour cause de
-  /Length indirect et d'EOL ambigu), § 6.1.4 (EOL du mot-clé xref).
-  Plus § 6.1.13 (limites d'implémentation : entiers/réels, longueurs
-  de noms/chaînes, bbox de page, ≤ 32 colorants DeviceN).
+  /Length indirect et d'EOL ambigu), § 6.1.4 (EOL du mot-clé xref),
+  et les deux tests § 6.1.13 nécessitant un interpréteur (t8 q/Q,
+  t10 CID).
 * **§ 6.9 contenu optionnel** — clé /Name des configurations OCG.
 
 === Priorité basse (rare en pratique ALOLI)

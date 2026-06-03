@@ -38,8 +38,18 @@ for line in open(rules_yml):
 #             JPEG2000 codestream parsing we do not).
 not_covered = {"6.2.8.3"}
 
-def covered(cl):
+# Individual tests we do NOT implement, counted at test granularity so
+# a heterogeneous clause is not over-claimed. § 6.1.13 bundles ten
+# unrelated implementation limits ; we check eight of them and exclude
+# the two that need a content-stream / CMap interpreter :
+#   6.1.13 t8  — q/Q nesting depth (content stream)
+#   6.1.13 t10 — maximum CID value (CMap)
+not_covered_tests = {("6.1.13", "8"), ("6.1.13", "10")}
+
+def covered(cl, tn):
     if cl in not_covered:
+        return False
+    if (cl, tn) in not_covered_tests:
         return False
     return any(cl == o or cl.startswith(o + ".") for o in ours)
 
@@ -54,7 +64,7 @@ sec = collections.defaultdict(lambda: [0, 0])
 for (cl, tn) in uniq:
     s = re.match(r"(\d+\.\d+)", cl).group(1)
     sec[s][0] += 1
-    if covered(cl):
+    if covered(cl, tn):
         sec[s][1] += 1
 
 tot = cov = 0

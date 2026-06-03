@@ -48,6 +48,13 @@
   check: indirect_object_spacing_valid
   args: []
 
+- id: pdfa2-6.1.13-implementation-limits
+  clause: "ISO 19005-2 § 6.1.13"
+  title: "Implementation limits: number ranges, name/string lengths, object count, DeviceN colorants, page box sizes"
+  severity: error
+  check: implementation_limits_respected
+  args: []
+
 - id: pdfa2-6.1.3-no-encryption
   clause: "ISO 19005-2 § 6.1.3"
   title: "The trailer shall not contain the Encrypt key"

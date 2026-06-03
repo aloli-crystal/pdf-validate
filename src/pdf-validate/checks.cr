@@ -176,6 +176,12 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : "indirect object spacing issue(s): #{bad.join(", ")}"
           )
+        when "implementation_limits_respected"
+          bad = ctx.implementation_limit_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : "implementation limit(s) exceeded: #{bad.join(", ")}"
+          )
         else
           raise "Unknown check #{check.inspect} (rule set references a primitive the engine does not implement)"
         end

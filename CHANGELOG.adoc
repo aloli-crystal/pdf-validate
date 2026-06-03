@@ -7,6 +7,47 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.12.0 — 2026-06-03 — Implementation limits (§ 6.1.13)
+
+=== Added
+
+* **`implementation_limits_respected` (§ 6.1.13)** — checks, through
+  the object graph, the dictionary subset of the PDF/A-2
+  implementation limits :
+** integers within ±2³¹ (t1) ;
+** reals within ±3.403×10³⁸ (t2) and never closer to zero than
+   ±1.175×10⁻³⁸ (t5) ;
+** strings ≤ 32767 bytes (t3), names ≤ 127 bytes (t4) ;
+** ≤ 8388607 indirect objects (t7) ;
+** DeviceN colour spaces ≤ 32 colorants (t9) ;
+** page boxes (MediaBox, CropBox, BleedBox, TrimBox, ArtBox) between
+   3 and 14400 units (t11).
+* `Context` accessor `implementation_limit_violations` (+ the
+  `box_dimensions` helper).
+* Specs : detection of a degenerate (1×1) MediaBox and a clean-document
+  regression guard.
+
+=== Counting honesty — test granularity
+
+* `§ 6.1.13` bundles **ten unrelated limits**. Rather than claim the
+  whole clause for the eight tests covered, `doc/gap-analysis/run.sh`
+  now counts **at test granularity** (new `not_covered_tests` set) and
+  explicitly excludes the two unimplemented tests : t8 (q/Q nesting,
+  content-stream interpreter) and t10 (maximum CID value, CMap
+  interpreter).
+
+=== Coverage (regenerated via `doc/gap-analysis/run.sh`)
+
+§ 6.1 File structure rises to **20/27 (74 %)**. Total clause-level
+coverage : **63/144 (43 %) → 71/144 (49 %)**.
+
+=== Cross-validation (unchanged)
+
+* Generated corpus (60) : **60/60** agreement with veraPDF 1.30.1 — no
+  false positives (our pages use standard MediaBoxes, in-range
+  integers, etc.).
+* Ghostscript third-party fixture : stays conformant.
+
 == v0.11.0 — 2026-06-03 — Lexical tokeniser (§ 6.1.6 / § 6.1.7.1 t2 / § 6.1.9)
 
 === Added

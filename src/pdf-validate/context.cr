@@ -288,6 +288,71 @@ module PDF
         issues.uniq
       end
 
+      # Implementation-limit violations (ISO 19005-2 § 6.1.13), the
+      # dictionary/graph-checkable subset : integer range (t1), real
+      # range (t2), real-near-zero (t5), string length (t3), name
+      # length (t4), indirect-object count (t7), DeviceN colorant count
+      # (t9) and page-boundary sizes (t11). The q/Q nesting depth (t8)
+      # and CID range (t10) need a content-stream / CMap interpreter
+      # and are out of scope here.
+      getter implementation_limit_violations : Array(String) do
+        issues = [] of String
+        each_object do |obj|
+          case obj
+          when PDF::Objects::Number
+            if obj.integer?
+              value = obj.to_i64
+              issues << "integer outside the ±2³¹ range (#{value})" if value > 2147483647_i64 || value < -2147483648_i64
+            else
+              real = obj.to_f64
+              issues << "real outside the ±3.403e38 range" if real < -3.403e38 || real > 3.403e38
+              issues << "real closer to zero than ±1.175e-38" unless real == 0.0 || real.abs >= 1.175e-38
+            end
+          when PDF::Objects::Str
+            issues << "string longer than 32767 bytes" if obj.value.bytesize > 32767
+          when PDF::Objects::Name
+            issues << "name longer than 127 bytes" if obj.value.bytesize > 127
+          when PDF::Objects::Array
+            if obj.size >= 2 && obj[0].as?(PDF::Objects::Name).try(&.value) == "DeviceN"
+              colorants = resolve(obj[1]).as?(PDF::Objects::Array)
+              issues << "DeviceN colour space with more than 32 colorants" if colorants && colorants.size > 32
+            end
+          end
+        end
+
+        if count = trailer["Size"]?.try(&.as?(PDF::Objects::Number)).try(&.to_i64)
+          issues << "more than 8388607 indirect objects" if count > 8388607
+        end
+
+        each_page do |page|
+          {"MediaBox", "CropBox", "BleedBox", "TrimBox", "ArtBox"}.each do |box_name|
+            dims = box_dimensions(page[box_name]?)
+            next unless dims
+            width, height = dims
+            unless width >= 3 && width <= 14400 && height >= 3 && height <= 14400
+              issues << "#{box_name} outside the 3..14400 unit range"
+            end
+          end
+        end
+
+        issues.uniq
+      end
+
+      # Returns {width, height} of a page-boundary array, or nil if the
+      # value is absent or not a 4-number array.
+      private def box_dimensions(value : PDF::Objects::Base?) : Tuple(Float64, Float64)?
+        return nil unless value
+        arr = resolve(value).as?(PDF::Objects::Array)
+        return nil unless arr && arr.size == 4
+        coords = [] of Float64
+        arr.each do |elem|
+          num = resolve(elem).as?(PDF::Objects::Number)
+          return nil unless num
+          coords << num.to_f64
+        end
+        {(coords[2] - coords[0]).abs, (coords[3] - coords[1]).abs}
+      end
+
       # Single-pass lexical scan of the raw bytes, shared by the
       # byte-level § 6.1 rules (hex strings, stream EOLs, indirect
       # spacing). Built once ; empty when raw bytes are unavailable.

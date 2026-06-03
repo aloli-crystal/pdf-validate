@@ -140,6 +140,16 @@ private def pdf_with_structure_violations : Bytes
   ] of ObjBody)
 end
 
+# A parseable file whose page has a degenerate MediaBox (1×1 unit),
+# violating § 6.1.13 (t11 : boundaries must be ≥ 3 units).
+private def pdf_with_implementation_limit_violation : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 1 1] >>",
+  ] of ObjBody)
+end
+
 # A parseable file whose page dictionary carries an odd-length
 # hexadecimal string, violating § 6.1.6.
 private def pdf_with_hex_violation : Bytes
@@ -349,6 +359,16 @@ describe PDF::Validate do
   it "detects an odd-length hexadecimal string (§ 6.1.6)" do
     report = PDF::Validate.bytes(pdf_with_hex_violation, "pdf-a-2b")
     report.failures.map(&.rule.id).should contain("pdfa2-6.1.6-hex-strings")
+  end
+
+  it "detects a degenerate page boundary (§ 6.1.13 t11)" do
+    report = PDF::Validate.bytes(pdf_with_implementation_limit_violation, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.1.13-implementation-limits")
+  end
+
+  it "does not flag a clean document under § 6.1.13" do
+    report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.1.13-implementation-limits")
   end
 
   it "does not flag a clean document under the byte-level § 6.1 rules" do

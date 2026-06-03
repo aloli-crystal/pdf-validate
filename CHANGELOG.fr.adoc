@@ -7,6 +7,47 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.12.0 — 2026-06-03 — Limites d'implémentation (§ 6.1.13)
+
+=== Ajouté
+
+* **`implementation_limits_respected` (§ 6.1.13)** — vérifie via le
+  graphe d'objets le sous-ensemble dictionnaire des limites
+  d'implémentation PDF/A-2 :
+** entiers dans la plage ±2³¹ (t1) ;
+** réels dans ±3.403×10³⁸ (t2) et jamais plus proches de zéro que
+   ±1.175×10⁻³⁸ (t5) ;
+** chaînes ≤ 32767 octets (t3), noms ≤ 127 octets (t4) ;
+** ≤ 8388607 objets indirects (t7) ;
+** espaces DeviceN ≤ 32 colorants (t9) ;
+** boîtes de page (MediaBox, CropBox, BleedBox, TrimBox, ArtBox) de
+   3 à 14400 unités (t11).
+* Accesseur `Context` `implementation_limit_violations` (+ helper
+  `box_dimensions`).
+* Specs : détection d'une MediaBox dégénérée (1×1) et non-régression
+  sur un document propre.
+
+=== Comptage honnête — granularité test
+
+* `§ 6.1.13` regroupe **dix limites sans rapport** entre elles. Plutôt
+  que de revendiquer toute la clause pour les huit tests couverts, le
+  script `doc/gap-analysis/run.sh` compte désormais **au niveau test**
+  (nouvel ensemble `not_covered_tests`) et exclut explicitement les
+  deux tests non implémentés : t8 (imbrication q/Q, interpréteur de
+  content stream) et t10 (valeur CID maximale, interpréteur de CMap).
+
+=== Couverture (régénérée via `doc/gap-analysis/run.sh`)
+
+§ 6.1 Structure passe à **20/27 (74 %)**. Couverture clause-level
+totale : **63/144 (43 %) → 71/144 (49 %)**.
+
+=== Validation croisée (inchangée)
+
+* Corpus généré (60) : **60/60** d'accord avec veraPDF 1.30.1 — aucun
+  faux positif (nos pages ont des MediaBox standard, des entiers dans
+  la plage, etc.).
+* Fixture tierce Ghostscript : reste conforme.
+
 == v0.11.0 — 2026-06-03 — Tokeniseur lexical (§ 6.1.6 / § 6.1.7.1 t2 / § 6.1.9)
 
 === Ajouté
