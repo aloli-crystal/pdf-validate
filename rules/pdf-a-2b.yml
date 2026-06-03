@@ -55,6 +55,13 @@
   check: implementation_limits_respected
   args: []
 
+- id: pdfa2-6.1.12-permissions-dictionary
+  clause: "ISO 19005-2 § 6.1.12"
+  title: "Permissions dictionary holds only /UR3 and /DocMDP; with /DocMDP, no Digest* keys in signature references"
+  severity: error
+  check: permissions_dictionary_valid
+  args: []
+
 - id: pdfa2-6.1.3-no-encryption
   clause: "ISO 19005-2 § 6.1.3"
   title: "The trailer shall not contain the Encrypt key"

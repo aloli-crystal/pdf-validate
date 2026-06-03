@@ -7,6 +7,27 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.24.0 — 2026-06-04 — Dictionnaire de permissions (§ 6.1.12)
+
+=== Ajouté
+
+* **`permissions_dictionary_valid` (§ 6.1.12)** — le dictionnaire
+  /Perms du catalog ne peut contenir que les clés /UR3 et /DocMDP
+  (t1) ; et lorsque /DocMDP est présent, aucun dictionnaire de
+  référence de signature (/Type /SigRef) ne peut porter
+  /DigestLocation, /DigestMethod ou /DigestValue (t2). Pur dict-level,
+  aucune cryptographie. Un /Perms absent — le cas courant — ne produit
+  aucune violation.
+* Accesseur `Context` : `permissions_dictionary_violations`.
+* Specs : un /Perms avec une clé interdite (détecté) ; une référence de
+  signature DocMDP avec /DigestMethod (détectée) ; un /Perms bien formé
+  (propre) ; un document sans /Perms (propre).
+
+=== Couverture (régénérée via `doc/gap-analysis/run.sh`)
+
+§ 6.1 passe à **23/27 (85 %)**. Couverture clause-level totale :
+**113/144 → 115/144 (78 % → 79 %)**.
+
 == v0.23.0 — 2026-06-04 — Groupes de transparence de page (§ 6.2.10 t2) & /Order du contenu optionnel (§ 6.9 t3)
 
 === Ajouté

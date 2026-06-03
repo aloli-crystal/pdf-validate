@@ -1012,6 +1012,39 @@ module PDF
         issues.uniq
       end
 
+      # Permissions dictionary violations (ISO 19005-2 § 6.1.12) : the
+      # catalog /Perms dictionary may contain only the keys /UR3 and
+      # /DocMDP (t1) ; and when /DocMDP is present, no signature
+      # reference dictionary (/Type /SigRef) may carry /DigestLocation,
+      # /DigestMethod or /DigestValue (t2). Absent /Perms — the common
+      # case — yields no violation.
+      getter permissions_dictionary_violations : Array(String) do
+        issues = [] of String
+        perms = catalog["Perms"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+        return issues unless perms
+
+        perms.keys.each do |key|
+          name = key.value
+          unless name == "UR3" || name == "DocMDP"
+            issues << "permissions dictionary contains forbidden key /#{name}"
+          end
+        end
+
+        if perms.has_key?("DocMDP")
+          each_object do |obj|
+            dict = obj.as?(PDF::Objects::Dictionary)
+            next unless dict
+            next unless dict["Type"]?.try(&.as?(PDF::Objects::Name)).try(&.value) == "SigRef"
+            {"DigestLocation", "DigestMethod", "DigestValue"}.each do |forbidden|
+              if dict.has_key?(forbidden)
+                issues << "signature reference dictionary contains forbidden /#{forbidden} (DocMDP present)"
+              end
+            end
+          end
+        end
+        issues.uniq
+      end
+
       # Annotation subtypes ISO 32000-1 defines and PDF/A-2 permits
       # (ISO 19005-2 § 6.3.1). 3D/Sound/Screen/Movie and any undefined
       # subtype are forbidden.

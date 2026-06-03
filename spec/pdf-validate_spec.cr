@@ -338,6 +338,39 @@ private def pdf_with_complete_oc_order : Bytes
   ] of ObjBody)
 end
 
+# A catalog /Perms dictionary carrying a key other than /UR3 and
+# /DocMDP — violating § 6.1.12 t1.
+private def pdf_with_bad_permissions : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R /Perms << /UR3 4 0 R /Foo 4 0 R >> >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+    "<< /Type /SigRef /TransformMethod /UR3 >>",
+  ] of ObjBody)
+end
+
+# A /Perms dictionary with /DocMDP whose signature reference dictionary
+# carries a forbidden /DigestMethod — violating § 6.1.12 t2.
+private def pdf_with_docmdp_digest : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R /Perms << /DocMDP 4 0 R >> >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+    "<< /Type /SigRef /TransformMethod /DocMDP /DigestMethod /MD5 >>",
+  ] of ObjBody)
+end
+
+# A well-formed /Perms : only /UR3 and /DocMDP, and a signature
+# reference dictionary with no Digest* keys — conformant under § 6.1.12.
+private def pdf_with_clean_permissions : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R /Perms << /UR3 4 0 R /DocMDP 4 0 R >> >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+    "<< /Type /SigRef /TransformMethod /DocMDP >>",
+  ] of ObjBody)
+end
+
 # A page carrying a transparency group (/Group /S /Transparency) but no
 # /CS blending colour space, with no PDF/A OutputIntent — violating
 # § 6.2.10 t2.
@@ -748,6 +781,26 @@ describe PDF::Validate do
   it "does not flag transparency when a PDF/A OutputIntent is present (§ 6.2.10 t2)" do
     report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
     report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.10-page-transparency-group")
+  end
+
+  it "detects a permissions dictionary with a forbidden key (§ 6.1.12 t1)" do
+    report = PDF::Validate.bytes(pdf_with_bad_permissions, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.1.12-permissions-dictionary")
+  end
+
+  it "detects Digest* keys in a DocMDP signature reference (§ 6.1.12 t2)" do
+    report = PDF::Validate.bytes(pdf_with_docmdp_digest, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.1.12-permissions-dictionary")
+  end
+
+  it "does not flag a well-formed permissions dictionary (§ 6.1.12)" do
+    report = PDF::Validate.bytes(pdf_with_clean_permissions, "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.1.12-permissions-dictionary")
+  end
+
+  it "does not flag a document without a permissions dictionary (§ 6.1.12)" do
+    report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.1.12-permissions-dictionary")
   end
 
   it "detects interactive-form action violations (§ 6.4.1)" do
