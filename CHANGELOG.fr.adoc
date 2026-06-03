@@ -7,6 +7,50 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.11.0 — 2026-06-03 — Tokeniseur lexical (§ 6.1.6 / § 6.1.7.1 t2 / § 6.1.9)
+
+=== Ajouté
+
+* **`ByteScanner` — un tokeniseur lexical à passe unique sur les
+  octets bruts.** Il saute les régions qui ne doivent pas être
+  tokenisées — commentaires, chaînes littérales et **données de
+  stream binaires** — pour ne voir que la vraie syntaxe PDF. Il
+  alimente trois règles § 6.1 que le graphe d'objets ne peut pas
+  exprimer :
+** `hex_strings_valid` (§ 6.1.6) — les chaînes hexadécimales `<…>`
+   ont un nombre pair de chiffres, tous hexadécimaux (en distinguant
+   correctement `<<` ouverture de dictionnaire).
+** `stream_keyword_eol_valid` (§ 6.1.7.1, t2) — le mot-clé `stream`
+   est suivi de CRLF ou LF (pas d'un CR isolé) et `endstream` est
+   précédé d'un EOL.
+** `indirect_object_spacing_valid` (§ 6.1.9) — un objet ou une
+   référence indirecte (`N G obj` / `N G R`) sépare ses parties par
+   un seul caractère blanc.
+* Accesseurs `Context` : `hex_string_violations`,
+  `stream_eol_violations`, `indirect_spacing_violations` (s'appuyant
+  sur un `byte_scan` mémorisé).
+* Specs unitaires directes du `ByteScanner` (détection + non-détection
+  + non-tokenisation des chaînes littérales) et un test d'intégration
+  (chaîne hex impaire dans un dictionnaire de page).
+
+=== Couverture (régénérée via `doc/gap-analysis/run.sh`)
+
+§ 6.1 Structure passe à **12/27 (44 %)**. Couverture clause-level
+totale : **60/144 (41 %) → 63/144 (43 %)**.
+
+Reste en § 6.1.7.1 le test t1 (le /Length déclaré doit égaler la
+longueur réelle des données du stream) — **reporté** : /Length est
+souvent une référence indirecte et l'EOL précédant `endstream` est
+ambigu, d'où un risque de faux positif jugé inacceptable pour
+l'instant.
+
+=== Validation croisée (inchangée)
+
+* Corpus généré (60) : **60/60** d'accord avec veraPDF 1.30.1 — aucun
+  faux positif des trois nouvelles règles (validé en scannant les 36
+  conformes + la fixture Ghostscript : zéro violation parasite).
+* Fixture tierce Ghostscript : reste conforme.
+
 == v0.10.0 — 2026-06-03 — Scanner d'octets bruts (§ 6.1.2 / § 6.1.3 t3)
 
 === Ajouté

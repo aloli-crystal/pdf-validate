@@ -140,6 +140,16 @@ private def pdf_with_structure_violations : Bytes
   ] of ObjBody)
 end
 
+# A parseable file whose page dictionary carries an odd-length
+# hexadecimal string, violating § 6.1.6.
+private def pdf_with_hex_violation : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Custom <abc> >>",
+  ] of ObjBody)
+end
+
 # A minimal file with no binary-marker comment after the header,
 # violating § 6.1.2 (t2).
 private def pdf_without_binary_comment : Bytes
@@ -336,6 +346,19 @@ describe PDF::Validate do
     failed.should_not contain("pdfa2-6.1.3-no-data-after-eof")
   end
 
+  it "detects an odd-length hexadecimal string (§ 6.1.6)" do
+    report = PDF::Validate.bytes(pdf_with_hex_violation, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.1.6-hex-strings")
+  end
+
+  it "does not flag a clean document under the byte-level § 6.1 rules" do
+    report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
+    failed = report.failures.map(&.rule.id)
+    failed.should_not contain("pdfa2-6.1.6-hex-strings")
+    failed.should_not contain("pdfa2-6.1.7.1-stream-eol")
+    failed.should_not contain("pdfa2-6.1.9-indirect-spacing")
+  end
+
   it "produces JSON with the expected shape" do
     json = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b").to_json
     parsed = JSON.parse(json)
@@ -407,5 +430,50 @@ describe PDF::Validate::Checks do
     expect_raises(Exception, /Unknown check/) do
       PDF::Validate::Checks.evaluate("does_not_exist", [] of String, ctx)
     end
+  end
+end
+
+describe PDF::Validate::ByteScanner do
+  it "flags an odd-length hexadecimal string (§ 6.1.6 t1)" do
+    scan = PDF::Validate::ByteScanner.new("<abc>".to_slice).scan
+    scan.hex_string_violations.should_not be_empty
+  end
+
+  it "flags a non-hex character in a hexadecimal string (§ 6.1.6 t2)" do
+    scan = PDF::Validate::ByteScanner.new("<12zz>".to_slice).scan
+    scan.hex_string_violations.any?(&.includes?("non-hex")).should be_true
+  end
+
+  it "accepts a well-formed hex string and ignores << dictionary >>" do
+    scan = PDF::Validate::ByteScanner.new("<< /K <4142> >>".to_slice).scan
+    scan.hex_string_violations.should be_empty
+  end
+
+  it "flags a lone CR after the stream keyword (§ 6.1.7.1 t2)" do
+    scan = PDF::Validate::ByteScanner.new(
+      "1 0 obj<<>>stream\rdata\nendstream\n".to_slice).scan
+    scan.stream_eol_violations.should_not be_empty
+  end
+
+  it "accepts an LF after the stream keyword" do
+    scan = PDF::Validate::ByteScanner.new(
+      "1 0 obj<<>>stream\ndata\nendstream\n".to_slice).scan
+    scan.stream_eol_violations.should be_empty
+  end
+
+  it "flags double-space indirect spacing (§ 6.1.9)" do
+    scan = PDF::Validate::ByteScanner.new("1  0 obj\n".to_slice).scan
+    scan.indirect_spacing_violations.should_not be_empty
+  end
+
+  it "accepts single-space indirect objects and references" do
+    scan = PDF::Validate::ByteScanner.new("12 0 obj\n[1 0 R]\n".to_slice).scan
+    scan.indirect_spacing_violations.should be_empty
+  end
+
+  it "does not tokenise inside literal strings" do
+    scan = PDF::Validate::ByteScanner.new("(a <abc> 1  0 R)\n".to_slice).scan
+    scan.hex_string_violations.should be_empty
+    scan.indirect_spacing_violations.should be_empty
   end
 end

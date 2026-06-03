@@ -158,6 +158,24 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : bad.join(", ")
           )
+        when "hex_strings_valid"
+          bad = ctx.hex_string_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : "hexadecimal string issue(s): #{bad.join(", ")}"
+          )
+        when "stream_keyword_eol_valid"
+          bad = ctx.stream_eol_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : "stream keyword EOL issue(s): #{bad.join(", ")}"
+          )
+        when "indirect_object_spacing_valid"
+          bad = ctx.indirect_spacing_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : "indirect object spacing issue(s): #{bad.join(", ")}"
+          )
         else
           raise "Unknown check #{check.inspect} (rule set references a primitive the engine does not implement)"
         end

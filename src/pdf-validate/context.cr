@@ -288,6 +288,29 @@ module PDF
         issues.uniq
       end
 
+      # Single-pass lexical scan of the raw bytes, shared by the
+      # byte-level § 6.1 rules (hex strings, stream EOLs, indirect
+      # spacing). Built once ; empty when raw bytes are unavailable.
+      private getter byte_scan : ByteScanner do
+        ByteScanner.new(@raw || Bytes.empty).scan
+      end
+
+      # Hexadecimal-string well-formedness (ISO 19005-2 § 6.1.6) :
+      # even digit count and only hex digits.
+      getter hex_string_violations : Array(String) do
+        byte_scan.hex_string_violations
+      end
+
+      # Stream keyword EOL violations (ISO 19005-2 § 6.1.7.1, t2).
+      getter stream_eol_violations : Array(String) do
+        byte_scan.stream_eol_violations
+      end
+
+      # Indirect object/reference spacing violations (§ 6.1.9).
+      getter indirect_spacing_violations : Array(String) do
+        byte_scan.indirect_spacing_violations
+      end
+
       # File-header violations (ISO 19005-2 § 6.1.2), read from the raw
       # bytes : the file shall begin at byte 0 with "%PDF-1.n"
       # (n in 0..7) followed by an EOL (t1), and the next line shall be

@@ -27,6 +27,27 @@
   check: no_data_after_eof
   args: []
 
+- id: pdfa2-6.1.6-hex-strings
+  clause: "ISO 19005-2 § 6.1.6"
+  title: "Hexadecimal strings have an even count of hex digits only"
+  severity: error
+  check: hex_strings_valid
+  args: []
+
+- id: pdfa2-6.1.7.1-stream-eol
+  clause: "ISO 19005-2 § 6.1.7.1"
+  title: "stream keyword followed by CRLF/LF; endstream preceded by an EOL"
+  severity: error
+  check: stream_keyword_eol_valid
+  args: []
+
+- id: pdfa2-6.1.9-indirect-spacing
+  clause: "ISO 19005-2 § 6.1.9"
+  title: "Indirect objects/references use single white-space separators"
+  severity: error
+  check: indirect_object_spacing_valid
+  args: []
+
 - id: pdfa2-6.1.3-no-encryption
   clause: "ISO 19005-2 § 6.1.3"
   title: "The trailer shall not contain the Encrypt key"
