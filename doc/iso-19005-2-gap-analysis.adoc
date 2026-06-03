@@ -38,8 +38,8 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 |===
 | Section | Thème | Règles veraPDF | Couvertes | %
 
-| § 6.1  | Structure de fichier (trailer, /ID, chiffrement, xref)     | 27  | 20  | 74 %
-| § 6.2  | Graphiques — couleur, polices, transparence, images        | 56  | 25  | 45 %
+| § 6.1  | Structure de fichier (trailer, /ID, chiffrement, xref)     | 27  | 21  | 78 %
+| § 6.2  | Graphiques — couleur, polices, transparence, images        | 56  | 26  | 46 %
 | § 6.3  | Annotations                                                | 7   | 7   | 100 %
 | § 6.4  | Signatures numériques                                      | 8   | 0   | 0 %
 | § 6.5  | Actions (JavaScript, /AA, actions nommées)                 | 4   | 4   | 100 %
@@ -48,7 +48,7 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | § 6.9  | Contenu optionnel (calques OCG)                            | 4   | 0   | 0 %
 | § 6.10 | Présentations alternatives                                 | 2   | 2   | 100 %
 | § 6.11 | Clé Requirements                                          | 1   | 1   | 100 %
-| *Total* | *PDF/A-2b*                                                | *144* | *71* | *49 %*
+| *Total* | *PDF/A-2b*                                                | *144* | *73* | *50 %*
 |===
 
 NOTE: Chiffres régénérés le 2026-06-03. Lot 1 (§ 6.2.5 fonctions de
@@ -94,6 +94,15 @@ deux clauses étaient déjà comptées au niveau clause ; ce lot réduit
 l'écart « optimiste clause-level vs réel » plutôt que d'ajouter des
 clauses. C'est un progrès de substance, pas de métrique.
 +
+Enfin, **interpréteur de content stream — jalon 1** (0.14.0,
+`ContentStreamScanner`) : § 6.2.2 t1 (tout opérateur doit être défini
+dans ISO 32000-1) et § 6.1.13 t8 (pile graphique q/Q imbriquée au plus
+28 niveaux), désormais couvert — il sort de `not_covered_tests`. § 6.1
+passe à 21/27, § 6.2 à 26/56, le total à 73/144 (50 %). Restent pour
+les jalons suivants de l'interpréteur : couleur posée dans le contenu
+(§ 6.2.4.3), rendering intent `ri` (§ 6.2.6), glyphe `.notdef`
+(§ 6.2.11.8).
++
 Couverture clause-level partielle assumée pour quelques clauses : les
 contrôles « octets bruts » ne sont pas (encore) implémentés faute de
 scanner d'octets, si bien que § 6.1.3 (on couvre t1 /ID + t2 /Encrypt,
@@ -112,12 +121,13 @@ XMP) — couverture clause-level partielle, comme annoncé.
 
 == Lecture honnête du chiffre
 
-* **49 % clause-level** est la couverture réelle de `pdf-validate`
-  vis-à-vis de la norme telle que veraPDF l'encode (un *scanner
-  d'octets bruts* a été introduit en 0.10.0 puis un *tokeniseur
-  lexical* — `ByteScanner` — en 0.11.0, qui saute commentaires,
-  chaînes littérales et données de stream pour ne tokeniser que la
-  vraie syntaxe PDF).
+* **50 % clause-level** est la couverture réelle de `pdf-validate`
+  vis-à-vis de la norme telle que veraPDF l'encode. Trois couches
+  d'analyse ont été construites successivement : le *graphe d'objets*,
+  un *scanner d'octets bruts* (0.10.0), un *tokeniseur lexical*
+  `ByteScanner` (0.11.0) et enfin un *interpréteur de content stream*
+  `ContentStreamScanner` (0.14.0) qui tokenise les opérateurs des flux
+  de contenu (en sautant opérandes, chaînes et images en ligne).
 * `§ 6.1.13` est comptée au **niveau test** (granularité fine) plutôt
   qu'au niveau clause, car ses dix tests sont des limites sans rapport
   entre elles : on en couvre huit (entiers, réels, longueurs de
@@ -129,7 +139,7 @@ XMP) — couverture clause-level partielle, comme annoncé.
   précédemment : ces scores disent que sur les documents *générés
   par la suite ALOLI* et un échantillon tiers, `pdf-validate` donne
   le **même verdict** que veraPDF. C'est vrai parce que les défauts
-  que nos documents peuvent avoir tombent dans les 49 % couverts.
+  que nos documents peuvent avoir tombent dans les 50 % couverts.
 * Sur un PDF tiers exerçant une clause non couverte (transparence non
   isolée, annotation non conforme, signature, calque…), `pdf-validate`
   pourrait dire « conforme » là où veraPDF dirait « non conforme » :
@@ -156,6 +166,8 @@ XMP) — couverture clause-level partielle, comme annoncé.
   de page (3 à 14400). Hors champ : t8 (q/Q) et t10 (CID).
 * **§ 6.10 / § 6.11 (100 %)** — pas d'/AlternatePresentations (Names)
   ni de /PresSteps (pages) ; pas de /Requirements dans le catalog.
+* **§ 6.2.2 (t1)** — tout opérateur de content stream doit être défini
+  dans ISO 32000-1 (interpréteur `ContentStreamScanner`).
 * **§ 6.2.3** — le profil ICC de l'output intent (DestOutputProfile)
   doit être de classe « prtr »/« mntr », en espace RGB/CMYK/GRAY,
   version ICC < 5 ; profil indirect partagé si plusieurs output
@@ -184,9 +196,10 @@ XMP) — couverture clause-level partielle, comme annoncé.
   (page sans output intent + transparence → /Group /CS requis,
   § 6.2.10 test 2), /SMask. Commun dès qu'il y a des effets
   graphiques.
-* **§ 6.2 couleur dans les content streams** — opérateurs `rg`/`k`
-  (DeviceRGB/CMYK posés directement, pas seulement via images).
-  Notre check couleur ne regarde aujourd'hui que les images XObject.
+* **§ 6.2 couleur dans les content streams** — opérateurs `rg`/`k`/`g`
+  (DeviceRGB/CMYK/Gray posés directement, pas seulement via images),
+  § 6.2.4.3. Le `ContentStreamScanner` (jalon 1) fournit désormais la
+  tokenisation des opérateurs ; ce sera le jalon 2 de l'interpréteur.
 * **§ 6.2.8.3 JPEG2000** — conformité du codestream (canaux, METH,
   bit-depth). Explicitement exclu du décompte tant que non implémenté.
 * **§ 6.2.11 polices, vérifs fines** — largeurs de glyphes cohérentes

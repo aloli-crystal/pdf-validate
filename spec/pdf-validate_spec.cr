@@ -140,6 +140,17 @@ private def pdf_with_structure_violations : Bytes
   ] of ObjBody)
 end
 
+# A page whose content stream uses an operator ("bananas") that
+# ISO 32000-1 does not define, violating § 6.2.2.
+private def pdf_with_bad_operator : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>",
+    {"<< >>", "10 20 m 30 40 l S\nbananas\n".to_slice},
+  ] of ObjBody)
+end
+
 # A file whose XMP packet header carries a forbidden `bytes` attribute
 # (§ 6.6.2.1 t2) and declares an invalid conformance level (§ 6.6.4
 # t3). The XML itself is well-formed so only those two rules fire.
@@ -403,6 +414,16 @@ describe PDF::Validate do
     failed.should_not contain("pdfa2-6.6.4-conformance-level")
   end
 
+  it "detects an undefined content-stream operator (§ 6.2.2)" do
+    report = PDF::Validate.bytes(pdf_with_bad_operator, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.2.2-defined-operators")
+  end
+
+  it "does not flag a clean content stream (§ 6.2.2)" do
+    report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.2-defined-operators")
+  end
+
   it "does not flag a clean document under the byte-level § 6.1 rules" do
     report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
     failed = report.failures.map(&.rule.id)
@@ -527,5 +548,38 @@ describe PDF::Validate::ByteScanner do
     scan = PDF::Validate::ByteScanner.new("(a <abc> 1  0 R)\n".to_slice).scan
     scan.hex_string_violations.should be_empty
     scan.indirect_spacing_violations.should be_empty
+  end
+end
+
+describe PDF::Validate::ContentStreamScanner do
+  it "accepts defined operators and skips operands" do
+    scan = PDF::Validate::ContentStreamScanner.new("BT /F1 12 Tf (hello) Tj ET".to_slice).scan
+    scan.undefined_operators.should be_empty
+  end
+
+  it "flags an undefined operator" do
+    scan = PDF::Validate::ContentStreamScanner.new("10 20 foo".to_slice).scan
+    scan.undefined_operators.should contain("foo")
+  end
+
+  it "ignores boolean/null operand keywords" do
+    scan = PDF::Validate::ContentStreamScanner.new("true false null /X gs".to_slice).scan
+    scan.undefined_operators.should be_empty
+  end
+
+  it "tracks the maximum q/Q nesting depth" do
+    scan = PDF::Validate::ContentStreamScanner.new("q q q Q Q Q".to_slice).scan
+    scan.max_q_depth.should eq(3)
+  end
+
+  it "does not tokenise inside literal strings" do
+    scan = PDF::Validate::ContentStreamScanner.new("(q q badop) Tj".to_slice).scan
+    scan.undefined_operators.should be_empty
+    scan.max_q_depth.should eq(0)
+  end
+
+  it "skips inline-image data between ID and EI" do
+    scan = PDF::Validate::ContentStreamScanner.new("BI /W 2 /H 2 ID zzdataz EI Q".to_slice).scan
+    scan.undefined_operators.should be_empty
   end
 end

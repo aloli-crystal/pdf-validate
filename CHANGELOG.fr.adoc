@@ -7,6 +7,44 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.14.0 — 2026-06-03 — Interpréteur de content stream, jalon 1 (§ 6.2.2 / § 6.1.13 t8)
+
+=== Ajouté
+
+* **`ContentStreamScanner` — la fondation de l'interpréteur de content
+  stream.** Il tokenise en une passe les octets *décodés* d'un flux de
+  contenu, en sautant les opérandes (nombres, chaînes, noms, tableaux,
+  dictionnaires) et les **données d'images en ligne** (entre `ID` et
+  `EI`), pour isoler les opérateurs.
+** `content_operators_defined` (§ 6.2.2 t1) — tout opérateur d'un flux
+   de contenu de page doit être défini dans ISO 32000-1 (les mots-clés
+   opérandes `true`/`false`/`null` sont reconnus comme tels).
+** § 6.1.13 t8 — la pile d'état graphique `q`/`Q` est imbriquée au plus
+   28 niveaux ; ce test sort donc de `not_covered_tests`.
+* Accesseurs `Context` : `undefined_content_operators` et le scan
+  agrégé `content_scan` (opérateurs + profondeur q/Q max sur toutes
+  les pages), avec le helper `page_content_bytes` (flux unique ou
+  tableau de flux concaténés).
+* Specs unitaires directes du `ContentStreamScanner` (opérateurs
+  définis, opérateur inconnu, mots-clés booléens, profondeur q/Q,
+  non-tokenisation des chaînes, saut d'image en ligne) + intégration.
+
+=== Couverture (régénérée via `doc/gap-analysis/run.sh`)
+
+§ 6.1 passe à 21/27, § 6.2 à 26/56. Couverture clause-level totale :
+**71/144 (49 %) → 73/144 (50 %)** — la barre des 50 % est franchie.
+
+Jalons suivants de l'interpréteur (mêmes octets, état graphique en
+plus) : couleur posée dans le contenu (§ 6.2.4.3), rendering intent
+`ri` (§ 6.2.6), glyphe `.notdef` (§ 6.2.11.8).
+
+=== Validation croisée (inchangée)
+
+* Corpus généré (60) : **60/60** d'accord avec veraPDF 1.30.1 — aucun
+  faux positif (les opérateurs de nos pages et de la fixture
+  Ghostscript sont tous reconnus, validé en amont).
+* Fixture tierce Ghostscript : reste conforme.
+
 == v0.13.0 — 2026-06-03 — XMP renforcé (§ 6.6.2.1 / § 6.6.4)
 
 === Ajouté

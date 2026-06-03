@@ -376,7 +376,56 @@ module PDF
           end
         end
 
+        if content_scan[:max_q] > 28
+          issues << "q/Q graphics-state nesting deeper than 28 levels (#{content_scan[:max_q]})"
+        end
+
         issues.uniq
+      end
+
+      # Operators in page content streams that ISO 32000-1 does not
+      # define (§ 6.2.2 t1).
+      getter undefined_content_operators : Array(String) do
+        content_scan[:undefined]
+      end
+
+      # Content-stream scan aggregated over every page : the set of
+      # undefined operators and the maximum q/Q nesting depth. Built
+      # once. Empty when there is no page content.
+      private getter content_scan : {undefined: Array(String), max_q: Int32} do
+        undefined = [] of String
+        max_q = 0
+        each_page do |page|
+          data = page_content_bytes(page)
+          next if data.empty?
+          scanner = ContentStreamScanner.new(data).scan
+          undefined.concat(scanner.undefined_operators)
+          max_q = scanner.max_q_depth if scanner.max_q_depth > max_q
+        end
+        {undefined: undefined.uniq, max_q: max_q}
+      end
+
+      # Concatenated decoded bytes of a page's /Contents (a single
+      # stream, or an array of streams joined by whitespace).
+      private def page_content_bytes(page : PDF::Objects::Dictionary) : Bytes
+        contents = page["Contents"]?
+        return Bytes.empty unless contents
+        resolved = resolve(contents)
+        case resolved
+        when PDF::Objects::Stream
+          resolved.encoded_data
+        when PDF::Objects::Array
+          io = IO::Memory.new
+          resolved.each do |entry|
+            stream = resolve(entry).as?(PDF::Objects::Stream)
+            next unless stream
+            io.write(stream.encoded_data)
+            io << '\n'
+          end
+          io.to_slice
+        else
+          Bytes.empty
+        end
       end
 
       # Returns {width, height} of a page-boundary array, or nil if the

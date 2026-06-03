@@ -39,12 +39,11 @@ for line in open(rules_yml):
 not_covered = {"6.2.8.3"}
 
 # Individual tests we do NOT implement, counted at test granularity so
-# a heterogeneous clause is not over-claimed. § 6.1.13 bundles ten
-# unrelated implementation limits ; we check eight of them and exclude
-# the two that need a content-stream / CMap interpreter :
-#   6.1.13 t8  — q/Q nesting depth (content stream)
-#   6.1.13 t10 — maximum CID value (CMap)
-not_covered_tests = {("6.1.13", "8"), ("6.1.13", "10")}
+# a heterogeneous clause is not over-claimed :
+#   6.1.13 t10 — maximum CID value (needs a CMap interpreter)
+#   6.2.2  t2  — content stream references all objects needed to render
+#                (resource-completeness, not operator validity)
+not_covered_tests = {("6.1.13", "10"), ("6.2.2", "2")}
 
 def covered(cl, tn):
     if cl in not_covered:

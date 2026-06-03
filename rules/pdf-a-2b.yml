@@ -85,6 +85,13 @@
 
 # --- § 6.2 Graphics (colour & fonts) ---
 
+- id: pdfa2-6.2.2-defined-operators
+  clause: "ISO 19005-2 § 6.2.2"
+  title: "Content streams shall use only ISO 32000-1 operators"
+  severity: error
+  check: content_operators_defined
+  args: []
+
 - id: pdfa2-6.2.10-output-intent
   clause: "ISO 19005-2 § 6.2.10"
   title: "Device colour spaces require a PDF/A OutputIntent (present)"

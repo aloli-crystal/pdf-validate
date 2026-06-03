@@ -7,6 +7,44 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.14.0 — 2026-06-03 — Content-stream interpreter, milestone 1 (§ 6.2.2 / § 6.1.13 t8)
+
+=== Added
+
+* **`ContentStreamScanner` — the content-stream interpreter
+  foundation.** It tokenises, in a single pass, the *decoded* bytes of
+  a content stream, skipping operands (numbers, strings, names, arrays,
+  dictionaries) and **inline-image data** (between `ID` and `EI`) to
+  isolate the operators.
+** `content_operators_defined` (§ 6.2.2 t1) — every operator in a page
+   content stream must be defined in ISO 32000-1 (the operand keywords
+   `true`/`false`/`null` are recognised as such).
+** § 6.1.13 t8 — the `q`/`Q` graphics-state stack is nested at most 28
+   levels deep ; this test leaves `not_covered_tests`.
+* `Context` accessors : `undefined_content_operators` and the
+  aggregated `content_scan` (operators + max q/Q depth across all
+  pages), with the `page_content_bytes` helper (single stream or array
+  of streams concatenated).
+* Direct `ContentStreamScanner` unit specs (defined operators, unknown
+  operator, boolean keywords, q/Q depth, no tokenising inside strings,
+  inline-image skip) + integration.
+
+=== Coverage (regenerated via `doc/gap-analysis/run.sh`)
+
+§ 6.1 rises to 21/27, § 6.2 to 26/56. Total clause-level coverage :
+**71/144 (49 %) → 73/144 (50 %)** — past the halfway mark.
+
+Next interpreter milestones (same bytes, plus graphics state) :
+content-stream colour (§ 6.2.4.3), `ri` rendering intent (§ 6.2.6),
+`.notdef` glyph (§ 6.2.11.8).
+
+=== Cross-validation (unchanged)
+
+* Generated corpus (60) : **60/60** agreement with veraPDF 1.30.1 — no
+  false positives (every operator in our pages and the Ghostscript
+  fixture is recognised, validated up front).
+* Ghostscript third-party fixture : stays conformant.
+
 == v0.13.0 — 2026-06-03 — Hardened XMP (§ 6.6.2.1 / § 6.6.4)
 
 === Added

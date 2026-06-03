@@ -194,6 +194,12 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : bad.join(", ")
           )
+        when "content_operators_defined"
+          bad = ctx.undefined_content_operators
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : "undefined content-stream operator(s): #{bad.join(", ")}"
+          )
         else
           raise "Unknown check #{check.inspect} (rule set references a primitive the engine does not implement)"
         end
