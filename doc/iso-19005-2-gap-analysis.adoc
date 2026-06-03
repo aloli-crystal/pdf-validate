@@ -39,16 +39,16 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | Section | Thème | Règles veraPDF | Couvertes | %
 
 | § 6.1  | Structure de fichier (trailer, /ID, chiffrement, xref)     | 27  | 21  | 78 %
-| § 6.2  | Graphiques — couleur, polices, transparence, images        | 56  | 26  | 46 %
+| § 6.2  | Graphiques — couleur, polices, transparence, images        | 56  | 27  | 48 %
 | § 6.3  | Annotations                                                | 7   | 7   | 100 %
-| § 6.4  | Signatures numériques                                      | 8   | 0   | 0 %
+| § 6.4  | Formulaires interactifs & signatures                       | 8   | 5   | 63 %
 | § 6.5  | Actions (JavaScript, /AA, actions nommées)                 | 4   | 4   | 100 %
 | § 6.6  | Métadonnées (XMP, schéma d'extension PDF/A, pdfaid)        | 33  | 12  | 36 %
 | § 6.8  | Fichiers embarqués                                         | 2   | 1   | 50 %
 | § 6.9  | Contenu optionnel (calques OCG)                            | 4   | 3   | 75 %
 | § 6.10 | Présentations alternatives                                 | 2   | 2   | 100 %
 | § 6.11 | Clé Requirements                                          | 1   | 1   | 100 %
-| *Total* | *PDF/A-2b*                                                | *144* | *77* | *53 %*
+| *Total* | *PDF/A-2b*                                                | *144* | *83* | *57 %*
 |===
 
 NOTE: Chiffres régénérés le 2026-06-03. Lot 1 (§ 6.2.5 fonctions de
@@ -127,6 +127,14 @@ embarqué doit lui-même être PDF/A — validation récursive) et § 6.9 t3
 (/Order doit lister tous les OCG — parcours de l'arbre Order), tous
 deux exclus du décompte via `not_covered_tests`.
 +
+Enfin lot § 6.4/§ 6.2.4.2 (0.18.0) : § 6.4.1 (Widgets/champs sans /A ni
+/AA, /NeedAppearances absent ou false), § 6.4.2 (pas de /XFA ni de
+/NeedsRendering) et § 6.2.4.2 t1 (profil ICC d'un espace ICCBased :
+classe et espace couleur valides). § 6.4 passe de 0 à 5/8, § 6.2 à
+27/56, le total à 83/144 (57 %). Reportés : § 6.4.3 t1-t3 (ByteRange et
+PKCS#7 de la signature — parsing cryptographique) et § 6.2.4.2 t2
+(overprint mode ICCBased CMYK — état graphique).
++
 Couverture clause-level partielle assumée pour quelques clauses : les
 contrôles « octets bruts » ne sont pas (encore) implémentés faute de
 scanner d'octets, si bien que § 6.1.3 (on couvre t1 /ID + t2 /Encrypt,
@@ -145,7 +153,7 @@ XMP) — couverture clause-level partielle, comme annoncé.
 
 == Lecture honnête du chiffre
 
-* **53 % clause-level** est la couverture réelle de `pdf-validate`
+* **57 % clause-level** est la couverture réelle de `pdf-validate`
   vis-à-vis de la norme telle que veraPDF l'encode. Trois couches
   d'analyse ont été construites successivement : le *graphe d'objets*,
   un *scanner d'octets bruts* (0.10.0), un *tokeniseur lexical*
@@ -163,7 +171,7 @@ XMP) — couverture clause-level partielle, comme annoncé.
   précédemment : ces scores disent que sur les documents *générés
   par la suite ALOLI* et un échantillon tiers, `pdf-validate` donne
   le **même verdict** que veraPDF. C'est vrai parce que les défauts
-  que nos documents peuvent avoir tombent dans les 53 % couverts.
+  que nos documents peuvent avoir tombent dans les 57 % couverts.
 * Sur un PDF tiers exerçant une clause non couverte (transparence non
   isolée, annotation non conforme, signature, calque…), `pdf-validate`
   pourrait dire « conforme » là où veraPDF dirait « non conforme » :
@@ -256,8 +264,13 @@ XMP) — couverture clause-level partielle, comme annoncé.
 
 === Priorité basse (rare en pratique ALOLI)
 
-* **§ 6.4 signatures** — peu probable dans les documents générés ;
-  à couvrir surtout pour valider des PDF tiers.
+* **§ 6.4.3 signatures (crypto)** — /ByteRange couvre tout le fichier,
+  objet PKCS#7 (certificat, SignerInfo) ; nécessite un parseur DER/PKCS
+  et l'analyse des octets. À couvrir surtout pour des PDF tiers signés.
+* **§ 6.6 schéma d'extension PDF/A** (§ 6.6.2.3, 21 règles) — la
+  structure RDF des schémas d'extension (pdfaExtension / pdfaSchema /
+  pdfaProperty / pdfaType / pdfaField, avec types et préfixes) ;
+  nécessite un parseur XMP/RDF dédié, chantier à part entière.
 
 == Comment progresser (rappel de la boucle)
 

@@ -7,6 +7,50 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.18.0 — 2026-06-03 — Interactive forms (§ 6.4) and ICCBased profile (§ 6.2.4.2)
+
+=== Added
+
+* **`interactive_forms_valid` (§ 6.4.1)** — Widget annotations must not
+  contain /A or /AA (t1), form fields must not contain /AA (t2), and
+  the AcroForm /NeedAppearances flag must be absent or false (t3).
+* **`no_dynamic_forms` (§ 6.4.2)** — the AcroForm must not contain /XFA
+  (t1, dynamic forms forbidden) and the catalog must not contain
+  /NeedsRendering (t2).
+* **`iccbased_profiles_valid` (§ 6.2.4.2 t1)** — the ICC profile of an
+  ICCBased colour space must be a valid device class
+  (prtr/mntr/scnr/spac) in an RGB/CMYK/GRAY/Lab colour space.
+* `Context` accessors : `interactive_form_violations`,
+  `dynamic_form_violations`, `iccbased_profile_violations`, and the
+  private `each_form_field` walker (AcroForm /Fields + /Kids tree).
+* Specs : AcroForm /NeedAppearances + /XFA + Widget /A/AA + catalog
+  /NeedsRendering ; an invalid "abst"-class ICCBased ; a clean-document
+  guard.
+
+=== Coverage (regenerated via `doc/gap-analysis/run.sh`)
+
+§ 6.4 leaves **0 %** : 5/8 (interactive forms § 6.4.1 + § 6.4.2). § 6.2
+rises to 27/56. Total clause-level coverage : **77/144 (53 %) →
+83/144 (57 %)**.
+
+Deferred (excluded via `not_covered_tests`) : § 6.4.3 t1-t3 (signature
+ByteRange and PKCS#7 object — cryptographic parsing) and § 6.2.4.2 t2
+(overprint mode for ICCBased CMYK — graphics state).
+
+=== Note — § 6.6 extension schema
+
+The remainder of § 6.6 (§ 6.6.2.3, 21 rules) is the RDF structure of
+PDF/A extension schemas (pdfaExtension/pdfaSchema/pdfaProperty/
+pdfaType/pdfaField). It needs a dedicated XMP/RDF parser — a project
+of its own, not included here to avoid false positives.
+
+=== Cross-validation (unchanged)
+
+* Generated corpus (60) : **60/60** agreement with veraPDF 1.30.1 — no
+  false positives (our PDF/A-2b files have neither dynamic AcroForms
+  nor non-conformant ICCBased spaces, validated up front).
+* Ghostscript third-party fixture : stays conformant.
+
 == v0.17.0 — 2026-06-03 — Embedded files (§ 6.8) and optional content (§ 6.9)
 
 === Added

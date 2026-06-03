@@ -113,6 +113,13 @@
   check: device_colours_anchored
   args: []
 
+- id: pdfa2-6.2.4.2-iccbased-profile
+  clause: "ISO 19005-2 § 6.2.4.2"
+  title: "ICCBased colour space profile: valid device class and colour space"
+  severity: error
+  check: iccbased_profiles_valid
+  args: []
+
 - id: pdfa2-6.2.11.4.1-fonts-embedded
   clause: "ISO 19005-2 § 6.2.11.4.1"
   title: "Font programs for all rendered fonts shall be embedded"
@@ -183,6 +190,22 @@
   title: "Annotations have a conformant appearance (/AP with only /N; correct N type)"
   severity: error
   check: annotation_appearances_valid
+  args: []
+
+# --- § 6.4 Interactive forms & signatures ---
+
+- id: pdfa2-6.4.1-interactive-forms
+  clause: "ISO 19005-2 § 6.4.1"
+  title: "Widgets/fields free of /A and /AA; AcroForm /NeedAppearances not true"
+  severity: error
+  check: interactive_forms_valid
+  args: []
+
+- id: pdfa2-6.4.2-no-dynamic-forms
+  clause: "ISO 19005-2 § 6.4.2"
+  title: "No /XFA in AcroForm and no /NeedsRendering in the catalog"
+  severity: error
+  check: no_dynamic_forms
   args: []
 
 # --- § 6.5 Actions ---

@@ -140,6 +140,37 @@ private def pdf_with_structure_violations : Bytes
   ] of ObjBody)
 end
 
+# A file violating § 6.4 : catalog /NeedsRendering, AcroForm with
+# /NeedAppearances true and /XFA, and a Widget field carrying /A and
+# /AA.
+private def pdf_with_form_violations : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R /NeedsRendering true " \
+    "/AcroForm << /Fields [4 0 R] /NeedAppearances true /XFA 5 0 R >> >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Annots [4 0 R] >>",
+    "<< /Type /Annot /Subtype /Widget /FT /Btn /Rect [0 0 10 10] " \
+    "/A << /S /URI >> /AA << >> >>",
+    {"<< >>", "xfa".to_slice},
+  ] of ObjBody)
+end
+
+# A file with an ICCBased colour space whose ICC profile declares an
+# invalid "abst" device class, violating § 6.2.4.2.
+private def pdf_with_bad_iccbased : Bytes
+  icc = Bytes.new(132, 0_u8)
+  icc[8] = 2_u8
+  "abst".to_slice.each_with_index { |byte, i| icc[12 + i] = byte }
+  "RGB ".to_slice.each_with_index { |byte, i| icc[16 + i] = byte }
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] " \
+    "/Resources << /ColorSpace << /CS0 [/ICCBased 4 0 R] >> >> >>",
+    {"<< /N 3 >>", icc},
+  ] of ObjBody)
+end
+
 # A file whose /AF-referenced file specification carries an embedded
 # file (/EF) but lacks the /F and /UF name keys, violating § 6.8.
 private def pdf_with_bad_filespec : Bytes
@@ -526,6 +557,29 @@ describe PDF::Validate do
     failed = report.failures.map(&.rule.id)
     failed.should_not contain("pdfa2-6.8-embedded-filespec")
     failed.should_not contain("pdfa2-6.9-optional-content")
+  end
+
+  it "detects interactive-form action violations (§ 6.4.1)" do
+    report = PDF::Validate.bytes(pdf_with_form_violations, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.4.1-interactive-forms")
+  end
+
+  it "detects /XFA and /NeedsRendering (§ 6.4.2)" do
+    report = PDF::Validate.bytes(pdf_with_form_violations, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.4.2-no-dynamic-forms")
+  end
+
+  it "detects an invalid ICCBased profile (§ 6.2.4.2)" do
+    report = PDF::Validate.bytes(pdf_with_bad_iccbased, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.2.4.2-iccbased-profile")
+  end
+
+  it "does not flag a clean document under § 6.4 / § 6.2.4.2" do
+    report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
+    failed = report.failures.map(&.rule.id)
+    failed.should_not contain("pdfa2-6.4.1-interactive-forms")
+    failed.should_not contain("pdfa2-6.4.2-no-dynamic-forms")
+    failed.should_not contain("pdfa2-6.2.4.2-iccbased-profile")
   end
 
   it "does not flag a clean document under the byte-level § 6.1 rules" do

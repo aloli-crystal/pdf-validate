@@ -218,6 +218,24 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : bad.join(", ")
           )
+        when "interactive_forms_valid"
+          bad = ctx.interactive_form_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : "interactive-form issue(s): #{bad.join(", ")}"
+          )
+        when "no_dynamic_forms"
+          bad = ctx.dynamic_form_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
+        when "iccbased_profiles_valid"
+          bad = ctx.iccbased_profile_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : "ICCBased profile issue(s): #{bad.join(", ")}"
+          )
         else
           raise "Unknown check #{check.inspect} (rule set references a primitive the engine does not implement)"
         end

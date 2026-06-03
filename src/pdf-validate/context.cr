@@ -447,6 +447,90 @@ module PDF
         issues.uniq
       end
 
+      # Interactive-form action violations (ISO 19005-2 § 6.4.1) :
+      # Widget annotations shall not carry /A or /AA (t1), form fields
+      # shall not carry /AA (t2), and the AcroForm /NeedAppearances flag
+      # shall be absent or false (t3).
+      getter interactive_form_violations : Array(String) do
+        issues = [] of String
+        if acroform = catalog["AcroForm"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+          if acroform["NeedAppearances"]?.try(&.as?(PDF::Objects::Boolean)).try(&.value)
+            issues << "AcroForm /NeedAppearances is true"
+          end
+        end
+        each_annotation do |annot|
+          next unless annot["Subtype"]?.try(&.as?(PDF::Objects::Name)).try(&.value) == "Widget"
+          issues << "Widget annotation contains /A (action)" if annot.has_key?("A")
+          issues << "Widget annotation contains /AA (additional actions)" if annot.has_key?("AA")
+        end
+        each_form_field do |field|
+          issues << "form field contains /AA (additional actions)" if field.has_key?("AA")
+        end
+        issues.uniq
+      end
+
+      # Dynamic / XFA form violations (ISO 19005-2 § 6.4.2) : the
+      # AcroForm shall not contain /XFA (t1), and the catalog shall not
+      # contain /NeedsRendering (t2).
+      getter dynamic_form_violations : Array(String) do
+        issues = [] of String
+        issues << "catalog contains /NeedsRendering" if catalog.has_key?("NeedsRendering")
+        if acroform = catalog["AcroForm"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+          issues << "AcroForm contains /XFA (XFA forms forbidden)" if acroform.has_key?("XFA")
+        end
+        issues.uniq
+      end
+
+      # ICC profile device classes / colour spaces ICCBased colour
+      # spaces may use (ISO 19005-2 § 6.2.4.2, t1).
+      ICC_INPUT_CLASSES = %w[prtr mntr scnr spac]
+      ICC_INPUT_SPACES  = ["RGB ", "CMYK", "GRAY", "Lab "]
+
+      # ICCBased colour-space profile violations (ISO 19005-2 § 6.2.4.2,
+      # t1) : the ICC profile of an ICCBased colour space must be a
+      # valid input/display/output/colour-space-conversion profile in
+      # an RGB/CMYK/GRAY/Lab colour space. (t2 — overprint mode for
+      # ICCBased CMYK — needs graphics-state tracking and is out of
+      # scope.)
+      getter iccbased_profile_violations : Array(String) do
+        issues = [] of String
+        each_object do |obj|
+          arr = obj.as?(PDF::Objects::Array)
+          next unless arr && arr.size >= 2
+          next unless arr[0].as?(PDF::Objects::Name).try(&.value) == "ICCBased"
+          stream = resolve(arr[1]).as?(PDF::Objects::Stream)
+          next unless stream && stream.decoded
+          icc = stream.encoded_data
+          next unless icc.size >= 20
+          cls = String.new(icc[12, 4])
+          space = String.new(icc[16, 4])
+          issues << "ICCBased profile device class #{cls.inspect}" unless ICC_INPUT_CLASSES.includes?(cls)
+          issues << "ICCBased profile colour space #{space.inspect}" unless ICC_INPUT_SPACES.includes?(space)
+        end
+        issues.uniq
+      end
+
+      # Yields every interactive-form field dictionary, walking the
+      # AcroForm /Fields tree (and /Kids) with cycle protection.
+      private def each_form_field(&)
+        acroform = catalog["AcroForm"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+        return unless acroform
+        fields = acroform["Fields"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Array)
+        return unless fields
+        visited = Set(UInt64).new
+        stack = [] of PDF::Objects::Base
+        fields.each { |field| stack << field }
+        until stack.empty?
+          dict = resolve(stack.pop).as?(PDF::Objects::Dictionary)
+          next unless dict
+          next unless visited.add?(dict.object_id)
+          yield dict
+          if kids = dict["Kids"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Array)
+            kids.each { |kid| stack << kid }
+          end
+        end
+      end
+
       # Implementation-limit violations (ISO 19005-2 § 6.1.13), the
       # dictionary/graph-checkable subset : integer range (t1), real
       # range (t2), real-near-zero (t5), string length (t3), name
