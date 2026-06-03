@@ -7,6 +7,38 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.23.0 — 2026-06-04 — Page transparency groups (§ 6.2.10 t2) & optional-content /Order (§ 6.9 t3)
+
+=== Added
+
+* **`page_transparency_groups_valid` (§ 6.2.10 t2)** — a page that
+  contains transparency must carry a /Group whose value is a
+  transparency attribute dictionary with a /CS blending colour space,
+  unless the document declares a PDF/A OutputIntent (veraPDF
+  short-circuits the test to a pass when the output intent colour space
+  is known, and so do we). Transparency is detected conservatively : an
+  explicit /Group /S /Transparency, or an ExtGState in the page's
+  resources that uses a soft mask, a non-standard blend mode, or a
+  constant alpha below 1.
+* **`optional_content_violations` now also covers § 6.9 t3** — if an
+  optional-content configuration carries an /Order key, that array must
+  reference every OCG in the file (nested group arrays with an optional
+  leading label string are flattened). This test leaves
+  `not_covered_tests`, so § 6.9 reaches 4/4.
+* `Context` accessor : `page_transparency_group_violations`, with
+  private helpers `page_contains_transparency?`,
+  `extgstate_uses_transparency?` and `collect_order_ocgs`.
+* Specs : a transparency page with no /Group /CS (detected) ; the same
+  page with a /Group /CS (clean) ; an /Order omitting an OCG (detected)
+  ; a complete /Order with a nested group (clean).
+
+=== Coverage (regenerated via `doc/gap-analysis/run.sh`)
+
+§ 6.9 rises to **4/4 (100 %)**. Total clause-level coverage : **112/144
+→ 113/144 (77 % → 78 %)**. § 6.2.10 t2 was already counted clause-level
+(via the blend-mode test t1) ; this release makes it genuinely
+verified — substance, not metric. The metric gain comes from § 6.9 t3.
+
 == v0.22.0 — 2026-06-04 — Type0 CMap / CIDSystemInfo consistency (§ 6.2.11.3.1)
 
 === Added

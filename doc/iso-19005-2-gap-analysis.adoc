@@ -45,10 +45,10 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | § 6.5  | Actions (JavaScript, /AA, actions nommées)                 | 4   | 4   | 100 %
 | § 6.6  | Métadonnées (XMP, schéma d'extension PDF/A, pdfaid)        | 33  | 31  | 94 %
 | § 6.8  | Fichiers embarqués                                         | 2   | 1   | 50 %
-| § 6.9  | Contenu optionnel (calques OCG)                            | 4   | 3   | 75 %
+| § 6.9  | Contenu optionnel (calques OCG)                            | 4   | 4   | 100 %
 | § 6.10 | Présentations alternatives                                 | 2   | 2   | 100 %
 | § 6.11 | Clé Requirements                                          | 1   | 1   | 100 %
-| *Total* | *PDF/A-2b*                                                | *144* | *112* | *77 %*
+| *Total* | *PDF/A-2b*                                                | *144* | *113* | *78 %*
 |===
 
 NOTE: Chiffres régénérés le 2026-06-03. Lot 1 (§ 6.2.5 fonctions de
@@ -179,6 +179,21 @@ Restent en § 6.2.11 les tests qui exigent le **modèle de glyphes**
 .notdef) ou de parser le programme de police (§ 6.2.11.6 t1/t4 table
 cmap TrueType), plus § 6.2.11.4.2 (CharSet/CIDSet listent tous les
 glyphes).
++
+Enfin lot § 6.2.10 t2 + § 6.9 t3 (0.23.0). **§ 6.2.10 t2** (substance) :
+une page contenant de la transparence (groupe /Group /S /Transparency,
+ou un ExtGState de ses ressources utilisant un soft mask, un blend mode
+non standard ou une alpha < 1) doit porter un /Group avec /CS si le
+document ne déclare pas d'OutputIntent PDF/A. Comme veraPDF, on
+court-circuite à « passé » dès qu'un OutputIntent fixe l'espace de
+fusion (`gOutputCS`) — or tous nos PDF conformes en ont un, d'où 0 faux
+positif. § 6.2.10 t2 était déjà comptée au niveau clause (via les blend
+modes t1) : le décompte ne bouge pas, c'est la vérification réelle qui
+progresse. **§ 6.9 t3** (métrique) : si une configuration de contenu
+optionnel porte une clé /Order, ce tableau doit référencer **tous** les
+OCG du fichier (les sous-groupes sont des tableaux imbriqués avec un
+libellé optionnel, aplatis). Ce test sort de `not_covered_tests` :
+§ 6.9 passe à **4/4 (100 %)**, le total à **113/144 (78 %)**.
 Couverture clause-level partielle assumée pour quelques clauses : les
 contrôles « octets bruts » ne sont pas (encore) implémentés faute de
 scanner d'octets, si bien que § 6.1.3 (on couvre t1 /ID + t2 /Encrypt,
@@ -197,7 +212,7 @@ XMP) — couverture clause-level partielle, comme annoncé.
 
 == Lecture honnête du chiffre
 
-* **77 % clause-level** est la couverture réelle de `pdf-validate`
+* **78 % clause-level** est la couverture réelle de `pdf-validate`
   vis-à-vis de la norme telle que veraPDF l'encode. Trois couches
   d'analyse ont été construites successivement : le *graphe d'objets*,
   un *scanner d'octets bruts* (0.10.0), un *tokeniseur lexical*
@@ -215,7 +230,7 @@ XMP) — couverture clause-level partielle, comme annoncé.
   précédemment : ces scores disent que sur les documents *générés
   par la suite ALOLI* et un échantillon tiers, `pdf-validate` donne
   le **même verdict** que veraPDF. C'est vrai parce que les défauts
-  que nos documents peuvent avoir tombent dans les 77 % couverts.
+  que nos documents peuvent avoir tombent dans les 78 % couverts.
 * Sur un PDF tiers exerçant une clause non couverte (transparence non
   isolée, annotation non conforme, signature, calque…), `pdf-validate`
   pourrait dire « conforme » là où veraPDF dirait « non conforme » :
@@ -278,13 +293,12 @@ XMP) — couverture clause-level partielle, comme annoncé.
 
 === Priorité haute (fréquent, fort impact conformité)
 
-* **§ 6.2 transparence (reste)** — groupes de transparence isolés
-  (page sans output intent + transparence → /Group /CS requis,
-  § 6.2.10 test 2), /SMask. Commun dès qu'il y a des effets
-  graphiques.
-* **§ 6.2 transparence (reste)** — /SMask et groupes de transparence
-  isolés ; § 6.2.10 t2 (page sans output intent + transparence →
-  /Group /CS requis).
+* **§ 6.2 transparence (reste)** — § 6.2.10 t2 (page sans output
+  intent → /Group /CS) est couvert via une heuristique conservatrice
+  (groupe /Group /S /Transparency, ou ExtGState avec SMask / blend mode
+  non standard / alpha < 1). Restent les cas fins : groupes de
+  transparence des XObjects de formulaire, sémantique isolé/knockout,
+  soft masks de luminosité — au-delà du dict-level.
 * **§ 6.2.8.3 JPEG2000** — conformité du codestream (canaux, METH,
   bit-depth). Explicitement exclu du décompte tant que non implémenté.
 * **§ 6.2.11 polices, vérifs fines** — largeurs de glyphes cohérentes
@@ -304,8 +318,8 @@ XMP) — couverture clause-level partielle, comme annoncé.
   longueur réelle des données du stream ; reporté pour cause de
   /Length indirect et d'EOL ambigu), § 6.1.4 (EOL du mot-clé xref),
   § 6.1.13 t10 (valeur CID max, interpréteur CMap).
-* **§ 6.8 / § 6.9 (reste)** — validité PDF/A du fichier embarqué
-  (§ 6.8 t5, validation récursive) ; complétude de /Order (§ 6.9 t3).
+* **§ 6.8 (reste)** — validité PDF/A du fichier embarqué (§ 6.8 t5,
+  validation récursive). § 6.9 est désormais complet (4/4).
 
 === Priorité basse (rare en pratique ALOLI)
 

@@ -316,6 +316,31 @@ module PDF
         bad.uniq
       end
 
+      # Pages that contain transparency must carry a /Group whose value
+      # is a transparency group attribute dictionary with a /CS blending
+      # colour space — unless the document declares a PDF/A OutputIntent
+      # (ISO 19005-2 § 6.2.10, test 2). veraPDF short-circuits this test
+      # to a pass as soon as the output intent's colour space is known
+      # (`gOutputCS != null`), because that colour space then anchors the
+      # blending space ; we do the same. The check therefore only bites a
+      # document with *no* PDF/A output intent at all.
+      getter page_transparency_group_violations : Array(String) do
+        issues = [] of String
+        # gOutputCS != null : an output intent anchors the blending space.
+        return issues if catalog.has_key?("OutputIntents")
+
+        index = 0
+        each_page do |page|
+          index += 1
+          next unless page_contains_transparency?(page)
+          group = page["Group"]?.try { |obj| resolve(obj) }.as?(PDF::Objects::Dictionary)
+          next if group && group.has_key?("CS")
+          issues << "page ##{index} contains transparency but its /Group has no /CS " \
+                    "blending colour space (and no PDF/A OutputIntent is present)"
+        end
+        issues
+      end
+
       # Forbidden XObject constructs (ISO 19005-2 § 6.2.9) : PostScript
       # XObjects (`/Subtype /PS` or form `/Subtype2 /PS` / `/PS` key),
       # reference XObjects (`/Ref`), and `/OPI`.
@@ -552,6 +577,15 @@ module PDF
           end
         end
 
+        # Master list of every OCG in the file (§ 6.9 t3 needs it).
+        all_ocgs = Set(UInt64).new
+        if ocgs = ocprops["OCGs"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Array)
+          ocgs.each do |ref|
+            dict = resolve(ref).as?(PDF::Objects::Dictionary)
+            all_ocgs << dict.object_id if dict
+          end
+        end
+
         names = [] of String
         configs.each do |cfg|
           name = cfg["Name"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Str).try(&.value)
@@ -561,9 +595,35 @@ module PDF
             names << name
           end
           issues << "optional-content configuration contains forbidden /AS" if cfg.has_key?("AS")
+
+          # § 6.9 t3 : if a configuration carries /Order, that array must
+          # reference every OCG in the file (groups are nested arrays with
+          # an optional leading label string ; both are flattened away).
+          if order = cfg["Order"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Array)
+            ordered = Set(UInt64).new
+            collect_order_ocgs(order, ordered)
+            missing = all_ocgs - ordered
+            unless missing.empty?
+              issues << "optional-content /Order does not reference all OCGs (#{missing.size} missing)"
+            end
+          end
         end
         issues << "duplicate optional-content configuration /Name" if names.size != names.uniq.size
         issues.uniq
+      end
+
+      # Recursively flattens an optional-content /Order array, recording
+      # the object id of every OCG dictionary it references. Nested
+      # arrays (group sub-trees) are descended ; leading label strings
+      # and other scalars are ignored.
+      private def collect_order_ocgs(node : PDF::Objects::Base, into : Set(UInt64))
+        resolved = resolve(node)
+        case resolved
+        when PDF::Objects::Array
+          resolved.each { |elem| collect_order_ocgs(elem, into) }
+        when PDF::Objects::Dictionary
+          into << resolved.object_id
+        end
       end
 
       # Interactive-form action violations (ISO 19005-2 § 6.4.1) :
@@ -1100,6 +1160,53 @@ module PDF
             yield d
           end
         end
+      end
+
+      # `true` if a page object exhibits transparency : either it
+      # carries an explicit transparency group (/Group /S /Transparency)
+      # or its /Resources reference an ExtGState that uses a soft mask, a
+      # non-standard blend mode, or constant alpha below 1. Deliberately
+      # conservative — it only reports transparency it can positively see.
+      private def page_contains_transparency?(page : PDF::Objects::Dictionary) : Bool
+        group = page["Group"]?.try { |obj| resolve(obj) }.as?(PDF::Objects::Dictionary)
+        if group && group["S"]?.try(&.as?(PDF::Objects::Name)).try(&.value) == "Transparency"
+          return true
+        end
+
+        resources = page["Resources"]?.try { |obj| resolve(obj) }.as?(PDF::Objects::Dictionary)
+        return false unless resources
+        egs = resources["ExtGState"]?.try { |obj| resolve(obj) }.as?(PDF::Objects::Dictionary)
+        return false unless egs
+
+        egs.values.each do |entry|
+          gstate = resolve(entry).as?(PDF::Objects::Dictionary)
+          next unless gstate
+          return true if extgstate_uses_transparency?(gstate)
+        end
+        false
+      end
+
+      # `true` if an ExtGState dictionary enables transparency : a soft
+      # mask other than /None, a blend mode other than Normal/Compatible,
+      # or a fill/stroke constant alpha strictly below 1.
+      private def extgstate_uses_transparency?(gstate : PDF::Objects::Dictionary) : Bool
+        if smask = gstate["SMask"]?.try { |obj| resolve(obj) }
+          name = smask.as?(PDF::Objects::Name).try(&.value)
+          return true unless name == "None"
+        end
+
+        if bm = gstate["BM"]?.try { |obj| resolve(obj) }
+          mode = bm.as?(PDF::Objects::Name).try(&.value)
+          mode ||= bm.as?(PDF::Objects::Array).try(&.first?).try { |first| resolve(first) }
+            .as?(PDF::Objects::Name).try(&.value)
+          return true if mode && mode != "Normal" && mode != "Compatible"
+        end
+
+        {"ca", "CA"}.each do |key|
+          val = gstate[key]?.try(&.as?(PDF::Objects::Number)).try(&.to_f64)
+          return true if val && val < 1.0
+        end
+        false
       end
 
       # Yields every `/Type /Font` dictionary reachable from the

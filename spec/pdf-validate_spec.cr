@@ -309,6 +309,58 @@ private def pdf_with_bad_ocg : Bytes
   ] of ObjBody)
 end
 
+# An optional-content /D configuration whose /Order array lists only one
+# of the file's two OCGs — violating § 6.9 t3 (Order must reference every
+# OCG). /Name is present and there is no /AS, isolating the t3 defect.
+private def pdf_with_incomplete_oc_order : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R " \
+    "/OCProperties << /OCGs [4 0 R 5 0 R] " \
+    "/D << /Name (Default) /Order [4 0 R] >> >> >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+    "<< /Type /OCG /Name (Layer 1) >>",
+    "<< /Type /OCG /Name (Layer 2) >>",
+  ] of ObjBody)
+end
+
+# An optional-content /D configuration whose /Order references both OCGs
+# (a nested group array with a label) — complete, so § 6.9 t3 passes.
+private def pdf_with_complete_oc_order : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R " \
+    "/OCProperties << /OCGs [4 0 R 5 0 R] " \
+    "/D << /Name (Default) /Order [4 0 R [(Group) 5 0 R]] >> >> >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+    "<< /Type /OCG /Name (Layer 1) >>",
+    "<< /Type /OCG /Name (Layer 2) >>",
+  ] of ObjBody)
+end
+
+# A page carrying a transparency group (/Group /S /Transparency) but no
+# /CS blending colour space, with no PDF/A OutputIntent — violating
+# § 6.2.10 t2.
+private def pdf_with_transparency_no_group_cs : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] " \
+    "/Group << /S /Transparency >> >>",
+  ] of ObjBody)
+end
+
+# The same transparency page but with a /CS on its /Group — conformant
+# under § 6.2.10 t2 even without an OutputIntent.
+private def pdf_with_transparency_and_group_cs : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] " \
+    "/Group << /S /Transparency /CS /DeviceRGB >> >>",
+  ] of ObjBody)
+end
+
 # Builds a valid "mntr"/RGB sRGB-like ICC profile header (≥ 132 bytes).
 private def rgb_icc : Bytes
   icc = Bytes.new(132, 0_u8)
@@ -671,6 +723,31 @@ describe PDF::Validate do
     failed = report.failures.map(&.rule.id)
     failed.should_not contain("pdfa2-6.8-embedded-filespec")
     failed.should_not contain("pdfa2-6.9-optional-content")
+  end
+
+  it "detects an /Order that omits an OCG (§ 6.9 t3)" do
+    report = PDF::Validate.bytes(pdf_with_incomplete_oc_order, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.9-optional-content")
+  end
+
+  it "does not flag a complete /Order array (§ 6.9 t3)" do
+    report = PDF::Validate.bytes(pdf_with_complete_oc_order, "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.9-optional-content")
+  end
+
+  it "detects a transparency page without a /Group /CS (§ 6.2.10 t2)" do
+    report = PDF::Validate.bytes(pdf_with_transparency_no_group_cs, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.2.10-page-transparency-group")
+  end
+
+  it "does not flag a transparency page that has a /Group /CS (§ 6.2.10 t2)" do
+    report = PDF::Validate.bytes(pdf_with_transparency_and_group_cs, "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.10-page-transparency-group")
+  end
+
+  it "does not flag transparency when a PDF/A OutputIntent is present (§ 6.2.10 t2)" do
+    report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.10-page-transparency-group")
   end
 
   it "detects interactive-form action violations (§ 6.4.1)" do

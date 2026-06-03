@@ -266,6 +266,12 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : bad.join(", ")
           )
+        when "page_transparency_groups_valid"
+          bad = ctx.page_transparency_group_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
         else
           raise "Unknown check #{check.inspect} (rule set references a primitive the engine does not implement)"
         end

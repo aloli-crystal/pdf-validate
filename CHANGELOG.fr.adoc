@@ -7,6 +7,39 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.23.0 — 2026-06-04 — Groupes de transparence de page (§ 6.2.10 t2) & /Order du contenu optionnel (§ 6.9 t3)
+
+=== Ajouté
+
+* **`page_transparency_groups_valid` (§ 6.2.10 t2)** — une page
+  contenant de la transparence doit porter un /Group dont la valeur est
+  un dictionnaire d'attributs de transparence avec un espace de fusion
+  /CS, sauf si le document déclare un OutputIntent PDF/A (veraPDF
+  court-circuite le test à « passé » quand l'espace couleur de
+  l'OutputIntent est connu ; nous faisons de même). La transparence est
+  détectée de façon conservatrice : un /Group /S /Transparency
+  explicite, ou un ExtGState des ressources de la page utilisant un
+  soft mask, un blend mode non standard ou une alpha < 1.
+* **`optional_content_violations` couvre désormais aussi § 6.9 t3** —
+  si une configuration de contenu optionnel porte une clé /Order, ce
+  tableau doit référencer **tous** les OCG du fichier (les tableaux de
+  sous-groupes, avec un libellé de tête optionnel, sont aplatis). Ce
+  test quitte `not_covered_tests` : § 6.9 atteint 4/4.
+* Accesseur `Context` : `page_transparency_group_violations`, avec les
+  aides privées `page_contains_transparency?`,
+  `extgstate_uses_transparency?` et `collect_order_ocgs`.
+* Specs : une page de transparence sans /Group /CS (détectée) ; la même
+  page avec un /Group /CS (propre) ; un /Order omettant un OCG
+  (détecté) ; un /Order complet avec un sous-groupe imbriqué (propre).
+
+=== Couverture (régénérée via `doc/gap-analysis/run.sh`)
+
+§ 6.9 passe à **4/4 (100 %)**. Couverture clause-level totale :
+**112/144 → 113/144 (77 % → 78 %)**. § 6.2.10 t2 était déjà comptée au
+niveau clause (via le test des blend modes t1) ; cette version la rend
+réellement vérifiée — substance, pas métrique. Le gain métrique vient
+de § 6.9 t3.
+
 == v0.22.0 — 2026-06-04 — Cohérence CMap / CIDSystemInfo des polices Type0 (§ 6.2.11.3.1)
 
 === Ajouté

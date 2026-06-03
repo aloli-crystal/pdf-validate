@@ -169,6 +169,13 @@
   check: standard_blend_modes
   args: []
 
+- id: pdfa2-6.2.10-page-transparency-group
+  clause: "ISO 19005-2 § 6.2.10"
+  title: "A page with transparency needs a /Group with /CS when no PDF/A OutputIntent is present"
+  severity: error
+  check: page_transparency_groups_valid
+  args: []
+
 - id: pdfa2-6.2.3-output-intent-profile
   clause: "ISO 19005-2 § 6.2.3"
   title: "DestOutputProfile shall be a prtr/mntr ICC profile (RGB/CMYK/GRAY, version < 5); shared & no PDF/X ref"
