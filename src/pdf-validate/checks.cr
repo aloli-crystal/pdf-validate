@@ -248,6 +248,18 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : "XMP extension-schema issue(s): #{bad.join(", ")}"
           )
+        when "font_dictionaries_valid"
+          bad = ctx.font_dictionary_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : "font dictionary issue(s): #{bad.join(", ")}"
+          )
+        when "cidfont_gidmap_present"
+          bad = ctx.cidfont_gidmap_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
         else
           raise "Unknown check #{check.inspect} (rule set references a primitive the engine does not implement)"
         end

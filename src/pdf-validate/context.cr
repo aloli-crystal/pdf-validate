@@ -93,6 +93,74 @@ module PDF
         XmpExtensionSchema.new(xmp).validate.violations
       end
 
+      # Font subtypes ISO 32000-1 defines (§ 6.2.11.2 t2), the simple
+      # (single-byte) subtypes, and the FontFile3 subtypes PDF/A allows
+      # (§ 6.2.11.2 t7).
+      VALID_FONT_SUBTYPES      = %w[Type1 MMType1 TrueType Type3 Type0 CIDFontType0 CIDFontType2]
+      SIMPLE_FONT_SUBTYPES     = %w[Type1 MMType1 TrueType]
+      VALID_FONTFILE3_SUBTYPES = %w[Type1C CIDFontType0C OpenType]
+
+      # Font-dictionary violations (ISO 19005-2 § 6.2.11.2), checkable
+      # from the dictionaries (no font program needed) : /Subtype is a
+      # defined type (t2) ; /BaseFont is present except for Type3 (t3) ;
+      # a non-standard simple font carries /FirstChar (t4), /LastChar
+      # (t5) and a /Widths array of the right length (t6) ; a /FontFile3
+      # has an allowed /Subtype (t7).
+      getter font_dictionary_violations : Array(String) do
+        issues = [] of String
+        each_font_dict do |dict|
+          subtype = dict["Subtype"]?.try(&.as?(PDF::Objects::Name)).try(&.value)
+          unless subtype && VALID_FONT_SUBTYPES.includes?(subtype)
+            issues << "font /Subtype #{subtype.inspect} is not an ISO 32000-1 font type (t2)"
+            next
+          end
+          base = dict["BaseFont"]?.try(&.as?(PDF::Objects::Name)).try(&.value)
+          issues << "font missing /BaseFont (t3)" if subtype != "Type3" && base.nil?
+          label = base || "(unnamed)"
+
+          descriptor = dict["FontDescriptor"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+
+          if SIMPLE_FONT_SUBTYPES.includes?(subtype) && descriptor
+            # An embedded simple font is not a standard-14 font, so it
+            # must declare its character range and widths.
+            issues << "simple font #{label} missing /FirstChar (t4)" unless dict.has_key?("FirstChar")
+            issues << "simple font #{label} missing /LastChar (t5)" unless dict.has_key?("LastChar")
+            first = dict["FirstChar"]?.try(&.as?(PDF::Objects::Number)).try(&.to_i64)
+            last = dict["LastChar"]?.try(&.as?(PDF::Objects::Number)).try(&.to_i64)
+            widths = dict["Widths"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Array)
+            if widths.nil?
+              issues << "simple font #{label} missing /Widths (t6)"
+            elsif first && last && widths.size != (last - first + 1)
+              issues << "simple font #{label} /Widths length ≠ LastChar-FirstChar+1 (t6)"
+            end
+          end
+
+          if descriptor && (ff3 = descriptor["FontFile3"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Stream))
+            ff3_subtype = ff3.dictionary["Subtype"]?.try(&.as?(PDF::Objects::Name)).try(&.value)
+            if ff3_subtype && !VALID_FONTFILE3_SUBTYPES.includes?(ff3_subtype)
+              issues << "font #{label} /FontFile3 /Subtype #{ff3_subtype.inspect} invalid (t7)"
+            end
+          end
+        end
+        issues.uniq
+      end
+
+      # CIDFontType2 CIDToGIDMap violations (ISO 19005-2 § 6.2.11.3.2) :
+      # a CIDFontType2 with an embedded program must carry /CIDToGIDMap.
+      getter cidfont_gidmap_violations : Array(String) do
+        issues = [] of String
+        each_font_dict do |dict|
+          next unless dict["Subtype"]?.try(&.as?(PDF::Objects::Name)).try(&.value) == "CIDFontType2"
+          descriptor = dict["FontDescriptor"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+          next unless descriptor && descriptor.has_key?("FontFile2")
+          unless dict.has_key?("CIDToGIDMap")
+            base = dict["BaseFont"]?.try(&.as?(PDF::Objects::Name)).try(&.value) || "(unnamed)"
+            issues << "CIDFontType2 #{base} with embedded program missing /CIDToGIDMap"
+          end
+        end
+        issues.uniq
+      end
+
       # Names of fonts whose glyph program is NOT embedded. PDF/A
       # requires every font to be embedded (ISO 19005-2 § 6.3.4-5) ;
       # veraPDF flags the standard-14 Type1 fonts and any descriptor

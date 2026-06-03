@@ -120,6 +120,20 @@
   check: iccbased_profiles_valid
   args: []
 
+- id: pdfa2-6.2.11.2-font-dictionary
+  clause: "ISO 19005-2 § 6.2.11.2"
+  title: "Font dictionary: valid /Subtype, /BaseFont, FirstChar/LastChar/Widths, FontFile3 subtype"
+  severity: error
+  check: font_dictionaries_valid
+  args: []
+
+- id: pdfa2-6.2.11.3.2-cidtogidmap
+  clause: "ISO 19005-2 § 6.2.11.3.2"
+  title: "An embedded CIDFontType2 shall contain /CIDToGIDMap"
+  severity: error
+  check: cidfont_gidmap_present
+  args: []
+
 - id: pdfa2-6.2.11.4.1-fonts-embedded
   clause: "ISO 19005-2 § 6.2.11.4.1"
   title: "Font programs for all rendered fonts shall be embedded"

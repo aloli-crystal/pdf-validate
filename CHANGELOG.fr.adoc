@@ -7,6 +7,41 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.21.0 — 2026-06-03 — Dictionnaires de police (§ 6.2.11.2 / § 6.2.11.3.2)
+
+=== Ajouté
+
+* **`font_dictionaries_valid` (§ 6.2.11.2)** — vérifie les
+  dictionnaires de police (sans le programme de police) : le /Subtype
+  est un type ISO 32000-1 (t2) ; /BaseFont est présent sauf pour Type3
+  (t3) ; une police simple non standard porte /FirstChar (t4),
+  /LastChar (t5) et un /Widths de la bonne longueur (t6) ; un
+  /FontFile3 a un /Subtype autorisé — Type1C / CIDFontType0C /
+  OpenType (t7).
+* **`cidfont_gidmap_present` (§ 6.2.11.3.2)** — un CIDFontType2 avec
+  programme embarqué (/FontFile2) doit porter /CIDToGIDMap.
+* Accesseurs `Context` : `font_dictionary_violations`,
+  `cidfont_gidmap_violations`.
+* Specs : police Type1 sans /BaseFont ; CIDFontType2 embarqué sans
+  /CIDToGIDMap ; non-régression.
+
+=== Couverture (régénérée via `doc/gap-analysis/run.sh`)
+
+§ 6.2 passe à **35/56**. Couverture clause-level totale : **103/144
+(71 %) → 111/144 (77 %)**.
+
+Restent en § 6.2.11 les tests qui exigent le modèle de glyphes
+(§ 6.2.11.4.1 t2, § 6.2.11.5 largeurs, § 6.2.11.8 .notdef) ou de
+parser le programme de police (§ 6.2.11.6 t1/t4 table cmap), plus
+§ 6.2.11.3.1 (CIDSystemInfo) et § 6.2.11.4.2 (CharSet/CIDSet).
+
+=== Validation croisée (inchangée)
+
+* Corpus généré (60) : **60/60** d'accord avec veraPDF 1.30.1 — aucun
+  faux positif (nos polices Type0/CIDFontType2 embarquées et la
+  fixture Ghostscript passent, validé en amont).
+* Fixture tierce Ghostscript : reste conforme.
+
 == v0.20.0 — 2026-06-03 — Signature : /ByteRange (§ 6.4.3 t1)
 
 === Ajouté

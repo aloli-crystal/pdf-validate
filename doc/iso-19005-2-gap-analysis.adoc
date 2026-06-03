@@ -39,7 +39,7 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | Section | Thème | Règles veraPDF | Couvertes | %
 
 | § 6.1  | Structure de fichier (trailer, /ID, chiffrement, xref)     | 27  | 21  | 78 %
-| § 6.2  | Graphiques — couleur, polices, transparence, images        | 56  | 27  | 48 %
+| § 6.2  | Graphiques — couleur, polices, transparence, images        | 56  | 35  | 63 %
 | § 6.3  | Annotations                                                | 7   | 7   | 100 %
 | § 6.4  | Formulaires interactifs & signatures                       | 8   | 6   | 75 %
 | § 6.5  | Actions (JavaScript, /AA, actions nommées)                 | 4   | 4   | 100 %
@@ -48,7 +48,7 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | § 6.9  | Contenu optionnel (calques OCG)                            | 4   | 3   | 75 %
 | § 6.10 | Présentations alternatives                                 | 2   | 2   | 100 %
 | § 6.11 | Clé Requirements                                          | 1   | 1   | 100 %
-| *Total* | *PDF/A-2b*                                                | *144* | *103* | *71 %*
+| *Total* | *PDF/A-2b*                                                | *144* | *111* | *77 %*
 |===
 
 NOTE: Chiffres régénérés le 2026-06-03. Lot 1 (§ 6.2.5 fonctions de
@@ -158,6 +158,18 @@ fichier, sans cryptographie. § 6.4 passe à 6/8, le total à
 PKCS#7) — ils exigent un parseur ASN.1/DER qui a naturellement sa
 place dans le projet `aloli-crystal/pdf-signature`, et un corpus de
 PDF réellement signés.
++
+Enfin lot § 6.2.11 polices (0.21.0) : § 6.2.11.2 (sous-type de police
+défini, /BaseFont présent, /FirstChar/LastChar/Widths pour une police
+simple non standard, sous-type de /FontFile3) et § 6.2.11.3.2 (un
+CIDFontType2 embarqué porte /CIDToGIDMap) — tout au niveau des
+dictionnaires de police, sans programme de police. § 6.2 passe à
+35/56, le total à **111/144 (77 %)**. Restent en § 6.2.11 les tests
+qui exigent le **modèle de glyphes** (§ 6.2.11.4.1 t2 glyphes définis,
+§ 6.2.11.5 largeurs, § 6.2.11.8 .notdef) ou de parser le programme de
+police (§ 6.2.11.6 t1/t4 table cmap TrueType), plus § 6.2.11.3.1
+(cohérence CIDSystemInfo) et § 6.2.11.4.2 (CharSet/CIDSet listent tous
+les glyphes).
 Couverture clause-level partielle assumée pour quelques clauses : les
 contrôles « octets bruts » ne sont pas (encore) implémentés faute de
 scanner d'octets, si bien que § 6.1.3 (on couvre t1 /ID + t2 /Encrypt,
@@ -176,7 +188,7 @@ XMP) — couverture clause-level partielle, comme annoncé.
 
 == Lecture honnête du chiffre
 
-* **71 % clause-level** est la couverture réelle de `pdf-validate`
+* **77 % clause-level** est la couverture réelle de `pdf-validate`
   vis-à-vis de la norme telle que veraPDF l'encode. Trois couches
   d'analyse ont été construites successivement : le *graphe d'objets*,
   un *scanner d'octets bruts* (0.10.0), un *tokeniseur lexical*
@@ -194,7 +206,7 @@ XMP) — couverture clause-level partielle, comme annoncé.
   précédemment : ces scores disent que sur les documents *générés
   par la suite ALOLI* et un échantillon tiers, `pdf-validate` donne
   le **même verdict** que veraPDF. C'est vrai parce que les défauts
-  que nos documents peuvent avoir tombent dans les 71 % couverts.
+  que nos documents peuvent avoir tombent dans les 77 % couverts.
 * Sur un PDF tiers exerçant une clause non couverte (transparence non
   isolée, annotation non conforme, signature, calque…), `pdf-validate`
   pourrait dire « conforme » là où veraPDF dirait « non conforme » :

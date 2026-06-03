@@ -7,6 +7,40 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.21.0 — 2026-06-03 — Font dictionaries (§ 6.2.11.2 / § 6.2.11.3.2)
+
+=== Added
+
+* **`font_dictionaries_valid` (§ 6.2.11.2)** — checks font
+  dictionaries (without the font program) : /Subtype is an ISO 32000-1
+  type (t2) ; /BaseFont present except for Type3 (t3) ; a non-standard
+  simple font carries /FirstChar (t4), /LastChar (t5) and a /Widths of
+  the right length (t6) ; a /FontFile3 has an allowed /Subtype —
+  Type1C / CIDFontType0C / OpenType (t7).
+* **`cidfont_gidmap_present` (§ 6.2.11.3.2)** — a CIDFontType2 with an
+  embedded program (/FontFile2) must carry /CIDToGIDMap.
+* `Context` accessors : `font_dictionary_violations`,
+  `cidfont_gidmap_violations`.
+* Specs : a Type1 font with no /BaseFont ; an embedded CIDFontType2
+  without /CIDToGIDMap ; a clean-document guard.
+
+=== Coverage (regenerated via `doc/gap-analysis/run.sh`)
+
+§ 6.2 rises to **35/56**. Total clause-level coverage : **103/144
+(71 %) → 111/144 (77 %)**.
+
+§ 6.2.11 still has the tests that need the glyph model (§ 6.2.11.4.1
+t2, § 6.2.11.5 widths, § 6.2.11.8 .notdef) or parsing the font program
+(§ 6.2.11.6 t1/t4 cmap table), plus § 6.2.11.3.1 (CIDSystemInfo) and
+§ 6.2.11.4.2 (CharSet/CIDSet).
+
+=== Cross-validation (unchanged)
+
+* Generated corpus (60) : **60/60** agreement with veraPDF 1.30.1 — no
+  false positives (our embedded Type0/CIDFontType2 fonts and the
+  Ghostscript fixture pass, validated up front).
+* Ghostscript third-party fixture : stays conformant.
+
 == v0.20.0 — 2026-06-03 — Signature /ByteRange (§ 6.4.3 t1)
 
 === Added

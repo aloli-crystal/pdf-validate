@@ -199,6 +199,33 @@ private def pdf_with_form_violations : Bytes
   ] of ObjBody)
 end
 
+# A page referencing a Type1 font dictionary with no /BaseFont,
+# violating § 6.2.11.2 (t3).
+private def pdf_with_bad_font : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] " \
+    "/Resources << /Font << /F1 4 0 R >> >> >>",
+    "<< /Type /Font /Subtype /Type1 >>",
+  ] of ObjBody)
+end
+
+# A CIDFontType2 with an embedded /FontFile2 but no /CIDToGIDMap,
+# violating § 6.2.11.3.2.
+private def pdf_with_cidfont_no_gidmap : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] " \
+    "/Resources << /Font << /F1 4 0 R >> >> >>",
+    "<< /Type /Font /Subtype /Type0 /BaseFont /Foo /Encoding /Identity-H /DescendantFonts [5 0 R] >>",
+    "<< /Type /Font /Subtype /CIDFontType2 /BaseFont /Foo /FontDescriptor 6 0 R >>",
+    "<< /Type /FontDescriptor /FontName /Foo /FontFile2 7 0 R >>",
+    {"<< >>", "fontdata".to_slice},
+  ] of ObjBody)
+end
+
 # A file with a signature whose /ByteRange ([0 10 20 5]) does not
 # reach end-of-file, violating § 6.4.3 (t1).
 private def pdf_with_bad_signature : Bytes
@@ -641,6 +668,23 @@ describe PDF::Validate do
   it "detects a signature whose /ByteRange does not cover the document (§ 6.4.3)" do
     report = PDF::Validate.bytes(pdf_with_bad_signature, "pdf-a-2b")
     report.failures.map(&.rule.id).should contain("pdfa2-6.4.3-signature-byterange")
+  end
+
+  it "detects a font dictionary missing /BaseFont (§ 6.2.11.2)" do
+    report = PDF::Validate.bytes(pdf_with_bad_font, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.2.11.2-font-dictionary")
+  end
+
+  it "detects a CIDFontType2 without /CIDToGIDMap (§ 6.2.11.3.2)" do
+    report = PDF::Validate.bytes(pdf_with_cidfont_no_gidmap, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.2.11.3.2-cidtogidmap")
+  end
+
+  it "does not flag a clean document under § 6.2.11" do
+    report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
+    failed = report.failures.map(&.rule.id)
+    failed.should_not contain("pdfa2-6.2.11.2-font-dictionary")
+    failed.should_not contain("pdfa2-6.2.11.3.2-cidtogidmap")
   end
 
   it "does not flag a document without signatures (§ 6.4.3)" do
