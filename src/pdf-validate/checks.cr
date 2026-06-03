@@ -146,6 +146,18 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : "alternate-presentation construct(s): #{bad.join(", ")}"
           )
+        when "file_header_valid"
+          bad = ctx.file_header_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : "file header issue(s): #{bad.join(", ")}"
+          )
+        when "no_data_after_eof"
+          bad = ctx.data_after_eof_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
         else
           raise "Unknown check #{check.inspect} (rule set references a primitive the engine does not implement)"
         end

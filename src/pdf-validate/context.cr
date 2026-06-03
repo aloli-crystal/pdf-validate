@@ -7,7 +7,13 @@ module PDF
     class Context
       getter reader : PDF::Reader
 
-      def initialize(@reader : PDF::Reader)
+      # The raw file bytes, when available (set by `PDF::Validate.bytes`
+      # / `.file`). Needed by the byte-level structure rules ; `nil`
+      # when validating an already-open reader, in which case those
+      # rules report no violation rather than guess.
+      @raw : Bytes?
+
+      def initialize(@reader : PDF::Reader, @raw : Bytes? = nil)
       end
 
       # The document catalog (trailer /Root, resolved).
@@ -280,6 +286,78 @@ module PDF
           issues << "multiple OutputIntents must share one indirect DestOutputProfile"
         end
         issues.uniq
+      end
+
+      # File-header violations (ISO 19005-2 § 6.1.2), read from the raw
+      # bytes : the file shall begin at byte 0 with "%PDF-1.n"
+      # (n in 0..7) followed by an EOL (t1), and the next line shall be
+      # a comment "%" followed by at least four bytes > 127 — the
+      # binary marker that flags the file as binary to transfer tools
+      # (t2). Empty (no violation) when the raw bytes are unavailable.
+      getter file_header_violations : Array(String) do
+        issues = [] of String
+        raw = @raw
+        return issues unless raw
+
+        unless raw.size >= 8 && String.new(raw[0, 7]) == "%PDF-1." &&
+               raw[7] >= '0'.ord.to_u8 && raw[7] <= '7'.ord.to_u8
+          issues << "file does not begin with %PDF-1.n (n in 0..7) at byte 0"
+          return issues
+        end
+
+        # Skip to the end of the header line, then over its EOL.
+        idx = 8
+        while idx < raw.size && raw[idx] != 0x0A && raw[idx] != 0x0D
+          idx += 1
+        end
+        idx += 1 if idx < raw.size && raw[idx] == 0x0D
+        idx += 1 if idx < raw.size && raw[idx] == 0x0A
+
+        if idx >= raw.size || raw[idx] != 0x25 # '%'
+          issues << "missing binary-marker comment line after the header (§ 6.1.2 t2)"
+        elsif idx + 4 >= raw.size || !four_high_bytes?(raw, idx + 1)
+          issues << "binary-marker comment must be followed by ≥ 4 bytes > 127 (§ 6.1.2 t2)"
+        end
+        issues
+      end
+
+      # Trailing-data violation (ISO 19005-2 § 6.1.3, t3) : nothing
+      # shall follow the final %%EOF marker except a single optional
+      # EOL. Empty when raw bytes are unavailable or no %%EOF is found
+      # (other rules cover a missing marker).
+      getter data_after_eof_violations : Array(String) do
+        issues = [] of String
+        raw = @raw
+        return issues unless raw
+        eof = last_eof_offset(raw)
+        return issues unless eof
+        rest = raw[eof + 5, raw.size - (eof + 5)]
+        allowed = rest.size == 0 ||
+                  (rest.size == 1 && (rest[0] == 0x0A || rest[0] == 0x0D)) ||
+                  (rest.size == 2 && rest[0] == 0x0D && rest[1] == 0x0A)
+        issues << "#{rest.size} byte(s) after the final %%EOF" unless allowed
+        issues
+      end
+
+      # `true` if the four bytes starting at `from` are all > 127.
+      private def four_high_bytes?(raw : Bytes, from : Int32) : Bool
+        offset = from
+        while offset < from + 4
+          return false if raw[offset] <= 127
+          offset += 1
+        end
+        true
+      end
+
+      # Byte offset of the last "%%EOF" marker, or nil if none.
+      private def last_eof_offset(raw : Bytes) : Int32?
+        marker = "%%EOF".to_slice
+        idx = raw.size - marker.size
+        while idx >= 0
+          return idx if raw[idx, marker.size] == marker
+          idx -= 1
+        end
+        nil
       end
 
       # Stream filters PDF/A-2 permits (ISO 19005-2 § 6.1.7.2,

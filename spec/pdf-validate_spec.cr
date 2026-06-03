@@ -29,9 +29,11 @@ end
 # path.
 private alias ObjBody = String | Tuple(String, Bytes)
 
-private def build_pdf(objects : ::Array(ObjBody)) : Bytes
+private def build_pdf(objects : ::Array(ObjBody), binary_comment : Bool = true) : Bytes
   io = IO::Memory.new
   io << "%PDF-1.7\n"
+  # Binary-marker comment (§ 6.1.2 t2) : % + four bytes > 127.
+  io.write(Bytes[0x25_u8, 0xE2_u8, 0xE3_u8, 0xCF_u8, 0xD3_u8, 0x0A_u8]) if binary_comment
   offsets = [] of Int32
   objects.each_with_index do |obj, i|
     offsets << io.pos
@@ -136,6 +138,30 @@ private def pdf_with_structure_violations : Bytes
     "/PresSteps << >> /Contents 4 0 R >>",
     lzw_stream,
   ] of ObjBody)
+end
+
+# A minimal file with no binary-marker comment after the header,
+# violating § 6.1.2 (t2).
+private def pdf_without_binary_comment : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+  ] of ObjBody, binary_comment: false)
+end
+
+# A well-formed file with extra bytes appended after the final %%EOF,
+# violating § 6.1.3 (t3).
+private def pdf_with_trailing_garbage : Bytes
+  base = build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+  ] of ObjBody)
+  io = IO::Memory.new
+  io.write(base)
+  io << "trailing junk\n"
+  io.to_slice
 end
 
 # A conformant Text annotation : permitted subtype, /F with Print set
@@ -291,6 +317,23 @@ describe PDF::Validate do
     failed.should_not contain("pdfa2-6.1.7.2-stream-filters")
     failed.should_not contain("pdfa2-6.10-no-alternate-presentations")
     failed.should_not contain("pdfa2-6.11-no-requirements")
+  end
+
+  it "detects a missing binary-marker comment (§ 6.1.2)" do
+    report = PDF::Validate.bytes(pdf_without_binary_comment, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.1.2-file-header")
+  end
+
+  it "detects data after the final %%EOF (§ 6.1.3)" do
+    report = PDF::Validate.bytes(pdf_with_trailing_garbage, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.1.3-no-data-after-eof")
+  end
+
+  it "does not flag a well-formed header or EOF (§ 6.1.2/6.1.3)" do
+    report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
+    failed = report.failures.map(&.rule.id)
+    failed.should_not contain("pdfa2-6.1.2-file-header")
+    failed.should_not contain("pdfa2-6.1.3-no-data-after-eof")
   end
 
   it "produces JSON with the expected shape" do
