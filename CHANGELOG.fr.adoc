@@ -7,6 +7,42 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.16.0 — 2026-06-03 — Interpréteur de content stream, jalon 3 (§ 6.2.6 rendering intent)
+
+=== Ajouté
+
+* **Rendering intent via l'opérateur `ri` (§ 6.2.6)** — le
+  `ContentStreamScanner` capture désormais le nom-opérande (`/X ri`)
+  et signale toute valeur hors des quatre intents ISO 32000-1
+  (AbsoluteColorimetric, RelativeColorimetric, Perceptual, Saturation).
+  La règle `pdfa2-6.2.6-rendering-intent` couvre maintenant les **deux**
+  sérialisations : le `/Intent` des images XObject *et* l'opérateur
+  `ri` des content streams.
+* `ContentStreamScanner` : getter `invalid_rendering_intents`, suivi
+  du dernier nom (`@last_name`) consommé par `ri`. Le scan agrégé
+  `content_scan` du `Context` collecte ces intents.
+
+=== Reporté — § 6.2.11.8 (glyphe .notdef)
+
+L'interdiction de référencer le glyphe `.notdef` depuis les opérateurs
+d'affichage de texte exige de **résoudre les glyphes** (décoder les
+codes de caractères en index de glyphes via l'encodage/CMap de chaque
+police) — bien au-delà d'un tokeniseur. Cela demande le modèle de
+police complet qu'utilise veraPDF ; reporté.
+
+=== Substance plutôt que métrique
+
+§ 6.2.6 était déjà comptée. Le pourcentage **reste à 50 %**, mais la
+clause est désormais couverte dans ses deux formes (images + `ri`).
+
+=== Validation croisée (inchangée)
+
+* Corpus généré (60) : **60/60** d'accord avec veraPDF 1.30.1 — aucun
+  faux positif (nos pages ne posent pas de rendering intent dans le
+  contenu, validé en amont ; le scanner distingue `/Foo ri` de
+  `/Perceptual ri`).
+* Fixture tierce Ghostscript : reste conforme.
+
 == v0.15.0 — 2026-06-03 — Interpréteur de content stream, jalon 2 (§ 6.2.4.3 couleur)
 
 === Ajouté

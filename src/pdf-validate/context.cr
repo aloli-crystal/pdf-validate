@@ -259,10 +259,9 @@ module PDF
         issues
       end
 
-      # Non-standard rendering intents declared on image XObjects via
-      # the /Intent key (ISO 19005-2 § 6.2.6). The content-stream `ri`
-      # operator form is not reached by a dictionary walk — documented
-      # as partial coverage in the gap analysis.
+      # Non-standard rendering intents (ISO 19005-2 § 6.2.6), from both
+      # serialisations : the /Intent key on image XObjects and the `ri`
+      # operator in page content streams.
       getter invalid_rendering_intents : Array(String) do
         bad = [] of String
         each_object do |obj|
@@ -273,6 +272,7 @@ module PDF
           next unless intent
           bad << "/#{intent}" unless RENDERING_INTENTS.includes?(intent)
         end
+        bad.concat(content_scan[:invalid_ri].map { |name| "/#{name}" })
         bad.uniq
       end
 
@@ -454,20 +454,23 @@ module PDF
         content_scan[:undefined]
       end
 
-      # Content-stream scan aggregated over every page : the set of
-      # undefined operators and the maximum q/Q nesting depth. Built
-      # once. Empty when there is no page content.
-      private getter content_scan : {undefined: Array(String), max_q: Int32} do
+      # Content-stream scan aggregated over every page : the undefined
+      # operators, the maximum q/Q nesting depth, and the invalid `ri`
+      # rendering intents. Built once. Empty when there is no page
+      # content.
+      private getter content_scan : {undefined: Array(String), max_q: Int32, invalid_ri: Array(String)} do
         undefined = [] of String
+        invalid_ri = [] of String
         max_q = 0
         each_page do |page|
           data = page_content_bytes(page)
           next if data.empty?
           scanner = ContentStreamScanner.new(data).scan
           undefined.concat(scanner.undefined_operators)
+          invalid_ri.concat(scanner.invalid_rendering_intents)
           max_q = scanner.max_q_depth if scanner.max_q_depth > max_q
         end
-        {undefined: undefined.uniq, max_q: max_q}
+        {undefined: undefined.uniq, max_q: max_q, invalid_ri: invalid_ri.uniq}
       end
 
       # Concatenated decoded bytes of a page's /Contents (a single

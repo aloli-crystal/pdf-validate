@@ -108,9 +108,16 @@ OutputIntent (ou DefaultGray) — le critère exact de veraPDF
 (`gOutputCS`). **Le pourcentage ne bouge pas** : § 6.2.4.3 était déjà
 comptée (via la règle « images »), mais la couverture passe des seules
 images XObject aux opérateurs de couleur des content streams (t2/t3/t4
-réellement vérifiés). Substance, pas métrique. Restent pour
-l'interpréteur : rendering intent `ri` (§ 6.2.6), glyphe `.notdef`
-(§ 6.2.11.8).
+réellement vérifiés). Substance, pas métrique.
++
+Puis **interpréteur de content stream — jalon 3** (0.16.0) : § 6.2.6
+rendering intent via l'opérateur `ri` (le scanner capture le nom-
+opérande et le valide), complétant la couverture de la clause (qui ne
+regardait que le `/Intent` des images). Là encore le pourcentage ne
+bouge pas (§ 6.2.6 déjà comptée). Le glyphe `.notdef` (§ 6.2.11.8) est
+**reporté** : il exige de résoudre les glyphes (décoder les codes →
+index de glyphe via l'encodage/CMap de chaque police), bien au-delà
+d'un tokeniseur — c'est le modèle de police complet de veraPDF.
 +
 Couverture clause-level partielle assumée pour quelques clauses : les
 contrôles « octets bruts » ne sont pas (encore) implémentés faute de
@@ -186,8 +193,9 @@ XMP) — couverture clause-level partielle, comme annoncé.
   approprié (ou un Default* dans les ressources).
 * **§ 6.2.5** — un ExtGState ne doit pas porter /TR ou /HTP, et /TR2
   uniquement avec la valeur /Default (fonctions de transfert).
-* **§ 6.2.6** — rendering intent (`/Intent` des images) parmi les
-  quatre valeurs ISO 32000-1 (forme opérateur `ri` non couverte).
+* **§ 6.2.6** — rendering intent parmi les quatre valeurs ISO 32000-1,
+  dans les deux formes : `/Intent` des images *et* l'opérateur `ri`
+  des content streams.
 * **§ 6.2.8** — clés du dictionnaire image : pas d'/Alternates ni
   d'/OPI, /Interpolate à false, /BitsPerComponent valide (1/2/4/8/16,
   ou 1 pour un masque).

@@ -36,11 +36,23 @@ module PDF
         "g" => "GRAY", "G" => "GRAY",
       }
 
+      # The four rendering intents ISO 32000-1 defines (Table 70), valid
+      # as the operand of the `ri` operator (§ 6.2.6).
+      VALID_RENDERING_INTENTS = Set{
+        "AbsoluteColorimetric", "RelativeColorimetric",
+        "Perceptual", "Saturation",
+      }
+
       getter undefined_operators = [] of String
       getter max_q_depth = 0
       # Device colour spaces (RGB/CMYK/GRAY) set directly in the content
       # stream via rg/RG/k/K/g/G.
       getter device_colour_spaces = Set(String).new
+      # Non-standard rendering intents passed to the `ri` operator.
+      getter invalid_rendering_intents = [] of String
+      # The most recent name token — the operand a following `ri`
+      # consumes (`/Perceptual ri`).
+      @last_name : String? = nil
 
       def initialize(@data : Bytes)
       end
@@ -70,7 +82,9 @@ module PDF
               i = skip_hex_string(i)
             end
           when byte == 0x2F # '/' name
-            i = skip_token(i + 1)
+            name_end = skip_token(i + 1)
+            @last_name = String.new(raw[i + 1, name_end - i - 1])
+            i = name_end
           when delimiter?(byte) # ) > ] [ { } etc. — single delimiter
             i += 1
           when number_start?(byte)
@@ -86,6 +100,8 @@ module PDF
 
       # Processes a regular token as an operator. Returns the index to
       # resume scanning from (past inline-image data for `ID`).
+      #
+      # ameba:disable Metrics/CyclomaticComplexity
       private def handle_operator(token : String, token_end : Int32, depth : Int32*) : Int32
         case token
         when "q"
@@ -95,6 +111,9 @@ module PDF
           depth.value -= 1 if depth.value > 0
         when "ID"
           return skip_inline_image_data(token_end)
+        when "ri"
+          intent = @last_name
+          @invalid_rendering_intents << intent if intent && !VALID_RENDERING_INTENTS.includes?(intent)
         else
           if space = DEVICE_COLOUR_OPERATORS[token]?
             @device_colour_spaces << space

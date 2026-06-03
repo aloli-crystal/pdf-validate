@@ -7,6 +7,41 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.16.0 — 2026-06-03 — Content-stream interpreter, milestone 3 (§ 6.2.6 rendering intent)
+
+=== Added
+
+* **Rendering intent via the `ri` operator (§ 6.2.6)** — the
+  `ContentStreamScanner` now captures the name operand (`/X ri`) and
+  flags any value outside the four ISO 32000-1 intents
+  (AbsoluteColorimetric, RelativeColorimetric, Perceptual, Saturation).
+  The `pdfa2-6.2.6-rendering-intent` rule now covers **both**
+  serialisations : the `/Intent` key on image XObjects *and* the `ri`
+  operator in content streams.
+* `ContentStreamScanner` : `invalid_rendering_intents` getter, tracking
+  the last name (`@last_name`) consumed by `ri`. The `Context`'s
+  aggregated `content_scan` collects these intents.
+
+=== Deferred — § 6.2.11.8 (.notdef glyph)
+
+Forbidding a reference to the `.notdef` glyph from the text-showing
+operators requires **resolving glyphs** (decoding character codes into
+glyph indices via each font's encoding/CMap) — well beyond a
+tokeniser. It needs the full font model veraPDF uses ; deferred.
+
+=== Substance, not metric
+
+§ 6.2.6 was already counted. The percentage **stays at 50 %**, but the
+clause is now covered in both forms (images + `ri`).
+
+=== Cross-validation (unchanged)
+
+* Generated corpus (60) : **60/60** agreement with veraPDF 1.30.1 — no
+  false positives (our pages set no content-stream rendering intent,
+  validated up front ; the scanner distinguishes `/Foo ri` from
+  `/Perceptual ri`).
+* Ghostscript third-party fixture : stays conformant.
+
 == v0.15.0 — 2026-06-03 — Content-stream interpreter, milestone 2 (§ 6.2.4.3 colour)
 
 === Added

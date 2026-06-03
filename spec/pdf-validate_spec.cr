@@ -177,6 +177,17 @@ private def pdf_with_rgb_gray_in_content : Bytes
   ] of ObjBody)
 end
 
+# A page whose content stream sets a non-standard rendering intent
+# via the `ri` operator (`/Banana ri`), violating § 6.2.6.
+private def pdf_with_bad_rendering_intent : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>",
+    {"<< >>", "/Banana ri 10 10 50 50 re f\n".to_slice},
+  ] of ObjBody)
+end
+
 # A page whose content stream uses an operator ("bananas") that
 # ISO 32000-1 does not define, violating § 6.2.2.
 private def pdf_with_bad_operator : Bytes
@@ -471,6 +482,11 @@ describe PDF::Validate do
     report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.4.3-content-device-colours")
   end
 
+  it "detects an invalid rendering intent set via the ri operator (§ 6.2.6)" do
+    report = PDF::Validate.bytes(pdf_with_bad_rendering_intent, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.2.6-rendering-intent")
+  end
+
   it "does not flag a clean document under the byte-level § 6.1 rules" do
     report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
     failed = report.failures.map(&.rule.id)
@@ -635,5 +651,15 @@ describe PDF::Validate::ContentStreamScanner do
     scan.device_colour_spaces.should contain("RGB")
     scan.device_colour_spaces.should contain("GRAY")
     scan.device_colour_spaces.should contain("CMYK")
+  end
+
+  it "flags a non-standard rendering intent passed to ri" do
+    scan = PDF::Validate::ContentStreamScanner.new("/Banana ri".to_slice).scan
+    scan.invalid_rendering_intents.should contain("Banana")
+  end
+
+  it "accepts a standard rendering intent passed to ri" do
+    scan = PDF::Validate::ContentStreamScanner.new("/Perceptual ri".to_slice).scan
+    scan.invalid_rendering_intents.should be_empty
   end
 end
