@@ -7,6 +7,66 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.7.0 — 2026-06-03 — § 6.2 lot 2 (images, profil ICC, rendering intent)
+
+=== Ajouté
+
+* **Trois clauses § 6.2 Graphiques supplémentaires**, toutes
+  vérifiables au niveau dictionnaire :
+** `image_dictionary_keys_valid` (§ 6.2.8) — un dictionnaire d'image
+   XObject ne doit pas contenir /Alternates (t1) ni /OPI (t2),
+   /Interpolate doit valoir false si présent (t3), /BitsPerComponent
+   doit valoir 1/2/4/8/16 (t4) — ou 1 pour un masque (t5).
+** `output_intent_profiles_valid` (§ 6.2.3) — le profil ICC
+   DestOutputProfile doit être de classe « prtr »/« mntr », en espace
+   RGB/CMYK/GRAY, version ICC < 5 (t1, lu dans l'en-tête ICC décodé) ;
+   plusieurs OutputIntents doivent partager un même profil indirect
+   (t2) ; un output intent PDF/X ne doit pas porter
+   /DestOutputProfileRef (t3).
+** `rendering_intents_valid` (§ 6.2.6) — le /Intent des images doit
+   être l'une des quatre valeurs ISO 32000-1 (la forme opérateur de
+   contenu `ri` n'est pas atteinte par un parcours de dictionnaires —
+   couverture partielle documentée).
+* Nouveaux accesseurs `Context` : `image_dictionary_violations`,
+  `output_intent_profile_violations`, `invalid_rendering_intents`.
+* Le validateur lit l'en-tête ICC dans les octets **décodés** du flux
+  (le reader inverse FlateDecode au parsing) : classe de périphérique
+  à l'offset 12, espace couleur à l'offset 16, version majeure à
+  l'offset 8.
+* Specs de détection positive (PDF forgés à la main) : image avec
+  clés non conformes + rendering intent invalide ; DestOutputProfile
+  de classe « spac » interdite. Le constructeur de PDF de test gère
+  désormais les objets *stream*.
+
+=== Modifié
+
+* Dépendance `pdf` passée à **`~> 1.0`** (depuis `~> 0.7.5`). La règle
+  § 6.2.3 a révélé que le `lib/pdf` embarqué (0.7.5) produisait encore
+  un output intent sRGB v4 de classe « spac » — que veraPDF rejette.
+  `pdf` 1.0.0 utilise le profil d'affichage sRGB2014 « mntr » correct.
+  Autrement dit : **la nouvelle règle a immédiatement détecté un vrai
+  défaut de conformité dans notre propre dépendance.**
+
+=== Couverture (régénérée via `doc/gap-analysis/run.sh`)
+
+La section Graphiques passe de **16 à 25** règles veraPDF couvertes
+(sur 56, soit 45 %). Couverture clause-level totale : **35/144 (24 %)
+→ 44/144 (30 %)**.
+
+Honnêteté du décompte : § 6.2.8.3 (codestream JPEG2000) est un
+descendant de § 6.2.8 mais un sous-domaine distinct *non* implémenté.
+Il est désormais explicitement **exclu** du décompte dans `run.sh`
+(set `not_covered`), pour ne pas gonfler artificiellement la
+couverture par le simple jeu du préfixe de clause.
+
+=== Validation croisée (inchangée)
+
+* Corpus généré (sortie pdf-a) : **60/60** d'accord avec veraPDF
+  1.30.1 — aucun faux positif des nouvelles règles sur les 36
+  conformes, 24 verdicts non conformes inchangés.
+* Fixture tierce Ghostscript : reste conforme — la règle § 6.2.3
+  valide correctement son vrai profil ICC.
+
 == v0.6.0 — 2026-06-02 — Règles § 6.2 Graphiques (ExtGState, blend modes, XObjects)
 
 === Ajouté

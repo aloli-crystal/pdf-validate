@@ -39,7 +39,7 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | Section | Thème | Règles veraPDF | Couvertes | %
 
 | § 6.1  | Structure de fichier (trailer, /ID, chiffrement, xref)     | 27  | 3   | 11 %
-| § 6.2  | Graphiques — couleur, polices, transparence, images        | 56  | 16  | 29 %
+| § 6.2  | Graphiques — couleur, polices, transparence, images        | 56  | 25  | 45 %
 | § 6.3  | Annotations                                                | 7   | 0   | 0 %
 | § 6.4  | Signatures numériques                                      | 8   | 0   | 0 %
 | § 6.5  | Actions (JavaScript, /AA, actions nommées)                 | 4   | 4   | 100 %
@@ -48,23 +48,31 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | § 6.9  | Contenu optionnel (calques OCG)                            | 4   | 0   | 0 %
 | § 6.10 | Présentations alternatives                                 | 2   | 0   | 0 %
 | § 6.11 | Clé Requirements                                          | 1   | 0   | 0 %
-| *Total* | *PDF/A-2b*                                                | *144* | *35* | *24 %*
+| *Total* | *PDF/A-2b*                                                | *144* | *44* | *30 %*
 |===
 
-NOTE: Chiffres régénérés le 2026-06-02 après l'ajout des règles
-§ 6.2 (ExtGState transfer/halftone § 6.2.5, blend modes standard
-§ 6.2.10, XObjects PostScript/référence/OPI § 6.2.9). La section
-Graphiques passe de 7 à 16 règles couvertes, le total de 26 à 35.
+NOTE: Chiffres régénérés le 2026-06-03. Lot 1 (§ 6.2.5 fonctions de
+transfert, § 6.2.9 XObjects PostScript/référence/OPI, § 6.2.10 blend
+modes) puis lot 2 (§ 6.2.3 profil ICC de l'output intent, § 6.2.6
+rendering intent, § 6.2.8 clés du dictionnaire image). La section
+Graphiques passe de 7 à 25 règles couvertes, le total de 26 à 44.
+Honnêteté du comptage : § 6.2.8.3 (codestream JPEG2000) est un
+descendant de § 6.2.8 mais un sous-domaine distinct *non* implémenté ;
+il est explicitement exclu du décompte dans `run.sh` pour ne pas
+gonfler la couverture. De même, § 6.2.5 et § 6.6.4 sont comptées au
+niveau clause alors que seuls leurs tests « dictionnaire » sont
+vérifiés (pas les détails halftone, ni la validité fine du schéma
+XMP) — couverture clause-level partielle, comme annoncé.
 
 == Lecture honnête du chiffre
 
-* **24 % clause-level** est la couverture réelle de `pdf-validate`
+* **30 % clause-level** est la couverture réelle de `pdf-validate`
   vis-à-vis de la norme telle que veraPDF l'encode.
 * Cela ne contredit PAS le « 60/60 » et le « 4/4 » mesurés
   précédemment : ces scores disent que sur les documents *générés
   par la suite ALOLI* et un échantillon tiers, `pdf-validate` donne
   le **même verdict** que veraPDF. C'est vrai parce que les défauts
-  que nos documents peuvent avoir tombent dans les 18 % couverts.
+  que nos documents peuvent avoir tombent dans les 30 % couverts.
 * Sur un PDF tiers exerçant une clause non couverte (transparence non
   isolée, annotation non conforme, signature, calque…), `pdf-validate`
   pourrait dire « conforme » là où veraPDF dirait « non conforme » :
@@ -74,8 +82,17 @@ Graphiques passe de 7 à 16 règles couvertes, le total de 26 à 35.
 
 ==== Déjà couvert en § 6.2 (rappel)
 
+* **§ 6.2.3** — le profil ICC de l'output intent (DestOutputProfile)
+  doit être de classe « prtr »/« mntr », en espace RGB/CMYK/GRAY,
+  version ICC < 5 ; profil indirect partagé si plusieurs output
+  intents ; pas de /DestOutputProfileRef pour un output intent PDF/X.
 * **§ 6.2.5** — un ExtGState ne doit pas porter /TR ou /HTP, et /TR2
   uniquement avec la valeur /Default (fonctions de transfert).
+* **§ 6.2.6** — rendering intent (`/Intent` des images) parmi les
+  quatre valeurs ISO 32000-1 (forme opérateur `ri` non couverte).
+* **§ 6.2.8** — clés du dictionnaire image : pas d'/Alternates ni
+  d'/OPI, /Interpolate à false, /BitsPerComponent valide (1/2/4/8/16,
+  ou 1 pour un masque).
 * **§ 6.2.9** — pas de XObject PostScript (`/Subtype /PS`,
   `/Subtype2 /PS`), de XObject de référence (`/Ref`) ni d'`/OPI`.
 * **§ 6.2.10 (test 1)** — les blend modes (`/BM`) d'un ExtGState
@@ -84,11 +101,14 @@ Graphiques passe de 7 à 16 règles couvertes, le total de 26 à 35.
 === Priorité haute (fréquent, fort impact conformité)
 
 * **§ 6.2 transparence (reste)** — groupes de transparence isolés
-  (page sans output intent + transparence → /Group /CS requis),
-  /SMask. Commun dès qu'il y a des effets graphiques.
+  (page sans output intent + transparence → /Group /CS requis,
+  § 6.2.10 test 2), /SMask. Commun dès qu'il y a des effets
+  graphiques.
 * **§ 6.2 couleur dans les content streams** — opérateurs `rg`/`k`
   (DeviceRGB/CMYK posés directement, pas seulement via images).
   Notre check couleur ne regarde aujourd'hui que les images XObject.
+* **§ 6.2.8.3 JPEG2000** — conformité du codestream (canaux, METH,
+  bit-depth). Explicitement exclu du décompte tant que non implémenté.
 * **§ 6.2.11 polices, vérifs fines** — largeurs de glyphes cohérentes
   (Widths vs hmtx), CIDSet/CIDToGIDMap, ToUnicode, encodages TrueType
   (MacRoman/WinAnsi). On vérifie l'embarquement, pas ces détails.

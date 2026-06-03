@@ -92,6 +92,24 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : "forbidden XObject construct(s): #{bad.join(", ")}"
           )
+        when "image_dictionary_keys_valid"
+          bad = ctx.image_dictionary_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : "non-conformant image dictionary key(s): #{bad.join(", ")}"
+          )
+        when "rendering_intents_valid"
+          bad = ctx.invalid_rendering_intents
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : "non-standard rendering intent(s): #{bad.join(", ")}"
+          )
+        when "output_intent_profiles_valid"
+          bad = ctx.output_intent_profile_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : "OutputIntent/DestOutputProfile issue(s): #{bad.join(", ")}"
+          )
         else
           raise "Unknown check #{check.inspect} (rule set references a primitive the engine does not implement)"
         end

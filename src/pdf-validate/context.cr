@@ -173,6 +173,115 @@ module PDF
         issues.uniq
       end
 
+      # The four rendering intents ISO 32000-1 defines (Table 70). Any
+      # other value for an image /Intent (or a content-stream `ri`
+      # operator, not reached here) is forbidden (ISO 19005-2 § 6.2.6).
+      RENDERING_INTENTS = %w[
+        AbsoluteColorimetric RelativeColorimetric Perceptual Saturation
+      ]
+
+      # Image XObject dictionary violations (ISO 19005-2 § 6.2.8) :
+      # no /Alternates (t1) ; no /OPI (t2) ; /Interpolate, if present,
+      # must be false (t3) ; for a non-mask image /BitsPerComponent, if
+      # present, must be 1/2/4/8/16 (t4) ; for an image mask it must be
+      # 1 (t5).
+      getter image_dictionary_violations : Array(String) do
+        issues = [] of String
+        idx = 0
+        each_object do |obj|
+          stream = obj.as?(PDF::Objects::Stream)
+          next unless stream
+          dict = stream.dictionary
+          next unless dict["Subtype"]?.try(&.as?(PDF::Objects::Name)).try(&.to_pdf) == "/Image"
+          idx += 1
+          label = "image##{idx}"
+          mask = dict["ImageMask"]?.try(&.as?(PDF::Objects::Boolean)).try(&.value) == true
+          issues << "#{label}: /Alternates present" if dict.has_key?("Alternates")
+          issues << "#{label}: /OPI present" if dict.has_key?("OPI")
+          if interp = dict["Interpolate"]?.try(&.as?(PDF::Objects::Boolean))
+            issues << "#{label}: /Interpolate must be false" if interp.value
+          end
+          if bpc = dict["BitsPerComponent"]?.try(&.as?(PDF::Objects::Number)).try(&.to_i64)
+            if mask
+              issues << "#{label}: image-mask /BitsPerComponent must be 1 (got #{bpc})" unless bpc == 1
+            elsif ![1_i64, 2, 4, 8, 16].includes?(bpc)
+              issues << "#{label}: /BitsPerComponent must be 1/2/4/8/16 (got #{bpc})"
+            end
+          end
+        end
+        issues
+      end
+
+      # Non-standard rendering intents declared on image XObjects via
+      # the /Intent key (ISO 19005-2 § 6.2.6). The content-stream `ri`
+      # operator form is not reached by a dictionary walk — documented
+      # as partial coverage in the gap analysis.
+      getter invalid_rendering_intents : Array(String) do
+        bad = [] of String
+        each_object do |obj|
+          dict = obj.as?(PDF::Objects::Stream).try(&.dictionary)
+          next unless dict
+          next unless dict["Subtype"]?.try(&.as?(PDF::Objects::Name)).try(&.to_pdf) == "/Image"
+          intent = dict["Intent"]?.try(&.as?(PDF::Objects::Name)).try(&.value)
+          next unless intent
+          bad << "/#{intent}" unless RENDERING_INTENTS.includes?(intent)
+        end
+        bad.uniq
+      end
+
+      # OutputIntent / DestOutputProfile violations (ISO 19005-2
+      # § 6.2.3). The ICC profile that is the DestOutputProfile stream
+      # must be an output ("prtr") or display ("mntr") profile in an
+      # RGB/CMYK/GRAY colour space, ICC version < 5 (t1) ; when several
+      # OutputIntents exist they must share one indirect profile (t2) ;
+      # a PDF/X output intent must not carry /DestOutputProfileRef (t3).
+      #
+      # The ICC header is read from the DECODED stream bytes (the
+      # reader inverts FlateDecode on parse) : device class at offset
+      # 12, colour space at offset 16, major version at offset 8.
+      getter output_intent_profile_violations : Array(String) do
+        issues = [] of String
+        oi = catalog["OutputIntents"]?
+        return issues unless oi
+        arr = resolve(oi).as?(PDF::Objects::Array)
+        return issues unless arr
+
+        dest_refs = [] of PDF::Objects::Reference
+        arr.each do |entry|
+          intent = resolve(entry).as?(PDF::Objects::Dictionary)
+          next unless intent
+
+          subtype = intent["S"]?.try(&.as?(PDF::Objects::Name)).try(&.to_pdf)
+          if subtype == "/GTS_PDFX" && intent.has_key?("DestOutputProfileRef")
+            issues << "PDF/X output intent carries forbidden /DestOutputProfileRef"
+          end
+
+          dop = intent["DestOutputProfile"]?
+          next unless dop
+          dest_refs << dop if dop.is_a?(PDF::Objects::Reference)
+
+          stream = resolve(dop).as?(PDF::Objects::Stream)
+          next unless stream && stream.decoded
+          icc = stream.encoded_data
+          next unless icc.size >= 20
+          cls = String.new(icc[12, 4])
+          space = String.new(icc[16, 4])
+          major = icc[8]
+          unless cls == "prtr" || cls == "mntr"
+            issues << "DestOutputProfile device class #{cls.inspect} (must be prtr/mntr)"
+          end
+          unless ["RGB ", "CMYK", "GRAY"].includes?(space)
+            issues << "DestOutputProfile colour space #{space.inspect} (must be RGB/CMYK/GRAY)"
+          end
+          issues << "DestOutputProfile ICC major version #{major} (must be < 5)" if major >= 5
+        end
+
+        if arr.size > 1 && (dest_refs.size != arr.size || dest_refs.uniq.size > 1)
+          issues << "multiple OutputIntents must share one indirect DestOutputProfile"
+        end
+        issues.uniq
+      end
+
       # Yields every `/Type /ExtGState` dictionary reachable.
       private def each_extgstate(&)
         each_object do |obj|

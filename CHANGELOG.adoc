@@ -7,6 +7,62 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.7.0 — 2026-06-03 — § 6.2 batch 2 (images, ICC profile, rendering intent)
+
+=== Added
+
+* **Three more § 6.2 Graphics clauses**, all dictionary-checkable :
+** `image_dictionary_keys_valid` (§ 6.2.8) — an image XObject
+   dictionary shall not contain /Alternates (t1) or /OPI (t2),
+   /Interpolate shall be false if present (t3), /BitsPerComponent
+   shall be 1/2/4/8/16 (t4) — or 1 for an image mask (t5).
+** `output_intent_profiles_valid` (§ 6.2.3) — the DestOutputProfile
+   ICC profile shall be a "prtr"/"mntr" class profile in RGB/CMYK/GRAY
+   colour space, ICC version < 5 (t1, read from the decoded ICC
+   header) ; multiple OutputIntents shall share one indirect profile
+   (t2) ; a PDF/X output intent shall not carry /DestOutputProfileRef
+   (t3).
+** `rendering_intents_valid` (§ 6.2.6) — an image /Intent shall be one
+   of the four ISO 32000-1 values (the content-stream `ri` operator
+   form is not reached by a dictionary walk — documented partial
+   coverage).
+* New `Context` accessors : `image_dictionary_violations`,
+  `output_intent_profile_violations`, `invalid_rendering_intents`.
+* The validator reads the ICC header from the stream's **decoded**
+  bytes (the reader inverts FlateDecode on parse) : device class at
+  offset 12, colour space at offset 16, major version at offset 8.
+* Positive-detection specs (hand-authored PDFs) : an image with
+  non-conformant keys + an invalid rendering intent ; a "spac"-class
+  DestOutputProfile. The test PDF builder now supports stream objects.
+
+=== Changed
+
+* `pdf` dependency bumped to **`~> 1.0`** (from `~> 0.7.5`). The
+  § 6.2.3 rule revealed that the bundled `lib/pdf` (0.7.5) still
+  produced an sRGB v4 "spac"-class output intent — which veraPDF
+  rejects. `pdf` 1.0.0 uses the correct sRGB2014 "mntr" display
+  profile. In other words : **the new rule immediately caught a real
+  conformance defect in our own dependency.**
+
+=== Coverage (regenerated via `doc/gap-analysis/run.sh`)
+
+The Graphics section rises from **16 to 25** veraPDF rules covered
+(of 56, i.e. 45 %). Total clause-level coverage : **35/144 (24 %) →
+44/144 (30 %)**.
+
+Counting honesty : § 6.2.8.3 (JPEG2000 codestream) is a descendant of
+§ 6.2.8 but a distinct sub-topic that is *not* implemented. It is now
+explicitly **excluded** from the count in `run.sh` (`not_covered`
+set), so coverage is not inflated by mere clause-prefix matching.
+
+=== Cross-validation (unchanged)
+
+* Generated corpus (pdf-a output) : **60/60** agreement with veraPDF
+  1.30.1 — no false positives from the new rules on the 36 conformant
+  files, 24 non-conformant verdicts unchanged.
+* Ghostscript third-party fixture : stays conformant — the § 6.2.3
+  rule correctly validates its real ICC profile.
+
 == v0.6.0 — 2026-06-02 — § 6.2 Graphics rules (ExtGState, blend modes, XObjects)
 
 === Added

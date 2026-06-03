@@ -1,5 +1,5 @@
 name: pdf-validate
-version: 0.6.0
+version: 0.7.0
 
 description: |
   Declarative PDF conformance validator for the ALOLI ISO PDF suite.
@@ -22,7 +22,7 @@ targets:
 dependencies:
   pdf:
     github: aloli-crystal/pdf
-    version: "~> 0.7.5"
+    version: "~> 1.0"
 
 development_dependencies:
   ameba:

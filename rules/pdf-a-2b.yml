@@ -71,6 +71,27 @@
   check: standard_blend_modes
   args: []
 
+- id: pdfa2-6.2.3-output-intent-profile
+  clause: "ISO 19005-2 § 6.2.3"
+  title: "DestOutputProfile shall be a prtr/mntr ICC profile (RGB/CMYK/GRAY, version < 5); shared & no PDF/X ref"
+  severity: error
+  check: output_intent_profiles_valid
+  args: []
+
+- id: pdfa2-6.2.6-rendering-intent
+  clause: "ISO 19005-2 § 6.2.6"
+  title: "Rendering intents shall be one of the four ISO 32000-1 values"
+  severity: error
+  check: rendering_intents_valid
+  args: []
+
+- id: pdfa2-6.2.8-image-dictionary-keys
+  clause: "ISO 19005-2 § 6.2.8"
+  title: "Image XObject keys: no /Alternates, no /OPI, /Interpolate false, valid /BitsPerComponent"
+  severity: error
+  check: image_dictionary_keys_valid
+  args: []
+
 # --- § 6.5 Actions ---
 
 - id: pdfa2-6.5.1-no-javascript

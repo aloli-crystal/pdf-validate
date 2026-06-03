@@ -21,13 +21,48 @@ private def plain_bytes : Bytes
 end
 
 # Hand-authors a minimal but well-formed PDF (classic xref table with
-# computed byte offsets) whose page resources deliberately violate the
-# § 6.2 graphics rules : an ExtGState carrying /TR + /TR2 (non-Default)
-# + a non-standard /BM, and a form XObject with /Subtype2 /PS, /OPI and
-# /Ref. Used to prove the new rules actually fire — the generated
-# corpus is clean and cannot exercise the failure path.
+# computed byte offsets) from a list of object bodies. A body is either
+# a String (a dictionary/value object) or a {dict, bytes} tuple (a
+# stream object — the writer-matching `dict\nstream\n…\nendstream`
+# layout, with /Length injected). Used to prove the validator rules
+# fire : the generated corpus is clean and cannot exercise the failure
+# path.
+private alias ObjBody = String | Tuple(String, Bytes)
+
+private def build_pdf(objects : ::Array(ObjBody)) : Bytes
+  io = IO::Memory.new
+  io << "%PDF-1.7\n"
+  offsets = [] of Int32
+  objects.each_with_index do |obj, i|
+    offsets << io.pos
+    io << (i + 1) << " 0 obj\n"
+    case obj
+    in String
+      io << obj
+    in Tuple(String, Bytes)
+      dict, bytes = obj
+      io << dict.rchop(">>").rstrip << " /Length " << bytes.size << " >>"
+      io << "\nstream\n"
+      io.write(bytes)
+      io << "\nendstream"
+    end
+    io << "\nendobj\n"
+  end
+  xref_offset = io.pos
+  count = objects.size + 1
+  io << "xref\n0 " << count << "\n"
+  io << "0000000000 65535 f \n"
+  offsets.each { |off| io << off.to_s.rjust(10, '0') << " 00000 n \n" }
+  io << "trailer\n<< /Size " << count << " /Root 1 0 R >>\n"
+  io << "startxref\n" << xref_offset << "\n%%EOF\n"
+  io.to_slice
+end
+
+# Violates the § 6.2 graphics rules : an ExtGState carrying /TR + /TR2
+# (non-Default) + a non-standard /BM, and a form XObject with
+# /Subtype2 /PS, /OPI and /Ref.
 private def pdf_with_graphics_violations : Bytes
-  bodies = [
+  build_pdf([
     "<< /Type /Catalog /Pages 2 0 R >>",
     "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
     "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] " \
@@ -35,22 +70,44 @@ private def pdf_with_graphics_violations : Bytes
     "<< /Type /ExtGState /TR /Identity /TR2 /Foo /BM /Fancy >>",
     "<< /Type /XObject /Subtype /Form /BBox [0 0 1 1] " \
     "/Subtype2 /PS /OPI << >> /Ref << >> >>",
-  ]
-  io = IO::Memory.new
-  io << "%PDF-1.7\n"
-  offsets = [] of Int32
-  bodies.each_with_index do |body, i|
-    offsets << io.pos
-    io << (i + 1) << " 0 obj\n" << body << "\nendobj\n"
-  end
-  xref_offset = io.pos
-  count = bodies.size + 1
-  io << "xref\n0 " << count << "\n"
-  io << "0000000000 65535 f \n"
-  offsets.each { |off| io << off.to_s.rjust(10, '0') << " 00000 n \n" }
-  io << "trailer\n<< /Size " << count << " /Root 1 0 R >>\n"
-  io << "startxref\n" << xref_offset << "\n%%EOF\n"
-  io.to_slice
+  ] of ObjBody)
+end
+
+# Violates § 6.2.8 (image dictionary keys : /Alternates, /OPI,
+# /Interpolate true, invalid /BitsPerComponent) and § 6.2.6 (a
+# non-standard rendering /Intent), both on one image XObject.
+private def pdf_with_image_violations : Bytes
+  image = {
+    "<< /Type /XObject /Subtype /Image /Width 1 /Height 1 " \
+    "/BitsPerComponent 3 /ColorSpace /DeviceGray /Interpolate true " \
+    "/Intent /Foo /Alternates [] /OPI << >> >>",
+    Bytes[0_u8],
+  }
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] " \
+    "/Resources << /XObject << /Im0 4 0 R >> >> >>",
+    image,
+  ] of ObjBody)
+end
+
+# Violates § 6.2.3 : the DestOutputProfile is an ICC stream whose
+# header declares the "spac" (colour-space-conversion) device class,
+# which PDF/A forbids for an output intent (only "prtr"/"mntr").
+private def pdf_with_bad_output_intent : Bytes
+  icc = Bytes.new(132, 0_u8)
+  icc[8] = 2_u8 # ICC major version 2
+  "spac".to_slice.each_with_index { |byte, i| icc[12 + i] = byte }
+  "RGB ".to_slice.each_with_index { |byte, i| icc[16 + i] = byte }
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R /OutputIntents [4 0 R] >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+    "<< /Type /OutputIntent /S /GTS_PDFA1 " \
+    "/OutputConditionIdentifier (sRGB) /DestOutputProfile 5 0 R >>",
+    {"<< /N 3 >>", icc},
+  ] of ObjBody)
 end
 
 describe PDF::Validate::RuleSet do
@@ -137,6 +194,27 @@ describe PDF::Validate do
     failed.should_not contain("pdfa2-6.2.5-extgstate-no-transfer")
     failed.should_not contain("pdfa2-6.2.10-standard-blend-modes")
     failed.should_not contain("pdfa2-6.2.9-no-forbidden-xobjects")
+  end
+
+  it "detects § 6.2.8 image-dictionary and § 6.2.6 rendering-intent violations" do
+    report = PDF::Validate.bytes(pdf_with_image_violations, "pdf-a-2b")
+    failed = report.failures.map(&.rule.id)
+    failed.should contain("pdfa2-6.2.8-image-dictionary-keys")
+    failed.should contain("pdfa2-6.2.6-rendering-intent")
+  end
+
+  it "detects a non-conformant DestOutputProfile (§ 6.2.3, spac class)" do
+    report = PDF::Validate.bytes(pdf_with_bad_output_intent, "pdf-a-2b")
+    failed = report.failures.map(&.rule.id)
+    failed.should contain("pdfa2-6.2.3-output-intent-profile")
+  end
+
+  it "does not flag a clean document under the § 6.2 lot-2 rules" do
+    report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
+    failed = report.failures.map(&.rule.id)
+    failed.should_not contain("pdfa2-6.2.3-output-intent-profile")
+    failed.should_not contain("pdfa2-6.2.6-rendering-intent")
+    failed.should_not contain("pdfa2-6.2.8-image-dictionary-keys")
   end
 
   it "produces JSON with the expected shape" do
