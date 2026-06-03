@@ -7,6 +7,41 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.15.0 — 2026-06-03 — Interpréteur de content stream, jalon 2 (§ 6.2.4.3 couleur)
+
+=== Ajouté
+
+* **`device_colours_anchored` (§ 6.2.4.3)** — la couleur device posée
+  directement dans un flux de contenu via les opérateurs `rg`/`RG`
+  (DeviceRGB), `k`/`K` (DeviceCMYK) et `g`/`G` (DeviceGray) doit être
+  ancrée par l'espace device-indépendant que PDF/A exige :
+** DeviceRGB → OutputIntent RGB (ou un /DefaultRGB dans les
+   ressources) ;
+** DeviceCMYK → OutputIntent CMYK (ou /DefaultCMYK) ;
+** DeviceGray → n'importe quel OutputIntent (ou /DefaultGray).
++
+C'est le critère exact de veraPDF (`gOutputCS`).
+* `ContentStreamScanner` enrichi : il collecte désormais les espaces
+  de couleur device posés (`device_colour_spaces`).
+* Accesseurs `Context` : `output_intent_colour_space` (le `gOutputCS`,
+  lu dans l'en-tête ICC du DestOutputProfile) et
+  `device_colour_violations` (croisement par page avec les
+  `Default*` des ressources).
+
+=== Substance plutôt que métrique
+
+§ 6.2.4.3 était déjà comptée (via la règle « images » de 0.4.0). Le
+pourcentage **reste donc à 50 %**, mais la couverture passe des seules
+images XObject aux **opérateurs de couleur des content streams**
+(t2/t3/t4 réellement vérifiés). C'est un progrès de fond.
+
+=== Validation croisée (inchangée)
+
+* Corpus généré (60) : **60/60** d'accord avec veraPDF 1.30.1 — aucun
+  faux positif (nos pages en DeviceRGB/Gray sont ancrées par
+  l'OutputIntent sRGB, validé en amont).
+* Fixture tierce Ghostscript : reste conforme.
+
 == v0.14.0 — 2026-06-03 — Interpréteur de content stream, jalon 1 (§ 6.2.2 / § 6.1.13 t8)
 
 === Ajouté

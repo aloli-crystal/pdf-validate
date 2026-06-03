@@ -1,5 +1,5 @@
 name: pdf-validate
-version: 0.14.0
+version: 0.15.0
 
 description: |
   Declarative PDF conformance validator for the ALOLI ISO PDF suite.

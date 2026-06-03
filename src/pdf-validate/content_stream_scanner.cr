@@ -28,8 +28,19 @@ module PDF
       # objects) — they must not be flagged as undefined operators.
       OPERAND_KEYWORDS = Set{"true", "false", "null"}
 
+      # Device colour-setting operators → the device colour space they
+      # select (ISO 32000-1 § 8.6.8). Used for the § 6.2.4.3 check.
+      DEVICE_COLOUR_OPERATORS = {
+        "rg" => "RGB", "RG" => "RGB",
+        "k" => "CMYK", "K" => "CMYK",
+        "g" => "GRAY", "G" => "GRAY",
+      }
+
       getter undefined_operators = [] of String
       getter max_q_depth = 0
+      # Device colour spaces (RGB/CMYK/GRAY) set directly in the content
+      # stream via rg/RG/k/K/g/G.
+      getter device_colour_spaces = Set(String).new
 
       def initialize(@data : Bytes)
       end
@@ -85,6 +96,9 @@ module PDF
         when "ID"
           return skip_inline_image_data(token_end)
         else
+          if space = DEVICE_COLOUR_OPERATORS[token]?
+            @device_colour_spaces << space
+          end
           unless OPERATORS.includes?(token) || OPERAND_KEYWORDS.includes?(token)
             @undefined_operators << token
           end

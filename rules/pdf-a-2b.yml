@@ -106,6 +106,13 @@
   check: image_colorspaces_calibrated
   args: []
 
+- id: pdfa2-6.2.4.3-content-device-colours
+  clause: "ISO 19005-2 § 6.2.4.3"
+  title: "Content-stream DeviceRGB/CMYK/Gray require a matching OutputIntent or Default* space"
+  severity: error
+  check: device_colours_anchored
+  args: []
+
 - id: pdfa2-6.2.11.4.1-fonts-embedded
   clause: "ISO 19005-2 § 6.2.11.4.1"
   title: "Font programs for all rendered fonts shall be embedded"

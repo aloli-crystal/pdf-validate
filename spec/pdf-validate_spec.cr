@@ -140,6 +140,43 @@ private def pdf_with_structure_violations : Bytes
   ] of ObjBody)
 end
 
+# Builds a valid "mntr"/RGB sRGB-like ICC profile header (≥ 132 bytes).
+private def rgb_icc : Bytes
+  icc = Bytes.new(132, 0_u8)
+  icc[8] = 2_u8
+  "mntr".to_slice.each_with_index { |byte, i| icc[12 + i] = byte }
+  "RGB ".to_slice.each_with_index { |byte, i| icc[16 + i] = byte }
+  icc
+end
+
+# A page with an RGB OutputIntent whose content stream sets DeviceCMYK
+# (the `k` operator) — forbidden without a CMYK OutputIntent or
+# DefaultCMYK (§ 6.2.4.3).
+private def pdf_with_cmyk_in_content : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R /OutputIntents [4 0 R] >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 5 0 R >>",
+    "<< /Type /OutputIntent /S /GTS_PDFA1 /DestOutputProfile 6 0 R >>",
+    {"<< >>", "0 0 0 1 k 10 10 50 50 re f\n".to_slice},
+    {"<< /N 3 >>", rgb_icc},
+  ] of ObjBody)
+end
+
+# A page with an RGB OutputIntent whose content stream sets DeviceRGB
+# (`rg`) and DeviceGray (`g`) — both anchored by the RGB OutputIntent,
+# so § 6.2.4.3 must NOT fire.
+private def pdf_with_rgb_gray_in_content : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R /OutputIntents [4 0 R] >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 5 0 R >>",
+    "<< /Type /OutputIntent /S /GTS_PDFA1 /DestOutputProfile 6 0 R >>",
+    {"<< >>", "1 0 0 rg 10 10 50 50 re f 0.5 g 70 70 30 30 re f\n".to_slice},
+    {"<< /N 3 >>", rgb_icc},
+  ] of ObjBody)
+end
+
 # A page whose content stream uses an operator ("bananas") that
 # ISO 32000-1 does not define, violating § 6.2.2.
 private def pdf_with_bad_operator : Bytes
@@ -424,6 +461,16 @@ describe PDF::Validate do
     report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.2-defined-operators")
   end
 
+  it "detects DeviceCMYK in a content stream under an RGB OutputIntent (§ 6.2.4.3)" do
+    report = PDF::Validate.bytes(pdf_with_cmyk_in_content, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.2.4.3-content-device-colours")
+  end
+
+  it "allows DeviceRGB/DeviceGray content under an RGB OutputIntent (§ 6.2.4.3)" do
+    report = PDF::Validate.bytes(pdf_with_rgb_gray_in_content, "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.4.3-content-device-colours")
+  end
+
   it "does not flag a clean document under the byte-level § 6.1 rules" do
     report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
     failed = report.failures.map(&.rule.id)
@@ -581,5 +628,12 @@ describe PDF::Validate::ContentStreamScanner do
   it "skips inline-image data between ID and EI" do
     scan = PDF::Validate::ContentStreamScanner.new("BI /W 2 /H 2 ID zzdataz EI Q".to_slice).scan
     scan.undefined_operators.should be_empty
+  end
+
+  it "records the device colour spaces set by rg/k/g operators" do
+    scan = PDF::Validate::ContentStreamScanner.new("1 0 0 rg 0.5 g 0 0 0 1 k".to_slice).scan
+    scan.device_colour_spaces.should contain("RGB")
+    scan.device_colour_spaces.should contain("GRAY")
+    scan.device_colour_spaces.should contain("CMYK")
   end
 end

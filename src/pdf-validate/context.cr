@@ -329,6 +329,71 @@ module PDF
         issues.uniq
       end
 
+      # Colour space of the document's PDF/A OutputIntent, read from the
+      # first DestOutputProfile ICC header ("RGB", "CMYK" or "GRAY"), or
+      # nil if there is no usable output intent. This is veraPDF's
+      # `gOutputCS`, the anchor for the § 6.2.4.3 device-colour rules.
+      getter output_intent_colour_space : String? do
+        oi = catalog["OutputIntents"]?
+        return nil unless oi
+        arr = resolve(oi).as?(PDF::Objects::Array)
+        return nil unless arr
+        arr.each do |entry|
+          intent = resolve(entry).as?(PDF::Objects::Dictionary)
+          next unless intent
+          dop = intent["DestOutputProfile"]?
+          next unless dop
+          stream = resolve(dop).as?(PDF::Objects::Stream)
+          next unless stream && stream.decoded
+          icc = stream.encoded_data
+          next unless icc.size >= 20
+          return String.new(icc[16, 4]).rstrip
+        end
+        nil
+      end
+
+      # Device colour spaces set directly in page content streams
+      # without the device-independent anchor PDF/A requires
+      # (ISO 19005-2 § 6.2.4.3) : DeviceRGB needs an RGB OutputIntent
+      # (or a DefaultRGB), DeviceCMYK a CMYK OutputIntent (or
+      # DefaultCMYK), DeviceGray any OutputIntent (or a DefaultGray).
+      getter device_colour_violations : Array(String) do
+        issues = [] of String
+        oi_space = output_intent_colour_space
+        each_page do |page|
+          data = page_content_bytes(page)
+          next if data.empty?
+          used = ContentStreamScanner.new(data).scan.device_colour_spaces
+          next if used.empty?
+          defaults = page_default_colour_spaces(page)
+          if used.includes?("RGB") && oi_space != "RGB" && !defaults.includes?("DefaultRGB")
+            issues << "DeviceRGB used without an RGB OutputIntent or DefaultRGB"
+          end
+          if used.includes?("CMYK") && oi_space != "CMYK" && !defaults.includes?("DefaultCMYK")
+            issues << "DeviceCMYK used without a CMYK OutputIntent or DefaultCMYK"
+          end
+          if used.includes?("GRAY") && oi_space.nil? && !defaults.includes?("DefaultGray")
+            issues << "DeviceGray used without any OutputIntent or DefaultGray"
+          end
+        end
+        issues.uniq
+      end
+
+      # The Default* keys present in a page's /Resources /ColorSpace
+      # dictionary (they redirect Device* usage to a device-independent
+      # space, satisfying § 6.2.4.3).
+      private def page_default_colour_spaces(page : PDF::Objects::Dictionary) : Set(String)
+        result = Set(String).new
+        resources = page["Resources"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+        return result unless resources
+        spaces = resources["ColorSpace"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+        return result unless spaces
+        {"DefaultRGB", "DefaultCMYK", "DefaultGray"}.each do |name|
+          result << name if spaces.has_key?(name)
+        end
+        result
+      end
+
       # Implementation-limit violations (ISO 19005-2 § 6.1.13), the
       # dictionary/graph-checkable subset : integer range (t1), real
       # range (t2), real-near-zero (t5), string length (t3), name

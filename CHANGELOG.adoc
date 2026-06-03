@@ -7,6 +7,40 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.15.0 — 2026-06-03 — Content-stream interpreter, milestone 2 (§ 6.2.4.3 colour)
+
+=== Added
+
+* **`device_colours_anchored` (§ 6.2.4.3)** — device colour set
+  directly in a content stream via `rg`/`RG` (DeviceRGB), `k`/`K`
+  (DeviceCMYK) and `g`/`G` (DeviceGray) must be anchored by the
+  device-independent space PDF/A requires :
+** DeviceRGB → an RGB OutputIntent (or a /DefaultRGB in resources) ;
+** DeviceCMYK → a CMYK OutputIntent (or /DefaultCMYK) ;
+** DeviceGray → any OutputIntent (or /DefaultGray).
++
+This is veraPDF's exact criterion (`gOutputCS`).
+* `ContentStreamScanner` extended : it now collects the device colour
+  spaces that are set (`device_colour_spaces`).
+* `Context` accessors : `output_intent_colour_space` (the `gOutputCS`,
+  read from the DestOutputProfile ICC header) and
+  `device_colour_violations` (per-page cross-check with the resources'
+  `Default*` spaces).
+
+=== Substance, not metric
+
+§ 6.2.4.3 was already counted (via the "images" rule from 0.4.0). The
+percentage therefore **stays at 50 %**, but coverage extends from
+image XObjects alone to the **content-stream colour operators**
+(t2/t3/t4 actually checked). Real progress.
+
+=== Cross-validation (unchanged)
+
+* Generated corpus (60) : **60/60** agreement with veraPDF 1.30.1 — no
+  false positives (our DeviceRGB/Gray pages are anchored by the sRGB
+  OutputIntent, validated up front).
+* Ghostscript third-party fixture : stays conformant.
+
 == v0.14.0 — 2026-06-03 — Content-stream interpreter, milestone 1 (§ 6.2.2 / § 6.1.13 t8)
 
 === Added

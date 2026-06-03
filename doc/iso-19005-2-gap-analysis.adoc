@@ -94,13 +94,22 @@ deux clauses étaient déjà comptées au niveau clause ; ce lot réduit
 l'écart « optimiste clause-level vs réel » plutôt que d'ajouter des
 clauses. C'est un progrès de substance, pas de métrique.
 +
-Enfin, **interpréteur de content stream — jalon 1** (0.14.0,
+Puis **interpréteur de content stream — jalon 1** (0.14.0,
 `ContentStreamScanner`) : § 6.2.2 t1 (tout opérateur doit être défini
 dans ISO 32000-1) et § 6.1.13 t8 (pile graphique q/Q imbriquée au plus
 28 niveaux), désormais couvert — il sort de `not_covered_tests`. § 6.1
-passe à 21/27, § 6.2 à 26/56, le total à 73/144 (50 %). Restent pour
-les jalons suivants de l'interpréteur : couleur posée dans le contenu
-(§ 6.2.4.3), rendering intent `ri` (§ 6.2.6), glyphe `.notdef`
+passe à 21/27, § 6.2 à 26/56, le total à 73/144 (50 %).
++
+Enfin **interpréteur de content stream — jalon 2** (0.15.0) :
+§ 6.2.4.3 couleur posée dans le contenu via `rg`/`RG`/`k`/`K`/`g`/`G`.
+DeviceRGB exige un OutputIntent RGB (ou DefaultRGB), DeviceCMYK un
+OutputIntent CMYK (ou DefaultCMYK), DeviceGray n'importe quel
+OutputIntent (ou DefaultGray) — le critère exact de veraPDF
+(`gOutputCS`). **Le pourcentage ne bouge pas** : § 6.2.4.3 était déjà
+comptée (via la règle « images »), mais la couverture passe des seules
+images XObject aux opérateurs de couleur des content streams (t2/t3/t4
+réellement vérifiés). Substance, pas métrique. Restent pour
+l'interpréteur : rendering intent `ri` (§ 6.2.6), glyphe `.notdef`
 (§ 6.2.11.8).
 +
 Couverture clause-level partielle assumée pour quelques clauses : les
@@ -172,6 +181,9 @@ XMP) — couverture clause-level partielle, comme annoncé.
   doit être de classe « prtr »/« mntr », en espace RGB/CMYK/GRAY,
   version ICC < 5 ; profil indirect partagé si plusieurs output
   intents ; pas de /DestOutputProfileRef pour un output intent PDF/X.
+* **§ 6.2.4.3** — couleur device : les images et les opérateurs de
+  contenu (`rg`/`k`/`g`) en DeviceRGB/CMYK/Gray exigent l'OutputIntent
+  approprié (ou un Default* dans les ressources).
 * **§ 6.2.5** — un ExtGState ne doit pas porter /TR ou /HTP, et /TR2
   uniquement avec la valeur /Default (fonctions de transfert).
 * **§ 6.2.6** — rendering intent (`/Intent` des images) parmi les
@@ -196,10 +208,9 @@ XMP) — couverture clause-level partielle, comme annoncé.
   (page sans output intent + transparence → /Group /CS requis,
   § 6.2.10 test 2), /SMask. Commun dès qu'il y a des effets
   graphiques.
-* **§ 6.2 couleur dans les content streams** — opérateurs `rg`/`k`/`g`
-  (DeviceRGB/CMYK/Gray posés directement, pas seulement via images),
-  § 6.2.4.3. Le `ContentStreamScanner` (jalon 1) fournit désormais la
-  tokenisation des opérateurs ; ce sera le jalon 2 de l'interpréteur.
+* **§ 6.2 transparence (reste)** — /SMask et groupes de transparence
+  isolés ; § 6.2.10 t2 (page sans output intent + transparence →
+  /Group /CS requis).
 * **§ 6.2.8.3 JPEG2000** — conformité du codestream (canaux, METH,
   bit-depth). Explicitement exclu du décompte tant que non implémenté.
 * **§ 6.2.11 polices, vérifs fines** — largeurs de glyphes cohérentes

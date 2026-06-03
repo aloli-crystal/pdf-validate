@@ -200,6 +200,12 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : "undefined content-stream operator(s): #{bad.join(", ")}"
           )
+        when "device_colours_anchored"
+          bad = ctx.device_colour_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : "unanchored device colour in content stream: #{bad.join(", ")}"
+          )
         else
           raise "Unknown check #{check.inspect} (rule set references a primitive the engine does not implement)"
         end
