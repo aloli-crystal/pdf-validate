@@ -199,6 +199,18 @@ private def pdf_with_form_violations : Bytes
   ] of ObjBody)
 end
 
+# A file with a signature whose /ByteRange ([0 10 20 5]) does not
+# reach end-of-file, violating § 6.4.3 (t1).
+private def pdf_with_bad_signature : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [4 0 R] /SigFlags 3 >> >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+    "<< /FT /Sig /T (Sig1) /V 5 0 R >>",
+    "<< /Type /Sig /Filter /Adobe.PPKLite /ByteRange [0 10 20 5] /Contents <00> >>",
+  ] of ObjBody)
+end
+
 # A file with an ICCBased colour space whose ICC profile declares an
 # invalid "abst" device class, violating § 6.2.4.2.
 private def pdf_with_bad_iccbased : Bytes
@@ -624,6 +636,16 @@ describe PDF::Validate do
     failed.should_not contain("pdfa2-6.4.1-interactive-forms")
     failed.should_not contain("pdfa2-6.4.2-no-dynamic-forms")
     failed.should_not contain("pdfa2-6.2.4.2-iccbased-profile")
+  end
+
+  it "detects a signature whose /ByteRange does not cover the document (§ 6.4.3)" do
+    report = PDF::Validate.bytes(pdf_with_bad_signature, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.4.3-signature-byterange")
+  end
+
+  it "does not flag a document without signatures (§ 6.4.3)" do
+    report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.4.3-signature-byterange")
   end
 
   it "detects an invalid XMP extension schema (§ 6.6.2.3)" do

@@ -230,6 +230,12 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : bad.join(", ")
           )
+        when "signature_byterange_valid"
+          bad = ctx.signature_byterange_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
         when "iccbased_profiles_valid"
           bad = ctx.iccbased_profile_violations
           Outcome.new(

@@ -208,6 +208,13 @@
   check: no_dynamic_forms
   args: []
 
+- id: pdfa2-6.4.3-signature-byterange
+  clause: "ISO 19005-2 § 6.4.3"
+  title: "A signature's /ByteRange shall cover the entire document"
+  severity: error
+  check: signature_byterange_valid
+  args: []
+
 # --- § 6.5 Actions ---
 
 - id: pdfa2-6.5.1-no-javascript

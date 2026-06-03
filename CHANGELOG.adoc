@@ -7,6 +7,39 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.20.0 — 2026-06-03 — Signature /ByteRange (§ 6.4.3 t1)
+
+=== Added
+
+* **`signature_byterange_valid` (§ 6.4.3 t1)** — a signature's
+  /ByteRange must cover the whole file : start at byte 0 and its second
+  segment must end at end-of-file (the gap between the two segments is
+  the /Contents hole holding the signature). A byte computation over
+  the signature dictionary and the file size — no cryptography.
+* `Context` accessor : `signature_byterange_violations`.
+* Specs : a signature with a truncated /ByteRange is detected ; a
+  document without signatures is unaffected.
+
+=== Coverage (regenerated via `doc/gap-analysis/run.sh`)
+
+§ 6.4 rises to **6/8**. Total clause-level coverage : **102/144
+(70 %) → 103/144 (71 %)**.
+
+=== Deferred — towards an ASN.1 parser (pdf-signature)
+
+§ 6.4.3 t2 (signing certificate present) and t3 (single SignerInfo)
+require parsing the DER PKCS#7 object in /Contents. That ASN.1/DER
+parser belongs in the `aloli-crystal/pdf-signature` project (PAdES,
+timestamping…) rather than bolted on here, and needs a corpus of truly
+signed PDFs to validate without false positives. Excluded from the
+count via `not_covered_tests`.
+
+=== Cross-validation (unchanged)
+
+* Generated corpus (60) : **60/60** agreement with veraPDF 1.30.1 — no
+  false positives (the corpus has no signatures).
+* Ghostscript third-party fixture : stays conformant.
+
 == v0.19.0 — 2026-06-03 — XMP/RDF parser: PDF/A extension schema (§ 6.6.2.3)
 
 === Added

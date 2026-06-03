@@ -41,14 +41,14 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | § 6.1  | Structure de fichier (trailer, /ID, chiffrement, xref)     | 27  | 21  | 78 %
 | § 6.2  | Graphiques — couleur, polices, transparence, images        | 56  | 27  | 48 %
 | § 6.3  | Annotations                                                | 7   | 7   | 100 %
-| § 6.4  | Formulaires interactifs & signatures                       | 8   | 5   | 63 %
+| § 6.4  | Formulaires interactifs & signatures                       | 8   | 6   | 75 %
 | § 6.5  | Actions (JavaScript, /AA, actions nommées)                 | 4   | 4   | 100 %
 | § 6.6  | Métadonnées (XMP, schéma d'extension PDF/A, pdfaid)        | 33  | 31  | 94 %
 | § 6.8  | Fichiers embarqués                                         | 2   | 1   | 50 %
 | § 6.9  | Contenu optionnel (calques OCG)                            | 4   | 3   | 75 %
 | § 6.10 | Présentations alternatives                                 | 2   | 2   | 100 %
 | § 6.11 | Clé Requirements                                          | 1   | 1   | 100 %
-| *Total* | *PDF/A-2b*                                                | *144* | *102* | *70 %*
+| *Total* | *PDF/A-2b*                                                | *144* | *103* | *71 %*
 |===
 
 NOTE: Chiffres régénérés le 2026-06-03. Lot 1 (§ 6.2.5 fonctions de
@@ -147,6 +147,17 @@ prefix → t4 ; category invalide → t9). 19 des 21 règles couvertes ;
 prédéfini ou défini) reporté — il faut la liste complète des schémas
 XMP 2005. § 6.6 passe de 12 à **31/33 (94 %)**, le total à
 **102/144 (70 %)**.
++
+Enfin lot § 6.4.3 (0.20.0) : § 6.4.3 t1 — le /ByteRange d'une
+signature doit couvrir tout le document (début à l'octet 0, second
+segment finissant en fin de fichier ; le trou est la zone /Contents).
+Calcul d'octets sur le dictionnaire de signature et la taille du
+fichier, sans cryptographie. § 6.4 passe à 6/8, le total à
+**103/144 (71 %)**. Reportés (exclus via `not_covered_tests`) :
+§ 6.4.3 t2-t3 (certificat de signature et nombre de SignerInfo dans le
+PKCS#7) — ils exigent un parseur ASN.1/DER qui a naturellement sa
+place dans le projet `aloli-crystal/pdf-signature`, et un corpus de
+PDF réellement signés.
 Couverture clause-level partielle assumée pour quelques clauses : les
 contrôles « octets bruts » ne sont pas (encore) implémentés faute de
 scanner d'octets, si bien que § 6.1.3 (on couvre t1 /ID + t2 /Encrypt,
@@ -165,7 +176,7 @@ XMP) — couverture clause-level partielle, comme annoncé.
 
 == Lecture honnête du chiffre
 
-* **70 % clause-level** est la couverture réelle de `pdf-validate`
+* **71 % clause-level** est la couverture réelle de `pdf-validate`
   vis-à-vis de la norme telle que veraPDF l'encode. Trois couches
   d'analyse ont été construites successivement : le *graphe d'objets*,
   un *scanner d'octets bruts* (0.10.0), un *tokeniseur lexical*
@@ -183,7 +194,7 @@ XMP) — couverture clause-level partielle, comme annoncé.
   précédemment : ces scores disent que sur les documents *générés
   par la suite ALOLI* et un échantillon tiers, `pdf-validate` donne
   le **même verdict** que veraPDF. C'est vrai parce que les défauts
-  que nos documents peuvent avoir tombent dans les 70 % couverts.
+  que nos documents peuvent avoir tombent dans les 71 % couverts.
 * Sur un PDF tiers exerçant une clause non couverte (transparence non
   isolée, annotation non conforme, signature, calque…), `pdf-validate`
   pourrait dire « conforme » là où veraPDF dirait « non conforme » :
@@ -277,9 +288,10 @@ XMP) — couverture clause-level partielle, comme annoncé.
 
 === Priorité basse (rare en pratique ALOLI)
 
-* **§ 6.4.3 signatures (crypto)** — /ByteRange couvre tout le fichier,
-  objet PKCS#7 (certificat, SignerInfo) ; nécessite un parseur DER/PKCS
-  et l'analyse des octets. À couvrir surtout pour des PDF tiers signés.
+* **§ 6.4.3 signatures (crypto, reste)** — le /ByteRange est vérifié
+  (t1) ; restent l'objet PKCS#7 (certificat de signature t2,
+  SignerInfo t3) qui nécessitent un parseur ASN.1/DER (idéalement
+  mutualisé avec `aloli-crystal/pdf-signature`) et un corpus signé.
 * **§ 6.6 schéma d'extension PDF/A** (§ 6.6.2.3, 21 règles) — la
   structure RDF des schémas d'extension (pdfaExtension / pdfaSchema /
   pdfaProperty / pdfaType / pdfaField, avec types et préfixes) ;

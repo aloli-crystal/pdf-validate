@@ -475,6 +475,37 @@ module PDF
         issues.uniq
       end
 
+      # Signature /ByteRange violations (ISO 19005-2 § 6.4.3, t1) : a
+      # signature's /ByteRange must cover the entire file — start at
+      # byte 0 and the second segment must end at end-of-file (the gap
+      # between the two segments is the /Contents hole). Needs the raw
+      # bytes ; empty when they are unavailable. (t2/t3 — the PKCS#7
+      # signing certificate and SignerInfo count — need an ASN.1/DER
+      # parser and live in the pdf-signature project.)
+      getter signature_byterange_violations : Array(String) do
+        issues = [] of String
+        raw = @raw
+        return issues unless raw
+        size = raw.size
+        each_object do |obj|
+          dict = obj.as?(PDF::Objects::Dictionary)
+          next unless dict && dict.has_key?("ByteRange") && dict.has_key?("Contents")
+          range = dict["ByteRange"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Array)
+          next unless range && range.size == 4
+          bounds = [] of Int64
+          range.each do |elem|
+            num = resolve(elem).as?(PDF::Objects::Number)
+            next unless num
+            bounds << num.to_i64
+          end
+          next unless bounds.size == 4
+          unless bounds[0] == 0 && (bounds[2] + bounds[3]) == size
+            issues << "signature /ByteRange does not cover the entire document"
+          end
+        end
+        issues.uniq
+      end
+
       # Dynamic / XFA form violations (ISO 19005-2 § 6.4.2) : the
       # AcroForm shall not contain /XFA (t1), and the catalog shall not
       # contain /NeedsRendering (t2).
