@@ -87,6 +87,12 @@ module PDF
         issues
       end
 
+      # PDF/A extension-schema structure violations in the XMP
+      # (ISO 19005-2 § 6.6.2.3, parsed by `XmpExtensionSchema`).
+      getter xmp_extension_schema_violations : Array(String) do
+        XmpExtensionSchema.new(xmp).validate.violations
+      end
+
       # Names of fonts whose glyph program is NOT embedded. PDF/A
       # requires every font to be embedded (ISO 19005-2 § 6.3.4-5) ;
       # veraPDF flags the standard-14 Type1 fonts and any descriptor

@@ -7,6 +7,53 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.19.0 — 2026-06-03 — XMP/RDF parser: PDF/A extension schema (§ 6.6.2.3)
+
+=== Added
+
+* **`XmpExtensionSchema` — an RDF parser for the PDF/A extension
+  schema** in the XMP (via `XML.parse`/libxml). It validates the
+  structure § 6.6.2.3 requires :
+** the `pdfaExtension:schemas` container is an `rdf:Bag` (t1) ;
+** `pdfaSchema` : `schema`/`namespaceURI`/`prefix` required (t2-t4),
+   `property`/`valueType` lists ;
+** `pdfaProperty` : `name`/`valueType`/`description` required,
+   `category` ∈ {internal, external} (t7-t10) ;
+** `pdfaType` : `type`/`namespaceURI`/`prefix`/`description` + `field`
+   (t11-t15) ;
+** `pdfaField` : `name`/`valueType`/`description` (t16-t18) ;
+** no undefined field in a resource (§ 6.6.2.3.2).
++
+The parser navigates by **namespace URI** (not by textual prefix), so
+locating a field also proves it sits in the right namespace. Both RDF
+serialisations (child element or attribute) are handled.
+* `Context` accessor : `xmp_extension_schema_violations`.
+* Parser unit specs (valid schema accepted, missing prefix → t4,
+  invalid category → t9, undefined field → § 6.6.2.3.2) + integration.
+
+=== Calibrated against veraPDF
+
+Developed with veraPDF 1.30.1 as the oracle : a forged *valid*
+extension schema passes all 21 § 6.6.2.3 rules in veraPDF **and**
+yields no violation here ; the invalid variants fail at exactly the
+same tests (t4 prefix, t9 category).
+
+=== Coverage (regenerated via `doc/gap-analysis/run.sh`)
+
+19 of the 21 § 6.6.2.3 rules covered (§ 6.6.2.3.2 + § 6.6.2.3.3).
+§ 6.6 Metadata rises from **12 to 31/33 (94 %)**. Total clause-level
+coverage : **83/144 (57 %) → 102/144 (70 %)**.
+
+Deferred (excluded via `not_covered_tests`) : § 6.6.2.3.1 t1-t2 (every
+XMP property must belong to a predefined or defined schema — needs the
+full XMP-2005 schema set).
+
+=== Cross-validation (unchanged)
+
+* Generated corpus (60) : **60/60** agreement with veraPDF 1.30.1 — no
+  false positives (our PDF/A-2b files embed no extension schema).
+* Ghostscript third-party fixture : stays conformant.
+
 == v0.18.0 — 2026-06-03 — Interactive forms (§ 6.4) and ICCBased profile (§ 6.2.4.2)
 
 === Added

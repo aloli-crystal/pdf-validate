@@ -43,12 +43,12 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | § 6.3  | Annotations                                                | 7   | 7   | 100 %
 | § 6.4  | Formulaires interactifs & signatures                       | 8   | 5   | 63 %
 | § 6.5  | Actions (JavaScript, /AA, actions nommées)                 | 4   | 4   | 100 %
-| § 6.6  | Métadonnées (XMP, schéma d'extension PDF/A, pdfaid)        | 33  | 12  | 36 %
+| § 6.6  | Métadonnées (XMP, schéma d'extension PDF/A, pdfaid)        | 33  | 31  | 94 %
 | § 6.8  | Fichiers embarqués                                         | 2   | 1   | 50 %
 | § 6.9  | Contenu optionnel (calques OCG)                            | 4   | 3   | 75 %
 | § 6.10 | Présentations alternatives                                 | 2   | 2   | 100 %
 | § 6.11 | Clé Requirements                                          | 1   | 1   | 100 %
-| *Total* | *PDF/A-2b*                                                | *144* | *83* | *57 %*
+| *Total* | *PDF/A-2b*                                                | *144* | *102* | *70 %*
 |===
 
 NOTE: Chiffres régénérés le 2026-06-03. Lot 1 (§ 6.2.5 fonctions de
@@ -135,6 +135,18 @@ classe et espace couleur valides). § 6.4 passe de 0 à 5/8, § 6.2 à
 PKCS#7 de la signature — parsing cryptographique) et § 6.2.4.2 t2
 (overprint mode ICCBased CMYK — état graphique).
 +
+Enfin **parseur XMP/RDF — schéma d'extension** (0.19.0,
+`XmpExtensionSchema`) : § 6.6.2.3 — structure RDF des schémas
+d'extension PDF/A (conteneur rdf:Bag, champs requis de pdfaSchema /
+pdfaProperty / pdfaType / pdfaField, catégorie internal/external, pas
+de champ non défini). Le parseur navigue par *URI de namespace* (et
+non par préfixe), ce qui valide d'un coup la présence du champ et son
+namespace. Calé sur veraPDF (schéma valide → 0 violation ; sans
+prefix → t4 ; category invalide → t9). 19 des 21 règles couvertes ;
+§ 6.6.2.3.1 (chaque propriété XMP doit appartenir à un schéma
+prédéfini ou défini) reporté — il faut la liste complète des schémas
+XMP 2005. § 6.6 passe de 12 à **31/33 (94 %)**, le total à
+**102/144 (70 %)**.
 Couverture clause-level partielle assumée pour quelques clauses : les
 contrôles « octets bruts » ne sont pas (encore) implémentés faute de
 scanner d'octets, si bien que § 6.1.3 (on couvre t1 /ID + t2 /Encrypt,
@@ -153,7 +165,7 @@ XMP) — couverture clause-level partielle, comme annoncé.
 
 == Lecture honnête du chiffre
 
-* **57 % clause-level** est la couverture réelle de `pdf-validate`
+* **70 % clause-level** est la couverture réelle de `pdf-validate`
   vis-à-vis de la norme telle que veraPDF l'encode. Trois couches
   d'analyse ont été construites successivement : le *graphe d'objets*,
   un *scanner d'octets bruts* (0.10.0), un *tokeniseur lexical*
@@ -171,7 +183,7 @@ XMP) — couverture clause-level partielle, comme annoncé.
   précédemment : ces scores disent que sur les documents *générés
   par la suite ALOLI* et un échantillon tiers, `pdf-validate` donne
   le **même verdict** que veraPDF. C'est vrai parce que les défauts
-  que nos documents peuvent avoir tombent dans les 57 % couverts.
+  que nos documents peuvent avoir tombent dans les 70 % couverts.
 * Sur un PDF tiers exerçant une clause non couverte (transparence non
   isolée, annotation non conforme, signature, calque…), `pdf-validate`
   pourrait dire « conforme » là où veraPDF dirait « non conforme » :
@@ -246,12 +258,13 @@ XMP) — couverture clause-level partielle, comme annoncé.
 * **§ 6.2.11 polices, vérifs fines** — largeurs de glyphes cohérentes
   (Widths vs hmtx), CIDSet/CIDToGIDMap, ToUnicode, encodages TrueType
   (MacRoman/WinAnsi). On vérifie l'embarquement, pas ces détails.
-* **§ 6.6 XMP (reste)** — on vérifie désormais l'en-tête du paquet
-  (pas de `bytes`/`encoding`), le XML bien formé et la conformance
-  A/B/U. Reste : cohérence XMP ↔ /Info, encodage UTF-8 explicite
-  (§ 6.6.2.1 t5), préfixes pdfaid (§ 6.6.4 t4-t7) et surtout le
-  **schéma d'extension PDF/A** (§ 6.6.2.3, 21 règles — gros morceau de
-  parsing RDF).
+* **§ 6.6 XMP (reste)** — l'en-tête du paquet (pas de
+  `bytes`/`encoding`), le XML bien formé, la conformance A/B/U et la
+  **structure du schéma d'extension PDF/A** (§ 6.6.2.3, parseur RDF)
+  sont couverts. Reste : § 6.6.2.3.1 (chaque propriété XMP doit
+  appartenir à un schéma prédéfini ou défini — liste XMP 2005),
+  cohérence XMP ↔ /Info, UTF-8 explicite (§ 6.6.2.1 t5), préfixes
+  pdfaid (§ 6.6.4 t4-t7).
 
 === Priorité moyenne
 

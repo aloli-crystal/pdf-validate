@@ -1,5 +1,49 @@
 require "./spec_helper"
 
+# A well-formed PDF/A extension schema (validated against veraPDF :
+# all § 6.6.2.3 rules pass). Mutated in specs to forge violations.
+VALID_EXTENSION_XMP = <<-XMP
+<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/">
+ <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <rdf:Description rdf:about="" xmlns:pdfaExtension="http://www.aiim.org/pdfa/ns/extension/" xmlns:pdfaSchema="http://www.aiim.org/pdfa/ns/schema#" xmlns:pdfaProperty="http://www.aiim.org/pdfa/ns/property#">
+   <pdfaExtension:schemas>
+    <rdf:Bag>
+     <rdf:li rdf:parseType="Resource">
+      <pdfaSchema:schema>Custom Schema</pdfaSchema:schema>
+      <pdfaSchema:namespaceURI>http://ns.example.com/custom/1.0/</pdfaSchema:namespaceURI>
+      <pdfaSchema:prefix>custom</pdfaSchema:prefix>
+      <pdfaSchema:property>
+       <rdf:Seq>
+        <rdf:li rdf:parseType="Resource">
+         <pdfaProperty:name>myProp</pdfaProperty:name>
+         <pdfaProperty:valueType>Text</pdfaProperty:valueType>
+         <pdfaProperty:category>internal</pdfaProperty:category>
+         <pdfaProperty:description>A custom property</pdfaProperty:description>
+        </rdf:li>
+       </rdf:Seq>
+      </pdfaSchema:property>
+     </rdf:li>
+    </rdf:Bag>
+   </pdfaExtension:schemas>
+  </rdf:Description>
+ </rdf:RDF>
+</x:xmpmeta>
+<?xpacket end="w"?>
+XMP
+
+# A PDF whose /Metadata carries an extension schema with an invalid
+# property category, violating § 6.6.2.3.
+private def pdf_with_invalid_extension_schema : Bytes
+  xmp = VALID_EXTENSION_XMP.gsub("internal", "bogus")
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R /Metadata 4 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+    {"<< /Type /Metadata /Subtype /XML >>", xmp.to_slice},
+  ] of ObjBody)
+end
+
 # Builds a PDF/A-2b-shaped document in memory (pdfaid + sRGB output
 # intent, no encryption). Mirrors what the pdf-a shard configures,
 # without depending on it.
@@ -582,6 +626,16 @@ describe PDF::Validate do
     failed.should_not contain("pdfa2-6.2.4.2-iccbased-profile")
   end
 
+  it "detects an invalid XMP extension schema (§ 6.6.2.3)" do
+    report = PDF::Validate.bytes(pdf_with_invalid_extension_schema, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.6.2.3-extension-schema")
+  end
+
+  it "does not flag a document with no extension schema (§ 6.6.2.3)" do
+    report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.6.2.3-extension-schema")
+  end
+
   it "does not flag a clean document under the byte-level § 6.1 rules" do
     report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
     failed = report.failures.map(&.rule.id)
@@ -756,5 +810,35 @@ describe PDF::Validate::ContentStreamScanner do
   it "accepts a standard rendering intent passed to ri" do
     scan = PDF::Validate::ContentStreamScanner.new("/Perceptual ri".to_slice).scan
     scan.invalid_rendering_intents.should be_empty
+  end
+end
+
+describe PDF::Validate::XmpExtensionSchema do
+  it "accepts a well-formed extension schema (matches veraPDF)" do
+    PDF::Validate::XmpExtensionSchema.new(VALID_EXTENSION_XMP).validate.violations.should be_empty
+  end
+
+  it "flags a missing pdfaSchema:prefix (§ 6.6.2.3.3 t4)" do
+    xmp = VALID_EXTENSION_XMP.gsub(/<pdfaSchema:prefix>[^<]*<\/pdfaSchema:prefix>/, "")
+    violations = PDF::Validate::XmpExtensionSchema.new(xmp).validate.violations
+    violations.any?(&.includes?("t4")).should be_true
+  end
+
+  it "flags an invalid property category (§ 6.6.2.3.3 t9)" do
+    xmp = VALID_EXTENSION_XMP.gsub("internal", "bogus")
+    violations = PDF::Validate::XmpExtensionSchema.new(xmp).validate.violations
+    violations.any?(&.includes?("t9")).should be_true
+  end
+
+  it "flags an undefined extension-schema field (§ 6.6.2.3.2)" do
+    xmp = VALID_EXTENSION_XMP.gsub(
+      "<pdfaSchema:prefix>custom</pdfaSchema:prefix>",
+      "<pdfaSchema:prefix>custom</pdfaSchema:prefix><pdfaSchema:bogusField>x</pdfaSchema:bogusField>")
+    violations = PDF::Validate::XmpExtensionSchema.new(xmp).validate.violations
+    violations.any?(&.includes?("6.6.2.3.2")).should be_true
+  end
+
+  it "reports nothing when there is no extension schema" do
+    PDF::Validate::XmpExtensionSchema.new("<x>no extension here</x>").validate.violations.should be_empty
   end
 end

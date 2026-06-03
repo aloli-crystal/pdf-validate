@@ -261,6 +261,13 @@
   check: xmp_property_equals
   args: ["pdfaid:part", "2"]
 
+- id: pdfa2-6.6.2.3-extension-schema
+  clause: "ISO 19005-2 § 6.6.2.3"
+  title: "PDF/A extension schema structure (pdfaSchema/Property/Type/Field) is well-formed"
+  severity: error
+  check: xmp_extension_schema_valid
+  args: []
+
 - id: pdfa2-6.6.4-conformance-level
   clause: "ISO 19005-2 § 6.6.4"
   title: "pdfaid:conformance is A, B or U"

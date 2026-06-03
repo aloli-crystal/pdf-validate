@@ -48,10 +48,13 @@ not_covered = {"6.2.8.3"}
 #   6.9    t3  — /Order must list every OCG (Order-tree walk)
 #   6.2.4.2 t2 — overprint mode for ICCBased CMYK (graphics state)
 #   6.4.3  t1-t3 — digital-signature ByteRange/PKCS#7 (crypto parsing)
+#   6.6.2.3.1 t1-t2 — every XMP property must belong to a predefined or
+#                     defined schema (needs the full XMP-2005 schema set)
 not_covered_tests = {
     ("6.1.13", "10"), ("6.2.2", "2"), ("6.8", "5"), ("6.9", "3"),
     ("6.2.4.2", "2"),
     ("6.4.3", "1"), ("6.4.3", "2"), ("6.4.3", "3"),
+    ("6.6.2.3.1", "1"), ("6.6.2.3.1", "2"),
 }
 
 def covered(cl, tn):

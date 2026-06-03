@@ -7,6 +7,55 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.19.0 — 2026-06-03 — Parseur XMP/RDF : schéma d'extension PDF/A (§ 6.6.2.3)
+
+=== Ajouté
+
+* **`XmpExtensionSchema` — un parseur RDF du schéma d'extension
+  PDF/A** dans le XMP (via `XML.parse`/libxml). Il valide la structure
+  imposée par § 6.6.2.3 :
+** conteneur `pdfaExtension:schemas` = `rdf:Bag` (t1) ;
+** `pdfaSchema` : champs `schema`/`namespaceURI`/`prefix` requis
+   (t2-t4), listes `property`/`valueType` ;
+** `pdfaProperty` : `name`/`valueType`/`description` requis,
+   `category` ∈ {internal, external} (t7-t10) ;
+** `pdfaType` : `type`/`namespaceURI`/`prefix`/`description` + `field`
+   (t11-t15) ;
+** `pdfaField` : `name`/`valueType`/`description` (t16-t18) ;
+** aucun champ non défini dans une ressource (§ 6.6.2.3.2).
++
+Le parseur navigue par **URI de namespace** (et non par préfixe
+textuel) : localiser un champ prouve donc aussi qu'il est dans le bon
+namespace. Les deux sérialisations RDF (élément enfant ou attribut)
+sont gérées.
+* Accesseur `Context` : `xmp_extension_schema_violations`.
+* Specs unitaires du parseur (schéma valide accepté, prefix manquant
+  → t4, category invalide → t9, champ inconnu → § 6.6.2.3.2) +
+  intégration.
+
+=== Calé sur veraPDF
+
+Le composant a été développé contre veraPDF 1.30.1 comme oracle : un
+schéma d'extension forgé *valide* passe les 21 règles § 6.6.2.3 de
+veraPDF **et** ne produit aucune violation chez nous ; les variantes
+invalides échouent exactement aux mêmes tests (t4 prefix, t9 category).
+
+=== Couverture (régénérée via `doc/gap-analysis/run.sh`)
+
+19 des 21 règles § 6.6.2.3 couvertes (§ 6.6.2.3.2 + § 6.6.2.3.3).
+§ 6.6 Métadonnées passe de **12 à 31/33 (94 %)**. Couverture
+clause-level totale : **83/144 (57 %) → 102/144 (70 %)**.
+
+Reporté (exclu via `not_covered_tests`) : § 6.6.2.3.1 t1-t2 (chaque
+propriété XMP doit appartenir à un schéma prédéfini ou défini — exige
+la liste complète des schémas XMP 2005).
+
+=== Validation croisée (inchangée)
+
+* Corpus généré (60) : **60/60** d'accord avec veraPDF 1.30.1 — aucun
+  faux positif (nos PDF/A-2b n'embarquent pas de schéma d'extension).
+* Fixture tierce Ghostscript : reste conforme.
+
 == v0.18.0 — 2026-06-03 — Formulaires interactifs (§ 6.4) et profil ICCBased (§ 6.2.4.2)
 
 === Ajouté

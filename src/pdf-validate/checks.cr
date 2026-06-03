@@ -236,6 +236,12 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : "ICCBased profile issue(s): #{bad.join(", ")}"
           )
+        when "xmp_extension_schema_valid"
+          bad = ctx.xmp_extension_schema_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : "XMP extension-schema issue(s): #{bad.join(", ")}"
+          )
         else
           raise "Unknown check #{check.inspect} (rule set references a primitive the engine does not implement)"
         end
