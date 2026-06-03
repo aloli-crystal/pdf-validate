@@ -196,6 +196,13 @@
   check: catalog_key_present
   args: ["Metadata"]
 
+- id: pdfa2-6.6.2.1-xmp-well-formed
+  clause: "ISO 19005-2 § 6.6.2.1"
+  title: "XMP packet: no bytes/encoding header attribute, well-formed XML"
+  severity: error
+  check: xmp_well_formed
+  args: []
+
 - id: pdfa2-6.6.4-pdfaid-part
   clause: "ISO 19005-2 § 6.6.4"
   title: "PDF/A version identification (pdfaid:part) present in XMP"
@@ -216,6 +223,13 @@
   severity: error
   check: xmp_property_equals
   args: ["pdfaid:part", "2"]
+
+- id: pdfa2-6.6.4-conformance-level
+  clause: "ISO 19005-2 § 6.6.4"
+  title: "pdfaid:conformance is A, B or U"
+  severity: error
+  check: pdfaid_conformance_valid
+  args: []
 
 # --- § 6.10 Alternate presentations ---
 

@@ -182,6 +182,18 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : "implementation limit(s) exceeded: #{bad.join(", ")}"
           )
+        when "xmp_well_formed"
+          bad = ctx.xmp_metadata_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : "XMP metadata issue(s): #{bad.join(", ")}"
+          )
+        when "pdfaid_conformance_valid"
+          bad = ctx.pdfaid_conformance_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
         else
           raise "Unknown check #{check.inspect} (rule set references a primitive the engine does not implement)"
         end

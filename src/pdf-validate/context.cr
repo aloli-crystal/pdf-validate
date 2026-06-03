@@ -1,3 +1,5 @@
+require "xml"
+
 module PDF
   module Validate
     # The parsed view of a PDF that checks evaluate against. Wraps a
@@ -44,6 +46,45 @@ module PDF
       # Resolves `obj` through indirect references via the reader.
       def resolve(obj : PDF::Objects::Base) : PDF::Objects::Base
         @reader.resolve(obj)
+      end
+
+      # XMP metadata stream violations (ISO 19005-2 § 6.6.2.1) : the
+      # XMP packet header (<?xpacket …?>) shall not carry a `bytes`
+      # (t2) or `encoding` (t3) attribute, and the packet shall be
+      # well-formed XML (t4). Empty when there is no XMP (its absence
+      # is covered by the presence rule).
+      getter xmp_metadata_violations : Array(String) do
+        issues = [] of String
+        text = xmp
+        return issues if text.empty?
+
+        if header = text.match(/<\?xpacket\b[^>]*\?>/)
+          issues << "XMP packet header uses the forbidden 'bytes' attribute" if header[0].includes?("bytes=")
+          issues << "XMP packet header uses the forbidden 'encoding' attribute" if header[0].includes?("encoding=")
+        end
+
+        begin
+          errors = XML.parse(text).errors
+          issues << "XMP is not well-formed XML" if errors && !errors.empty?
+        rescue
+          issues << "XMP is not well-formed XML"
+        end
+        issues
+      end
+
+      # pdfaid:conformance value violations (ISO 19005-2 § 6.6.4, t3) :
+      # if present, the conformance level shall be A, B or U. Matches
+      # both the element (<pdfaid:conformance>B</…>) and attribute
+      # (pdfaid:conformance="B") RDF serialisations.
+      getter pdfaid_conformance_violations : Array(String) do
+        issues = [] of String
+        if matched = xmp.match(/pdfaid:conformance\s*(?:>\s*([^<\s]+)|=\s*["']([^"']+)["'])/)
+          value = (matched[1]? || matched[2]?).try(&.strip)
+          if value && !["A", "B", "U"].includes?(value)
+            issues << "pdfaid:conformance is #{value.inspect} (must be A, B or U)"
+          end
+        end
+        issues
       end
 
       # Names of fonts whose glyph program is NOT embedded. PDF/A

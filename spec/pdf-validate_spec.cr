@@ -140,6 +140,24 @@ private def pdf_with_structure_violations : Bytes
   ] of ObjBody)
 end
 
+# A file whose XMP packet header carries a forbidden `bytes` attribute
+# (§ 6.6.2.1 t2) and declares an invalid conformance level (§ 6.6.4
+# t3). The XML itself is well-formed so only those two rules fire.
+private def pdf_with_bad_xmp : Bytes
+  xmp = %(<?xpacket begin="" bytes="42"?>) +
+        %(<x:xmpmeta xmlns:x="adobe:ns:meta/">) +
+        %(<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">) +
+        %(<rdf:Description rdf:about="" xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/" ) +
+        %(pdfaid:part="2" pdfaid:conformance="Z"/>) +
+        %(</rdf:RDF></x:xmpmeta><?xpacket end="w"?>)
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R /Metadata 4 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+    {"<< /Type /Metadata /Subtype /XML >>", xmp.to_slice},
+  ] of ObjBody)
+end
+
 # A parseable file whose page has a degenerate MediaBox (1×1 unit),
 # violating § 6.1.13 (t11 : boundaries must be ≥ 3 units).
 private def pdf_with_implementation_limit_violation : Bytes
@@ -369,6 +387,20 @@ describe PDF::Validate do
   it "does not flag a clean document under § 6.1.13" do
     report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
     report.failures.map(&.rule.id).should_not contain("pdfa2-6.1.13-implementation-limits")
+  end
+
+  it "detects forbidden XMP packet attributes and invalid conformance (§ 6.6)" do
+    report = PDF::Validate.bytes(pdf_with_bad_xmp, "pdf-a-2b")
+    failed = report.failures.map(&.rule.id)
+    failed.should contain("pdfa2-6.6.2.1-xmp-well-formed")
+    failed.should contain("pdfa2-6.6.4-conformance-level")
+  end
+
+  it "does not flag a clean XMP packet (§ 6.6)" do
+    report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
+    failed = report.failures.map(&.rule.id)
+    failed.should_not contain("pdfa2-6.6.2.1-xmp-well-formed")
+    failed.should_not contain("pdfa2-6.6.4-conformance-level")
   end
 
   it "does not flag a clean document under the byte-level § 6.1 rules" do

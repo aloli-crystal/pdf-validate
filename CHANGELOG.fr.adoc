@@ -7,6 +7,39 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.13.0 — 2026-06-03 — XMP renforcé (§ 6.6.2.1 / § 6.6.4)
+
+=== Ajouté
+
+* **`xmp_well_formed` (§ 6.6.2.1)** — l'en-tête du paquet XMP
+  (`<?xpacket …?>`) ne doit pas porter d'attribut `bytes` (t2) ni
+  `encoding` (t3), et le paquet doit être du XML bien formé (t4,
+  via `XML.parse` + inspection des erreurs libxml).
+* **`pdfaid_conformance_valid` (§ 6.6.4 t3)** — si présent,
+  `pdfaid:conformance` doit valoir A, B ou U (formes élément et
+  attribut RDF reconnues).
+* Accesseurs `Context` : `xmp_metadata_violations`,
+  `pdfaid_conformance_violations`.
+* Specs : paquet XMP avec attribut `bytes` interdit + conformance « Z »
+  invalide, et non-régression sur un XMP propre.
+
+=== Substance plutôt que métrique
+
+Le pourcentage de couverture **ne change pas** (49 %) : § 6.6.2.1 et
+§ 6.6.4 étaient déjà comptées au niveau clause. Auparavant le
+validateur n'attestait que la *présence* du flux et de pdfaid ; il en
+vérifie maintenant la *validité*. Ce lot réduit donc l'écart « optimiste
+clause-level vs réel » — un progrès de fond, pas de chiffre. (Restent,
+en § 6.6, la cohérence XMP ↔ /Info, l'UTF-8 explicite, les préfixes
+pdfaid et le schéma d'extension PDF/A § 6.6.2.3.)
+
+=== Validation croisée (inchangée)
+
+* Corpus généré (60) : **60/60** d'accord avec veraPDF 1.30.1 — aucun
+  faux positif (notre XMP n'a ni `bytes`/`encoding`, est bien formé,
+  conformance « B »).
+* Fixture tierce Ghostscript : reste conforme.
+
 == v0.12.0 — 2026-06-03 — Limites d'implémentation (§ 6.1.13)
 
 === Ajouté
