@@ -38,7 +38,7 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 |===
 | Section | Thème | Règles veraPDF | Couvertes | %
 
-| § 6.1  | Structure de fichier (trailer, /ID, chiffrement, xref)     | 27  | 3   | 11 %
+| § 6.1  | Structure de fichier (trailer, /ID, chiffrement, xref)     | 27  | 7   | 26 %
 | § 6.2  | Graphiques — couleur, polices, transparence, images        | 56  | 25  | 45 %
 | § 6.3  | Annotations                                                | 7   | 7   | 100 %
 | § 6.4  | Signatures numériques                                      | 8   | 0   | 0 %
@@ -46,9 +46,9 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | § 6.6  | Métadonnées (XMP, schéma d'extension PDF/A, pdfaid)        | 33  | 12  | 36 %
 | § 6.8  | Fichiers embarqués                                         | 2   | 0   | 0 %
 | § 6.9  | Contenu optionnel (calques OCG)                            | 4   | 0   | 0 %
-| § 6.10 | Présentations alternatives                                 | 2   | 0   | 0 %
-| § 6.11 | Clé Requirements                                          | 1   | 0   | 0 %
-| *Total* | *PDF/A-2b*                                                | *144* | *51* | *35 %*
+| § 6.10 | Présentations alternatives                                 | 2   | 2   | 100 %
+| § 6.11 | Clé Requirements                                          | 1   | 1   | 100 %
+| *Total* | *PDF/A-2b*                                                | *144* | *58* | *40 %*
 |===
 
 NOTE: Chiffres régénérés le 2026-06-03. Lot 1 (§ 6.2.5 fonctions de
@@ -58,6 +58,21 @@ rendering intent, § 6.2.8 clés du dictionnaire image), puis § 6.3
 Annotations en entier (§ 6.3.1 types autorisés, § 6.3.2 drapeaux /F,
 § 6.3.3 apparences). La section Graphiques passe de 7 à 25 règles
 couvertes, Annotations de 0 à 7 (100 %), le total de 26 à 51.
++
+Puis lot § 6.1/§ 6.10/§ 6.11 (2026-06-03) : § 6.1.7.1 (streams sans
+référence de fichier externe), § 6.1.7.2 (filtres autorisés, pas de
+LZWDecode), § 6.10 (pas d'/AlternatePresentations ni de /PresSteps),
+§ 6.11 (pas de /Requirements). § 6.10 et § 6.11 passent à 100 %, le
+total de 51 à 58 (40 %).
++
+Couverture clause-level partielle assumée pour quelques clauses : les
+contrôles « octets bruts » ne sont pas (encore) implémentés faute de
+scanner d'octets, si bien que § 6.1.3 (on couvre t1 /ID + t2 /Encrypt,
+pas t3 « pas de données après %%EOF ») et § 6.1.7.1 (on couvre t3
+fichier externe, pas t1 longueur /Length ni t2 EOL stream) sont
+comptées au niveau clause. De même § 6.2.5 (TR/TR2/HTP, pas les
+détails halftone) et § 6.6.4 (pdfaid présent, pas la validité fine du
+schéma). C'est la limite connue du décompte clause-level.
 Honnêteté du comptage : § 6.2.8.3 (codestream JPEG2000) est un
 descendant de § 6.2.8 mais un sous-domaine distinct *non* implémenté ;
 il est explicitement exclu du décompte dans `run.sh` pour ne pas
@@ -68,13 +83,13 @@ XMP) — couverture clause-level partielle, comme annoncé.
 
 == Lecture honnête du chiffre
 
-* **35 % clause-level** est la couverture réelle de `pdf-validate`
+* **40 % clause-level** est la couverture réelle de `pdf-validate`
   vis-à-vis de la norme telle que veraPDF l'encode.
 * Cela ne contredit PAS le « 60/60 » et le « 4/4 » mesurés
   précédemment : ces scores disent que sur les documents *générés
   par la suite ALOLI* et un échantillon tiers, `pdf-validate` donne
   le **même verdict** que veraPDF. C'est vrai parce que les défauts
-  que nos documents peuvent avoir tombent dans les 35 % couverts.
+  que nos documents peuvent avoir tombent dans les 40 % couverts.
 * Sur un PDF tiers exerçant une clause non couverte (transparence non
   isolée, annotation non conforme, signature, calque…), `pdf-validate`
   pourrait dire « conforme » là où veraPDF dirait « non conforme » :
@@ -82,8 +97,13 @@ XMP) — couverture clause-level partielle, comme annoncé.
 
 == Ce qui manque, par priorité
 
-==== Déjà couvert en § 6.2 (rappel)
+==== Déjà couvert (rappel)
 
+* **§ 6.1.7.1 / § 6.1.7.2** — un stream ne référence pas de fichier
+  externe (/F, /FFilter, /FDecodeParms) ; les filtres sont des filtres
+  standard ISO 32000-1 (LZWDecode interdit).
+* **§ 6.10 / § 6.11 (100 %)** — pas d'/AlternatePresentations (Names)
+  ni de /PresSteps (pages) ; pas de /Requirements dans le catalog.
 * **§ 6.2.3** — le profil ICC de l'output intent (DestOutputProfile)
   doit être de classe « prtr »/« mntr », en espace RGB/CMYK/GRAY,
   version ICC < 5 ; profil indirect partagé si plusieurs output
@@ -126,14 +146,17 @@ XMP) — couverture clause-level partielle, comme annoncé.
 
 === Priorité moyenne
 
-* **§ 6.1 structure** — détails xref/objets, permissions, en-tête
-  de version, objets libres.
+* **§ 6.1 structure (reste)** — contrôles d'octets bruts (en-tête
+  %PDF-1.n, commentaire binaire, pas de données après %%EOF, EOL des
+  streams, longueur /Length, espacement des objets indirects) ; ils
+  nécessitent un scanner d'octets, pas seulement le graphe d'objets.
+  Plus § 6.1.13 (limites d'implémentation : entiers/réels, longueurs
+  de noms/chaînes, bbox de page, ≤ 32 colorants DeviceN).
 * **§ 6.9 contenu optionnel** — clé /Name des configurations OCG.
 
 === Priorité basse (rare en pratique ALOLI)
 
-* **§ 6.4 signatures**, **§ 6.10 présentations alternatives**,
-  **§ 6.11 Requirements** — peu probables dans les documents générés ;
+* **§ 6.4 signatures** — peu probable dans les documents générés ;
   à couvrir surtout pour valider des PDF tiers.
 
 == Comment progresser (rappel de la boucle)

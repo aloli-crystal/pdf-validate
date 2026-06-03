@@ -128,6 +128,24 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : "annotation appearance issue(s): #{bad.join(", ")}"
           )
+        when "stream_filters_allowed"
+          bad = ctx.forbidden_stream_filters
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : "forbidden stream filter(s): #{bad.join(", ")}"
+          )
+        when "no_external_stream_files"
+          bad = ctx.external_stream_file_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : "external file reference in stream: #{bad.join(", ")}"
+          )
+        when "no_alternate_presentations"
+          bad = ctx.alternate_presentation_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : "alternate-presentation construct(s): #{bad.join(", ")}"
+          )
         else
           raise "Unknown check #{check.inspect} (rule set references a primitive the engine does not implement)"
         end

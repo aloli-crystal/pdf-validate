@@ -27,6 +27,20 @@
   check: trailer_key_present
   args: ["ID"]
 
+- id: pdfa2-6.1.7.1-no-external-streams
+  clause: "ISO 19005-2 § 6.1.7.1"
+  title: "A stream dictionary shall not reference an external file (/F, /FFilter, /FDecodeParms)"
+  severity: error
+  check: no_external_stream_files
+  args: []
+
+- id: pdfa2-6.1.7.2-stream-filters
+  clause: "ISO 19005-2 § 6.1.7.2"
+  title: "Stream filters shall be ISO 32000-1 standard filters (no LZWDecode)"
+  severity: error
+  check: stream_filters_allowed
+  args: []
+
 # --- § 6.2 Graphics (colour & fonts) ---
 
 - id: pdfa2-6.2.10-output-intent
@@ -160,3 +174,21 @@
   severity: error
   check: xmp_property_equals
   args: ["pdfaid:part", "2"]
+
+# --- § 6.10 Alternate presentations ---
+
+- id: pdfa2-6.10-no-alternate-presentations
+  clause: "ISO 19005-2 § 6.10"
+  title: "No /AlternatePresentations (Names) and no /PresSteps (pages)"
+  severity: error
+  check: no_alternate_presentations
+  args: []
+
+# --- § 6.11 Requirements ---
+
+- id: pdfa2-6.11-no-requirements
+  clause: "ISO 19005-2 § 6.11"
+  title: "The document Catalog shall not contain the /Requirements key"
+  severity: error
+  check: catalog_key_absent
+  args: ["Requirements"]

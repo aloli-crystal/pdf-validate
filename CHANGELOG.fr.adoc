@@ -7,6 +7,45 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.9.0 — 2026-06-03 — § 6.1 structure + § 6.10/§ 6.11 (sections complètes)
+
+=== Ajouté
+
+* **Règles structure de fichier et sections voisines**, toutes
+  vérifiables au niveau dictionnaire :
+** `no_external_stream_files` (§ 6.1.7.1, t3) — un dictionnaire de
+   flux ne doit pas référencer de fichier externe (/F, /FFilter,
+   /FDecodeParms).
+** `stream_filters_allowed` (§ 6.1.7.2) — les filtres /Filter doivent
+   être des filtres standard ISO 32000-1 ; LZWDecode (et tout filtre
+   hors-liste) est interdit.
+** `no_alternate_presentations` (§ 6.10) — pas d'/AlternatePresentations
+   dans le dictionnaire /Names, pas de /PresSteps dans une page.
+** `/Requirements` interdit dans le catalog (§ 6.11).
+* Nouveaux accesseurs `Context` : `forbidden_stream_filters`,
+  `external_stream_file_violations`, `alternate_presentation_violations`.
+* Specs de détection positive : un document combinant flux LZWDecode +
+  /F externe, /Requirements, /AlternatePresentations et /PresSteps.
+
+=== Couverture (régénérée via `doc/gap-analysis/run.sh`)
+
+§ 6.10 Présentations alternatives et § 6.11 Requirements passent à
+**100 %** ; § 6.1 Structure de 11 % à 26 %. Couverture clause-level
+totale : **51/144 (35 %) → 58/144 (40 %)**.
+
+Honnêteté du décompte : quelques clauses § 6.1 sont comptées au niveau
+clause alors que seuls leurs tests « dictionnaire » sont implémentés —
+les contrôles d'octets bruts (en-tête %PDF, pas de données après
+%%EOF, EOL/longueur des streams) demandent un scanner d'octets, prévu
+pour un lot ultérieur. § 6.1.13 (limites d'implémentation) et § 6.4
+(signatures) restent à faire.
+
+=== Validation croisée (inchangée)
+
+* Corpus généré (60) : **60/60** d'accord avec veraPDF 1.30.1 — aucun
+  faux positif des nouvelles règles.
+* Fixture tierce Ghostscript : reste conforme.
+
 == v0.8.0 — 2026-06-03 — § 6.3 Annotations (section complète)
 
 === Ajouté

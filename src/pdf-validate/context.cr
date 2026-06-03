@@ -282,6 +282,65 @@ module PDF
         issues.uniq
       end
 
+      # Stream filters PDF/A-2 permits (ISO 19005-2 § 6.1.7.2,
+      # referencing ISO 32000-1 Table 6). LZWDecode is notably
+      # forbidden ; any filter outside this list is a violation.
+      ALLOWED_STREAM_FILTERS = %w[
+        ASCIIHexDecode ASCII85Decode FlateDecode RunLengthDecode
+        CCITTFaxDecode DCTDecode JBIG2Decode JPXDecode Crypt
+      ]
+
+      # Stream /Filter values that are not on the permitted list
+      # (ISO 19005-2 § 6.1.7.2). /Filter may be a name or an array of
+      # names.
+      getter forbidden_stream_filters : Array(String) do
+        bad = [] of String
+        each_object do |obj|
+          stream = obj.as?(PDF::Objects::Stream)
+          next unless stream
+          filter = stream.dictionary["Filter"]?.try { |ref| resolve(ref) }
+          next unless filter
+          names = case filter
+                  when PDF::Objects::Name  then [filter.value]
+                  when PDF::Objects::Array then filter.compact_map(&.as?(PDF::Objects::Name).try(&.value))
+                  else                          [] of String
+                  end
+          names.each { |fname| bad << "/#{fname}" unless ALLOWED_STREAM_FILTERS.includes?(fname) }
+        end
+        bad.uniq
+      end
+
+      # Streams that reference an external file (ISO 19005-2 § 6.1.7.1,
+      # t3) : a stream dictionary shall not contain /F, /FFilter or
+      # /FDecodeParms.
+      getter external_stream_file_violations : Array(String) do
+        issues = [] of String
+        each_object do |obj|
+          stream = obj.as?(PDF::Objects::Stream)
+          next unless stream
+          dict = stream.dictionary
+          issues << "stream /F (external file)" if dict.has_key?("F")
+          issues << "stream /FFilter" if dict.has_key?("FFilter")
+          issues << "stream /FDecodeParms" if dict.has_key?("FDecodeParms")
+        end
+        issues.uniq
+      end
+
+      # Alternate-presentation constructs forbidden by PDF/A-2 :
+      # /AlternatePresentations in the document /Names dictionary
+      # (ISO 19005-2 § 6.10, t1) and /PresSteps in any Page
+      # (§ 6.10, t2).
+      getter alternate_presentation_violations : Array(String) do
+        issues = [] of String
+        if names = catalog["Names"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+          issues << "/Names /AlternatePresentations present" if names.has_key?("AlternatePresentations")
+        end
+        each_page do |page|
+          issues << "page /PresSteps present" if page.has_key?("PresSteps")
+        end
+        issues.uniq
+      end
+
       # Annotation subtypes ISO 32000-1 defines and PDF/A-2 permits
       # (ISO 19005-2 § 6.3.1). 3D/Sound/Screen/Movie and any undefined
       # subtype are forbidden.

@@ -122,6 +122,22 @@ private def pdf_with_annotation_violations : Bytes
   ] of ObjBody)
 end
 
+# Structural violations in one document : a content stream with a
+# forbidden LZWDecode filter (§ 6.1.7.2) and an external-file /F key
+# (§ 6.1.7.1), plus a catalog carrying /Requirements (§ 6.11),
+# /Names /AlternatePresentations and a page /PresSteps (§ 6.10).
+private def pdf_with_structure_violations : Bytes
+  lzw_stream = {"<< /Filter /LZWDecode /F (external.dat) >>", Bytes[0_u8]}
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R /Requirements [] " \
+    "/Names << /AlternatePresentations << >> >> >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] " \
+    "/PresSteps << >> /Contents 4 0 R >>",
+    lzw_stream,
+  ] of ObjBody)
+end
+
 # A conformant Text annotation : permitted subtype, /F with Print set
 # and the forbidden bits clear, /AP containing only /N whose value is
 # an appearance stream. Must trip none of the § 6.3 rules.
@@ -257,6 +273,24 @@ describe PDF::Validate do
     failed.should_not contain("pdfa2-6.3.1-annotation-types")
     failed.should_not contain("pdfa2-6.3.2-annotation-flags")
     failed.should_not contain("pdfa2-6.3.3-annotation-appearances")
+  end
+
+  it "detects § 6.1.7 / § 6.10 / § 6.11 structural violations" do
+    report = PDF::Validate.bytes(pdf_with_structure_violations, "pdf-a-2b")
+    failed = report.failures.map(&.rule.id)
+    failed.should contain("pdfa2-6.1.7.1-no-external-streams")
+    failed.should contain("pdfa2-6.1.7.2-stream-filters")
+    failed.should contain("pdfa2-6.10-no-alternate-presentations")
+    failed.should contain("pdfa2-6.11-no-requirements")
+  end
+
+  it "does not flag a clean document under the § 6.1/6.10/6.11 rules" do
+    report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
+    failed = report.failures.map(&.rule.id)
+    failed.should_not contain("pdfa2-6.1.7.1-no-external-streams")
+    failed.should_not contain("pdfa2-6.1.7.2-stream-filters")
+    failed.should_not contain("pdfa2-6.10-no-alternate-presentations")
+    failed.should_not contain("pdfa2-6.11-no-requirements")
   end
 
   it "produces JSON with the expected shape" do

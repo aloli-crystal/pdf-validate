@@ -7,6 +7,44 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.9.0 — 2026-06-03 — § 6.1 structure + § 6.10/§ 6.11 (complete sections)
+
+=== Added
+
+* **File-structure and adjacent-section rules**, all
+  dictionary-checkable :
+** `no_external_stream_files` (§ 6.1.7.1, t3) — a stream dictionary
+   shall not reference an external file (/F, /FFilter, /FDecodeParms).
+** `stream_filters_allowed` (§ 6.1.7.2) — /Filter values must be
+   ISO 32000-1 standard filters ; LZWDecode (and any off-list filter)
+   is forbidden.
+** `no_alternate_presentations` (§ 6.10) — no /AlternatePresentations
+   in the /Names dictionary, no /PresSteps in any page.
+** /Requirements forbidden in the catalog (§ 6.11).
+* New `Context` accessors : `forbidden_stream_filters`,
+  `external_stream_file_violations`, `alternate_presentation_violations`.
+* Positive-detection specs : one document combining an LZWDecode
+  stream + external /F, /Requirements, /AlternatePresentations and
+  /PresSteps.
+
+=== Coverage (regenerated via `doc/gap-analysis/run.sh`)
+
+§ 6.10 Alternate presentations and § 6.11 Requirements reach
+**100 %** ; § 6.1 File structure rises from 11 % to 26 %. Total
+clause-level coverage : **51/144 (35 %) → 58/144 (40 %)**.
+
+Counting honesty : a few § 6.1 clauses are counted at clause level
+though only their dictionary tests are implemented — the raw-byte
+checks (%PDF header, no data after %%EOF, stream EOL/Length) need a
+byte scanner, planned for a later batch. § 6.1.13 (implementation
+limits) and § 6.4 (signatures) remain to do.
+
+=== Cross-validation (unchanged)
+
+* Generated corpus (60) : **60/60** agreement with veraPDF 1.30.1 — no
+  false positives from the new rules.
+* Ghostscript third-party fixture : stays conformant.
+
 == v0.8.0 — 2026-06-03 — § 6.3 Annotations (complete section)
 
 === Added
