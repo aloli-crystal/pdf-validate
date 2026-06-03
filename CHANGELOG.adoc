@@ -7,6 +7,43 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.8.0 — 2026-06-03 — § 6.3 Annotations (complete section)
+
+=== Added
+
+* **The entire § 6.3 Annotations section** (3 clauses, 7 veraPDF
+  tests — 100 % of the section), all dictionary-checkable :
+** `annotation_types_allowed` (§ 6.3.1) — an annotation /Subtype must
+   be an ISO 32000-1 type ; 3D, Sound, Screen, Movie (and any
+   undefined type) are forbidden.
+** `annotation_flags_valid` (§ 6.3.2) — every annotation except Popup
+   must carry /F (t1) ; if present, the Print bit must be set and the
+   Invisible, Hidden, NoView and ToggleNoView bits clear (t2).
+** `annotation_appearances_valid` (§ 6.3.3) — an /AP appearance is
+   required except for a degenerate /Rect (width = height = 0), Popup
+   or Link (t1) ; /AP shall contain only /N (t2) ; for a Widget whose
+   field type is Btn, /N is an appearance subdictionary (t3),
+   otherwise /N is an appearance stream (t4).
+* New `Context` accessors : `forbidden_annotation_types`,
+  `annotation_flag_violations`, `annotation_appearance_violations`,
+  plus the private `each_page` / `each_annotation` walkers
+  (cycle-protected page-tree traversal) and `annotation_field_type`
+  (resolves /FT up the /Parent chain — AcroForm inheritance).
+* Positive-detection specs : a /Movie annotation with no /F and no /AP
+  (trips all three rules at once) and a conformant /Text annotation
+  (trips none).
+
+=== Coverage (regenerated via `doc/gap-analysis/run.sh`)
+
+§ 6.3 Annotations rises from **0 to 7/7 (100 %)**. Total clause-level
+coverage : **44/144 (30 %) → 51/144 (35 %)**.
+
+=== Cross-validation (unchanged)
+
+* Generated corpus (60) : **60/60** agreement with veraPDF 1.30.1 — no
+  false positives from the § 6.3 rules (the corpus has no annotations).
+* Ghostscript third-party fixture : stays conformant.
+
 == v0.7.0 — 2026-06-03 — § 6.2 batch 2 (images, ICC profile, rendering intent)
 
 === Added

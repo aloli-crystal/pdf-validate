@@ -40,7 +40,7 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 
 | § 6.1  | Structure de fichier (trailer, /ID, chiffrement, xref)     | 27  | 3   | 11 %
 | § 6.2  | Graphiques — couleur, polices, transparence, images        | 56  | 25  | 45 %
-| § 6.3  | Annotations                                                | 7   | 0   | 0 %
+| § 6.3  | Annotations                                                | 7   | 7   | 100 %
 | § 6.4  | Signatures numériques                                      | 8   | 0   | 0 %
 | § 6.5  | Actions (JavaScript, /AA, actions nommées)                 | 4   | 4   | 100 %
 | § 6.6  | Métadonnées (XMP, schéma d'extension PDF/A, pdfaid)        | 33  | 12  | 36 %
@@ -48,14 +48,16 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | § 6.9  | Contenu optionnel (calques OCG)                            | 4   | 0   | 0 %
 | § 6.10 | Présentations alternatives                                 | 2   | 0   | 0 %
 | § 6.11 | Clé Requirements                                          | 1   | 0   | 0 %
-| *Total* | *PDF/A-2b*                                                | *144* | *44* | *30 %*
+| *Total* | *PDF/A-2b*                                                | *144* | *51* | *35 %*
 |===
 
 NOTE: Chiffres régénérés le 2026-06-03. Lot 1 (§ 6.2.5 fonctions de
 transfert, § 6.2.9 XObjects PostScript/référence/OPI, § 6.2.10 blend
-modes) puis lot 2 (§ 6.2.3 profil ICC de l'output intent, § 6.2.6
-rendering intent, § 6.2.8 clés du dictionnaire image). La section
-Graphiques passe de 7 à 25 règles couvertes, le total de 26 à 44.
+modes), lot 2 (§ 6.2.3 profil ICC de l'output intent, § 6.2.6
+rendering intent, § 6.2.8 clés du dictionnaire image), puis § 6.3
+Annotations en entier (§ 6.3.1 types autorisés, § 6.3.2 drapeaux /F,
+§ 6.3.3 apparences). La section Graphiques passe de 7 à 25 règles
+couvertes, Annotations de 0 à 7 (100 %), le total de 26 à 51.
 Honnêteté du comptage : § 6.2.8.3 (codestream JPEG2000) est un
 descendant de § 6.2.8 mais un sous-domaine distinct *non* implémenté ;
 il est explicitement exclu du décompte dans `run.sh` pour ne pas
@@ -66,13 +68,13 @@ XMP) — couverture clause-level partielle, comme annoncé.
 
 == Lecture honnête du chiffre
 
-* **30 % clause-level** est la couverture réelle de `pdf-validate`
+* **35 % clause-level** est la couverture réelle de `pdf-validate`
   vis-à-vis de la norme telle que veraPDF l'encode.
 * Cela ne contredit PAS le « 60/60 » et le « 4/4 » mesurés
   précédemment : ces scores disent que sur les documents *générés
   par la suite ALOLI* et un échantillon tiers, `pdf-validate` donne
   le **même verdict** que veraPDF. C'est vrai parce que les défauts
-  que nos documents peuvent avoir tombent dans les 30 % couverts.
+  que nos documents peuvent avoir tombent dans les 35 % couverts.
 * Sur un PDF tiers exerçant une clause non couverte (transparence non
   isolée, annotation non conforme, signature, calque…), `pdf-validate`
   pourrait dire « conforme » là où veraPDF dirait « non conforme » :
@@ -97,6 +99,12 @@ XMP) — couverture clause-level partielle, comme annoncé.
   `/Subtype2 /PS`), de XObject de référence (`/Ref`) ni d'`/OPI`.
 * **§ 6.2.10 (test 1)** — les blend modes (`/BM`) d'un ExtGState
   doivent être des modes standard ISO 32000-1.
+* **§ 6.3 Annotations (100 %)** — § 6.3.1 sous-types autorisés (pas
+  3D/Sound/Screen/Movie), § 6.3.2 drapeaux /F (présent sauf Popup ;
+  Print posé, Hidden/Invisible/NoView/ToggleNoView à zéro), § 6.3.3
+  apparences (/AP requise sauf Popup/Link/Rect dégénéré ; /AP ne
+  contient que /N ; /N = sous-dictionnaire pour un Widget/Btn, flux
+  d'apparence sinon).
 
 === Priorité haute (fréquent, fort impact conformité)
 
@@ -118,8 +126,6 @@ XMP) — couverture clause-level partielle, comme annoncé.
 
 === Priorité moyenne
 
-* **§ 6.3 annotations** — types autorisés, drapeaux (pas /Hidden,
-  Print requis), apparences normales présentes.
 * **§ 6.1 structure** — détails xref/objets, permissions, en-tête
   de version, objets libres.
 * **§ 6.9 contenu optionnel** — clé /Name des configurations OCG.

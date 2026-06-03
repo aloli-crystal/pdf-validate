@@ -282,6 +282,145 @@ module PDF
         issues.uniq
       end
 
+      # Annotation subtypes ISO 32000-1 defines and PDF/A-2 permits
+      # (ISO 19005-2 § 6.3.1). 3D/Sound/Screen/Movie and any undefined
+      # subtype are forbidden.
+      ANNOTATION_SUBTYPES = %w[
+        Text Link FreeText Line Square Circle Polygon PolyLine Highlight
+        Underline Squiggly StrikeOut Stamp Caret Ink Popup FileAttachment
+        Widget PrinterMark TrapNet Watermark Redact
+      ]
+
+      # Annotation subtypes that are not on the permitted list
+      # (ISO 19005-2 § 6.3.1).
+      getter forbidden_annotation_types : Array(String) do
+        bad = [] of String
+        each_annotation do |annot|
+          sub = annot["Subtype"]?.try(&.as?(PDF::Objects::Name)).try(&.value)
+          next unless sub
+          bad << "/#{sub}" unless ANNOTATION_SUBTYPES.includes?(sub)
+        end
+        bad.uniq
+      end
+
+      # Annotation /F flag violations (ISO 19005-2 § 6.3.2) : every
+      # annotation except Popup must carry /F (t1) ; if present, the
+      # Print bit (4) must be set and Invisible (1), Hidden (2),
+      # NoView (32) and ToggleNoView (256) must be clear (t2).
+      getter annotation_flag_violations : Array(String) do
+        issues = [] of String
+        each_annotation do |annot|
+          sub = annot["Subtype"]?.try(&.as?(PDF::Objects::Name)).try(&.value)
+          flags = annot["F"]?.try(&.as?(PDF::Objects::Number)).try(&.to_i64)
+          if flags.nil?
+            issues << "annotation /#{sub || "?"} is missing /F flags" unless sub == "Popup"
+            next
+          end
+          issues << "annotation /#{sub} /F Print bit not set" if (flags & 4) == 0
+          issues << "annotation /#{sub} /F Invisible bit set" if (flags & 1) != 0
+          issues << "annotation /#{sub} /F Hidden bit set" if (flags & 2) != 0
+          issues << "annotation /#{sub} /F NoView bit set" if (flags & 32) != 0
+          issues << "annotation /#{sub} /F ToggleNoView bit set" if (flags & 256) != 0
+        end
+        issues.uniq
+      end
+
+      # Annotation appearance violations (ISO 19005-2 § 6.3.3) : an
+      # appearance dictionary (/AP) is required except for a degenerate
+      # Rect (width == height == 0), Popup or Link (t1) ; /AP shall
+      # contain only the /N key (t2) ; for a Widget whose field type is
+      # Btn, /N shall be an appearance subdictionary (t3), otherwise /N
+      # shall be an appearance stream (t4).
+      getter annotation_appearance_violations : Array(String) do
+        issues = [] of String
+        each_annotation do |annot|
+          sub = annot["Subtype"]?.try(&.as?(PDF::Objects::Name)).try(&.value)
+          ap = annot["AP"]?.try { |obj| resolve(obj) }.as?(PDF::Objects::Dictionary)
+
+          unless ap || sub == "Popup" || sub == "Link" || annotation_rect_degenerate?(annot)
+            issues << "annotation /#{sub || "?"} has no appearance (/AP)"
+            next
+          end
+          next unless ap
+
+          extra = ap.keys.map(&.value).reject { |key| key == "N" }
+          issues << "annotation /#{sub} /AP has keys other than /N (#{extra.join(", ")})" unless extra.empty?
+
+          appearance = ap["N"]?.try { |obj| resolve(obj) }
+          next unless appearance
+          if sub == "Widget" && annotation_field_type(annot) == "Btn"
+            issues << "Widget/Btn /N must be an appearance subdictionary" unless appearance.is_a?(PDF::Objects::Dictionary)
+          else
+            issues << "annotation /#{sub} /N must be an appearance stream" unless appearance.is_a?(PDF::Objects::Stream)
+          end
+        end
+        issues.uniq
+      end
+
+      # `true` if the annotation's /Rect is degenerate (zero width and
+      # height) — such annotations are exempt from the appearance
+      # requirement (ISO 19005-2 § 6.3.3, t1).
+      private def annotation_rect_degenerate?(annot : PDF::Objects::Dictionary) : Bool
+        rect = annot["Rect"]?.try { |obj| resolve(obj) }.as?(PDF::Objects::Array)
+        return false unless rect && rect.size == 4
+        coords = [] of Float64
+        rect.each do |elem|
+          num = resolve(elem).as?(PDF::Objects::Number)
+          return false unless num
+          coords << num.to_f64
+        end
+        (coords[2] - coords[0]) == 0 && (coords[3] - coords[1]) == 0
+      end
+
+      # Resolves an annotation's field type (/FT), following the
+      # /Parent chain (AcroForm field hierarchy) since a Widget may
+      # inherit it. Bounded to avoid cycles.
+      private def annotation_field_type(annot : PDF::Objects::Dictionary) : String?
+        node = annot
+        4.times do
+          if ft = node["FT"]?.try(&.as?(PDF::Objects::Name)).try(&.value)
+            return ft
+          end
+          parent = node["Parent"]?.try { |obj| resolve(obj) }.as?(PDF::Objects::Dictionary)
+          return nil unless parent
+          node = parent
+        end
+        nil
+      end
+
+      # Yields every `/Type /Page` dictionary, walking the page tree
+      # from the catalog /Pages node (cycle-protected).
+      private def each_page(&)
+        root = catalog["Pages"]?
+        return unless root
+        visited = Set(UInt64).new
+        stack = [resolve(root)]
+        until stack.empty?
+          node = stack.pop
+          dict = node.as?(PDF::Objects::Dictionary)
+          next unless dict
+          next unless visited.add?(dict.object_id)
+          if dict["Type"]?.try(&.as?(PDF::Objects::Name)).try(&.to_pdf) == "/Page"
+            yield dict
+          elsif kids = dict["Kids"]?.try { |obj| resolve(obj) }.as?(PDF::Objects::Array)
+            kids.each { |kid| stack << resolve(kid) }
+          end
+        end
+      end
+
+      # Yields every annotation dictionary reachable from a page's
+      # /Annots array.
+      private def each_annotation(&)
+        each_page do |page|
+          annots = page["Annots"]?.try { |obj| resolve(obj) }.as?(PDF::Objects::Array)
+          next unless annots
+          annots.each do |entry|
+            annot = resolve(entry).as?(PDF::Objects::Dictionary)
+            yield annot if annot
+          end
+        end
+      end
+
       # Yields every `/Type /ExtGState` dictionary reachable.
       private def each_extgstate(&)
         each_object do |obj|

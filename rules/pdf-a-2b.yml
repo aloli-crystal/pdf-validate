@@ -92,6 +92,29 @@
   check: image_dictionary_keys_valid
   args: []
 
+# --- § 6.3 Annotations ---
+
+- id: pdfa2-6.3.1-annotation-types
+  clause: "ISO 19005-2 § 6.3.1"
+  title: "Annotation subtypes shall be ISO 32000-1 types (no 3D/Sound/Screen/Movie)"
+  severity: error
+  check: annotation_types_allowed
+  args: []
+
+- id: pdfa2-6.3.2-annotation-flags
+  clause: "ISO 19005-2 § 6.3.2"
+  title: "Annotations carry /F (except Popup); Print set, Hidden/Invisible/NoView/ToggleNoView clear"
+  severity: error
+  check: annotation_flags_valid
+  args: []
+
+- id: pdfa2-6.3.3-annotation-appearances
+  clause: "ISO 19005-2 § 6.3.3"
+  title: "Annotations have a conformant appearance (/AP with only /N; correct N type)"
+  severity: error
+  check: annotation_appearances_valid
+  args: []
+
 # --- § 6.5 Actions ---
 
 - id: pdfa2-6.5.1-no-javascript

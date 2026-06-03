@@ -110,6 +110,24 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : "OutputIntent/DestOutputProfile issue(s): #{bad.join(", ")}"
           )
+        when "annotation_types_allowed"
+          bad = ctx.forbidden_annotation_types
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : "forbidden annotation subtype(s): #{bad.join(", ")}"
+          )
+        when "annotation_flags_valid"
+          bad = ctx.annotation_flag_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : "annotation /F flag issue(s): #{bad.join(", ")}"
+          )
+        when "annotation_appearances_valid"
+          bad = ctx.annotation_appearance_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : "annotation appearance issue(s): #{bad.join(", ")}"
+          )
         else
           raise "Unknown check #{check.inspect} (rule set references a primitive the engine does not implement)"
         end

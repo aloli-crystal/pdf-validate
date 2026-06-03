@@ -7,6 +7,45 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.8.0 — 2026-06-03 — § 6.3 Annotations (section complète)
+
+=== Ajouté
+
+* **La section § 6.3 Annotations en entier** (3 clauses, 7 tests
+  veraPDF — couverture 100 % de la section), toutes vérifiables au
+  niveau dictionnaire :
+** `annotation_types_allowed` (§ 6.3.1) — le /Subtype d'une annotation
+   doit être un type ISO 32000-1 ; les types 3D, Sound, Screen, Movie
+   (et tout type non défini) sont interdits.
+** `annotation_flags_valid` (§ 6.3.2) — toute annotation sauf Popup
+   doit porter /F (t1) ; si présent, le bit Print doit être posé et
+   les bits Invisible, Hidden, NoView et ToggleNoView à zéro (t2).
+** `annotation_appearances_valid` (§ 6.3.3) — une apparence /AP est
+   requise sauf pour un /Rect dégénéré (largeur = hauteur = 0), Popup
+   ou Link (t1) ; /AP ne doit contenir que /N (t2) ; pour un Widget
+   dont le type de champ est Btn, /N est un sous-dictionnaire
+   d'apparence (t3), sinon /N est un flux d'apparence (t4).
+* Nouveaux accesseurs `Context` : `forbidden_annotation_types`,
+  `annotation_flag_violations`, `annotation_appearance_violations`,
+  plus les walkers privés `each_page` / `each_annotation` (parcours de
+  l'arbre de pages avec protection de cycle) et `annotation_field_type`
+  (résout /FT en remontant la chaîne /Parent — héritage AcroForm).
+* Specs de détection positive : une annotation /Movie sans /F ni /AP
+  (déclenche les trois règles d'un coup) et une annotation /Text
+  conforme (n'en déclenche aucune).
+
+=== Couverture (régénérée via `doc/gap-analysis/run.sh`)
+
+§ 6.3 Annotations passe de **0 à 7/7 (100 %)**. Couverture
+clause-level totale : **44/144 (30 %) → 51/144 (35 %)**.
+
+=== Validation croisée (inchangée)
+
+* Corpus généré (60) : **60/60** d'accord avec veraPDF 1.30.1 — aucun
+  faux positif des règles § 6.3 (le corpus ne contient pas
+  d'annotations).
+* Fixture tierce Ghostscript : reste conforme.
+
 == v0.7.0 — 2026-06-03 — § 6.2 lot 2 (images, profil ICC, rendering intent)
 
 === Ajouté

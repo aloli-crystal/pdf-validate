@@ -110,6 +110,32 @@ private def pdf_with_bad_output_intent : Bytes
   ] of ObjBody)
 end
 
+# A single Movie annotation, with no /F and no /AP and a non-degenerate
+# /Rect, violates all three § 6.3 rules at once : forbidden subtype
+# (§ 6.3.1), missing flags (§ 6.3.2), missing appearance (§ 6.3.3).
+private def pdf_with_annotation_violations : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Annots [4 0 R] >>",
+    "<< /Type /Annot /Subtype /Movie /Rect [0 0 100 100] >>",
+  ] of ObjBody)
+end
+
+# A conformant Text annotation : permitted subtype, /F with Print set
+# and the forbidden bits clear, /AP containing only /N whose value is
+# an appearance stream. Must trip none of the § 6.3 rules.
+private def pdf_with_conformant_annotation : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Annots [4 0 R] >>",
+    "<< /Type /Annot /Subtype /Text /Rect [0 0 100 100] /F 4 " \
+    "/AP << /N 5 0 R >> >>",
+    {"<< /Type /XObject /Subtype /Form /BBox [0 0 100 100] >>", Bytes[0_u8]},
+  ] of ObjBody)
+end
+
 describe PDF::Validate::RuleSet do
   it "knows the pdf-a-2b profile" do
     PDF::Validate::RuleSet.profiles.should contain("pdf-a-2b")
@@ -215,6 +241,22 @@ describe PDF::Validate do
     failed.should_not contain("pdfa2-6.2.3-output-intent-profile")
     failed.should_not contain("pdfa2-6.2.6-rendering-intent")
     failed.should_not contain("pdfa2-6.2.8-image-dictionary-keys")
+  end
+
+  it "detects § 6.3 annotation violations (type, flags, appearance)" do
+    report = PDF::Validate.bytes(pdf_with_annotation_violations, "pdf-a-2b")
+    failed = report.failures.map(&.rule.id)
+    failed.should contain("pdfa2-6.3.1-annotation-types")
+    failed.should contain("pdfa2-6.3.2-annotation-flags")
+    failed.should contain("pdfa2-6.3.3-annotation-appearances")
+  end
+
+  it "does not flag a conformant annotation under the § 6.3 rules" do
+    report = PDF::Validate.bytes(pdf_with_conformant_annotation, "pdf-a-2b")
+    failed = report.failures.map(&.rule.id)
+    failed.should_not contain("pdfa2-6.3.1-annotation-types")
+    failed.should_not contain("pdfa2-6.3.2-annotation-flags")
+    failed.should_not contain("pdfa2-6.3.3-annotation-appearances")
   end
 
   it "produces JSON with the expected shape" do
