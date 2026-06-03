@@ -145,6 +145,51 @@ module PDF
         issues.uniq
       end
 
+      # Type0 font encoding violations (ISO 19005-2 § 6.2.11.3.1) : the
+      # CMap must be Identity-H/V, or its /CIDSystemInfo (Registry +
+      # Ordering) must match the descendant CIDFont's. Predefined named
+      # CMaps other than Identity are accepted conservatively (their
+      # registry/ordering would need the CMap tables).
+      getter type0_encoding_violations : Array(String) do
+        issues = [] of String
+        each_font_dict do |dict|
+          next unless dict["Subtype"]?.try(&.as?(PDF::Objects::Name)).try(&.value) == "Type0"
+          encoding = dict["Encoding"]?.try { |ref| resolve(ref) }
+          name = encoding.as?(PDF::Objects::Name).try(&.value)
+          next if name == "Identity-H" || name == "Identity-V"
+          cmap_stream = encoding.as?(PDF::Objects::Stream)
+          next unless cmap_stream
+
+          cmap_info = registry_ordering(cmap_stream.dictionary["CIDSystemInfo"]?)
+          cidfont = descendant_cidfont(dict)
+          next unless cidfont
+          font_info = registry_ordering(cidfont["CIDSystemInfo"]?)
+          next unless cmap_info && font_info
+          unless cmap_info == font_info
+            issues << "Type0 CMap CIDSystemInfo #{cmap_info} does not match the CIDFont #{font_info}"
+          end
+        end
+        issues.uniq
+      end
+
+      # The descendant CIDFont of a Type0 font (/DescendantFonts[0]).
+      private def descendant_cidfont(type0 : PDF::Objects::Dictionary) : PDF::Objects::Dictionary?
+        list = type0["DescendantFonts"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Array)
+        return nil if list.nil? || list.empty?
+        resolve(list[0]).as?(PDF::Objects::Dictionary)
+      end
+
+      # The {Registry, Ordering} pair of a /CIDSystemInfo value, or nil.
+      private def registry_ordering(value : PDF::Objects::Base?) : Tuple(String, String)?
+        return nil unless value
+        info = resolve(value).as?(PDF::Objects::Dictionary)
+        return nil unless info
+        registry = info["Registry"]?.try(&.as?(PDF::Objects::Str)).try(&.value)
+        ordering = info["Ordering"]?.try(&.as?(PDF::Objects::Str)).try(&.value)
+        return nil unless registry && ordering
+        {registry, ordering}
+      end
+
       # CIDFontType2 CIDToGIDMap violations (ISO 19005-2 § 6.2.11.3.2) :
       # a CIDFontType2 with an embedded program must carry /CIDToGIDMap.
       getter cidfont_gidmap_violations : Array(String) do

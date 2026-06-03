@@ -127,6 +127,13 @@
   check: font_dictionaries_valid
   args: []
 
+- id: pdfa2-6.2.11.3.1-type0-encoding
+  clause: "ISO 19005-2 § 6.2.11.3.1"
+  title: "Type0 CMap is Identity-H/V or shares the CIDFont's Registry/Ordering"
+  severity: error
+  check: type0_encoding_valid
+  args: []
+
 - id: pdfa2-6.2.11.3.2-cidtogidmap
   clause: "ISO 19005-2 § 6.2.11.3.2"
   title: "An embedded CIDFontType2 shall contain /CIDToGIDMap"

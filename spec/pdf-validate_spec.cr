@@ -211,6 +211,37 @@ private def pdf_with_bad_font : Bytes
   ] of ObjBody)
 end
 
+# A Type0 font whose CMap-stream /CIDSystemInfo (Adobe-GB1) does not
+# match the descendant CIDFont (Adobe-Japan1), violating § 6.2.11.3.1.
+private def pdf_with_mismatched_cidsysteminfo : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] " \
+    "/Resources << /Font << /F1 4 0 R >> >> >>",
+    "<< /Type /Font /Subtype /Type0 /BaseFont /Foo /Encoding 7 0 R /DescendantFonts [5 0 R] >>",
+    "<< /Type /Font /Subtype /CIDFontType2 /BaseFont /Foo " \
+    "/CIDSystemInfo << /Registry (Adobe) /Ordering (Japan1) /Supplement 0 >> " \
+    "/FontDescriptor 6 0 R /CIDToGIDMap /Identity >>",
+    "<< /Type /FontDescriptor /FontName /Foo >>",
+    {"<< /Type /CMap /CMapName /Custom /CIDSystemInfo << /Registry (Adobe) /Ordering (GB1) /Supplement 0 >> /WMode 0 >>", "begincmap".to_slice},
+  ] of ObjBody)
+end
+
+# A Type0 font with the Identity-H encoding (the common case), which
+# must NOT trip § 6.2.11.3.1.
+private def pdf_with_identity_type0 : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] " \
+    "/Resources << /Font << /F1 4 0 R >> >> >>",
+    "<< /Type /Font /Subtype /Type0 /BaseFont /Foo /Encoding /Identity-H /DescendantFonts [5 0 R] >>",
+    "<< /Type /Font /Subtype /CIDFontType2 /BaseFont /Foo " \
+    "/CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /CIDToGIDMap /Identity >>",
+  ] of ObjBody)
+end
+
 # A CIDFontType2 with an embedded /FontFile2 but no /CIDToGIDMap,
 # violating § 6.2.11.3.2.
 private def pdf_with_cidfont_no_gidmap : Bytes
@@ -678,6 +709,16 @@ describe PDF::Validate do
   it "detects a CIDFontType2 without /CIDToGIDMap (§ 6.2.11.3.2)" do
     report = PDF::Validate.bytes(pdf_with_cidfont_no_gidmap, "pdf-a-2b")
     report.failures.map(&.rule.id).should contain("pdfa2-6.2.11.3.2-cidtogidmap")
+  end
+
+  it "detects a Type0 CMap whose CIDSystemInfo mismatches the CIDFont (§ 6.2.11.3.1)" do
+    report = PDF::Validate.bytes(pdf_with_mismatched_cidsysteminfo, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.2.11.3.1-type0-encoding")
+  end
+
+  it "does not flag an Identity-H Type0 font (§ 6.2.11.3.1)" do
+    report = PDF::Validate.bytes(pdf_with_identity_type0, "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.11.3.1-type0-encoding")
   end
 
   it "does not flag a clean document under § 6.2.11" do

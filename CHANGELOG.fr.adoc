@@ -7,6 +7,29 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.22.0 — 2026-06-04 — Cohérence CMap / CIDSystemInfo des polices Type0 (§ 6.2.11.3.1)
+
+=== Ajouté
+
+* **`type0_encoding_valid` (§ 6.2.11.3.1)** — lorsque l'/Encoding
+  d'une police Type0 est un flux CMap embarqué (et non Identity-H /
+  Identity-V), son /CIDSystemInfo (Registry + Ordering) doit
+  correspondre à celui de la CIDFont descendante. Une divergence
+  réinterpréterait les CID dans une autre collection de caractères.
+  Les encodages Identity — le cas courant des polices produites par le
+  shard `pdf` — sont hors champ et passent sans faux positif.
+* Accesseur `Context` : `type0_encoding_violations`, avec les aides
+  privées `descendant_cidfont` et `registry_ordering`.
+* Specs : une police Type0 dont la CMap déclare Adobe-GB1 alors que la
+  CIDFont déclare Adobe-Japan1 (détectée) ; une police Type0
+  Identity-H (aucune violation).
+
+=== Couverture (régénérée via `doc/gap-analysis/run.sh`)
+
+§ 6.2 passe à **36/56**. Couverture clause-level totale : **111/144 →
+112/144**. Le plancher de 77 % ne bouge pas, mais une règle de plus
+est réellement vérifiée plutôt que comptée au niveau clause.
+
 == v0.21.0 — 2026-06-03 — Dictionnaires de police (§ 6.2.11.2 / § 6.2.11.3.2)
 
 === Ajouté

@@ -7,6 +7,29 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.22.0 — 2026-06-04 — Type0 CMap / CIDSystemInfo consistency (§ 6.2.11.3.1)
+
+=== Added
+
+* **`type0_encoding_valid` (§ 6.2.11.3.1)** — when a Type0 font's
+  /Encoding is an embedded CMap stream (not Identity-H / Identity-V),
+  its /CIDSystemInfo (Registry + Ordering) must match that of the
+  descendant CIDFont. A mismatch would re-interpret the CIDs in a
+  different character collection. Identity encodings — the common case
+  for fonts produced by the `pdf` shard — are out of scope and pass
+  without false positive.
+* `Context` accessor : `type0_encoding_violations`, with private
+  helpers `descendant_cidfont` and `registry_ordering`.
+* Specs : a Type0 font whose CMap declares Adobe-GB1 while the CIDFont
+  declares Adobe-Japan1 (detected) ; an Identity-H Type0 font (no
+  violation).
+
+=== Coverage (regenerated via `doc/gap-analysis/run.sh`)
+
+§ 6.2 rises to **36/56**. Total clause-level coverage : **111/144 →
+112/144**. The 77 % floor is unchanged, but one more rule is genuinely
+verified rather than counted clause-level.
+
 == v0.21.0 — 2026-06-03 — Font dictionaries (§ 6.2.11.2 / § 6.2.11.3.2)
 
 === Added
