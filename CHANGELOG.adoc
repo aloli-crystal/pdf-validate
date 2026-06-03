@@ -7,6 +7,38 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.17.0 — 2026-06-03 — Embedded files (§ 6.8) and optional content (§ 6.9)
+
+=== Added
+
+* **`embedded_filespecs_valid` (§ 6.8 t2)** — a file specification
+  that carries an embedded file (/EF) must contain the /F and /UF
+  keys.
+* **`optional_content_valid` (§ 6.9)** — each optional-content
+  configuration dictionary (the /D config and every /Configs entry
+  under /OCProperties) must have a non-empty (t1), unique (t2) /Name,
+  and must not contain /AS (t4).
+* `Context` accessors : `embedded_filespec_violations`,
+  `optional_content_violations`.
+* Specs : an /EF file spec without /F/UF ; an OCG config with no /Name
+  and an /AS key ; a clean-document regression guard.
+
+=== Coverage (regenerated via `doc/gap-analysis/run.sh`)
+
+Two sections leave **0 %** : § 6.8 → 1/2, § 6.9 → 3/4. Total
+clause-level coverage : **73/144 (50 %) → 77/144 (53 %)**.
+
+Deferred (excluded from the count via `not_covered_tests`) : § 6.8 t5
+(the embedded file must itself be PDF/A — recursive validation) and
+§ 6.9 t3 (/Order must list every OCG — Order-tree walk).
+
+=== Cross-validation (unchanged)
+
+* Generated corpus (60) : **60/60** agreement with veraPDF 1.30.1 — no
+  false positives (our PDF/A-2b files have neither embedded files nor
+  OCProperties, validated up front).
+* Ghostscript third-party fixture : stays conformant.
+
 == v0.16.0 — 2026-06-03 — Content-stream interpreter, milestone 3 (§ 6.2.6 rendering intent)
 
 === Added

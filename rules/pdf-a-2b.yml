@@ -245,6 +245,24 @@
   check: pdfaid_conformance_valid
   args: []
 
+# --- § 6.8 Embedded files ---
+
+- id: pdfa2-6.8-embedded-filespec
+  clause: "ISO 19005-2 § 6.8"
+  title: "A file specification with an embedded file (/EF) shall contain /F and /UF"
+  severity: error
+  check: embedded_filespecs_valid
+  args: []
+
+# --- § 6.9 Optional content ---
+
+- id: pdfa2-6.9-optional-content
+  clause: "ISO 19005-2 § 6.9"
+  title: "OCG configuration dictionaries: non-empty unique /Name, no /AS"
+  severity: error
+  check: optional_content_valid
+  args: []
+
 # --- § 6.10 Alternate presentations ---
 
 - id: pdfa2-6.10-no-alternate-presentations

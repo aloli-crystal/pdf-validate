@@ -7,6 +7,38 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.17.0 — 2026-06-03 — Fichiers embarqués (§ 6.8) et contenu optionnel (§ 6.9)
+
+=== Ajouté
+
+* **`embedded_filespecs_valid` (§ 6.8 t2)** — une spécification de
+  fichier qui porte un fichier embarqué (/EF) doit contenir les clés
+  /F et /UF.
+* **`optional_content_valid` (§ 6.9)** — chaque dictionnaire de
+  configuration de contenu optionnel (le /D et chaque entrée de
+  /Configs sous /OCProperties) doit avoir un /Name non vide (t1) et
+  unique (t2), et ne doit pas contenir /AS (t4).
+* Accesseurs `Context` : `embedded_filespec_violations`,
+  `optional_content_violations`.
+* Specs : spec de fichier /EF sans /F/UF ; config OCG sans /Name et
+  avec /AS ; non-régression sur un document propre.
+
+=== Couverture (régénérée via `doc/gap-analysis/run.sh`)
+
+Deux sections quittent le **0 %** : § 6.8 → 1/2, § 6.9 → 3/4.
+Couverture clause-level totale : **73/144 (50 %) → 77/144 (53 %)**.
+
+Reportés (exclus du décompte via `not_covered_tests`) : § 6.8 t5 (le
+fichier embarqué doit lui-même être PDF/A — validation récursive) et
+§ 6.9 t3 (/Order doit lister tous les OCG — parcours de l'arbre Order).
+
+=== Validation croisée (inchangée)
+
+* Corpus généré (60) : **60/60** d'accord avec veraPDF 1.30.1 — aucun
+  faux positif (nos PDF/A-2b n'ont ni fichier embarqué ni OCProperties,
+  validé en amont).
+* Fixture tierce Ghostscript : reste conforme.
+
 == v0.16.0 — 2026-06-03 — Interpréteur de content stream, jalon 3 (§ 6.2.6 rendering intent)
 
 === Ajouté

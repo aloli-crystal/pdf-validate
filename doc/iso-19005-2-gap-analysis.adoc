@@ -44,11 +44,11 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | § 6.4  | Signatures numériques                                      | 8   | 0   | 0 %
 | § 6.5  | Actions (JavaScript, /AA, actions nommées)                 | 4   | 4   | 100 %
 | § 6.6  | Métadonnées (XMP, schéma d'extension PDF/A, pdfaid)        | 33  | 12  | 36 %
-| § 6.8  | Fichiers embarqués                                         | 2   | 0   | 0 %
-| § 6.9  | Contenu optionnel (calques OCG)                            | 4   | 0   | 0 %
+| § 6.8  | Fichiers embarqués                                         | 2   | 1   | 50 %
+| § 6.9  | Contenu optionnel (calques OCG)                            | 4   | 3   | 75 %
 | § 6.10 | Présentations alternatives                                 | 2   | 2   | 100 %
 | § 6.11 | Clé Requirements                                          | 1   | 1   | 100 %
-| *Total* | *PDF/A-2b*                                                | *144* | *73* | *50 %*
+| *Total* | *PDF/A-2b*                                                | *144* | *77* | *53 %*
 |===
 
 NOTE: Chiffres régénérés le 2026-06-03. Lot 1 (§ 6.2.5 fonctions de
@@ -119,6 +119,14 @@ bouge pas (§ 6.2.6 déjà comptée). Le glyphe `.notdef` (§ 6.2.11.8) est
 index de glyphe via l'encodage/CMap de chaque police), bien au-delà
 d'un tokeniseur — c'est le modèle de police complet de veraPDF.
 +
+Enfin lot § 6.8/§ 6.9 (0.17.0) : § 6.8 t2 (une spécification de
+fichier avec /EF doit porter /F et /UF) et § 6.9 (configurations OCG :
+/Name non vide t1, unique t2, pas d'/AS t4). § 6.8 passe à 1/2, § 6.9
+à 3/4, le total à 77/144 (53 %). Reportés : § 6.8 t5 (le fichier
+embarqué doit lui-même être PDF/A — validation récursive) et § 6.9 t3
+(/Order doit lister tous les OCG — parcours de l'arbre Order), tous
+deux exclus du décompte via `not_covered_tests`.
++
 Couverture clause-level partielle assumée pour quelques clauses : les
 contrôles « octets bruts » ne sont pas (encore) implémentés faute de
 scanner d'octets, si bien que § 6.1.3 (on couvre t1 /ID + t2 /Encrypt,
@@ -137,7 +145,7 @@ XMP) — couverture clause-level partielle, comme annoncé.
 
 == Lecture honnête du chiffre
 
-* **50 % clause-level** est la couverture réelle de `pdf-validate`
+* **53 % clause-level** est la couverture réelle de `pdf-validate`
   vis-à-vis de la norme telle que veraPDF l'encode. Trois couches
   d'analyse ont été construites successivement : le *graphe d'objets*,
   un *scanner d'octets bruts* (0.10.0), un *tokeniseur lexical*
@@ -155,7 +163,7 @@ XMP) — couverture clause-level partielle, comme annoncé.
   précédemment : ces scores disent que sur les documents *générés
   par la suite ALOLI* et un échantillon tiers, `pdf-validate` donne
   le **même verdict** que veraPDF. C'est vrai parce que les défauts
-  que nos documents peuvent avoir tombent dans les 50 % couverts.
+  que nos documents peuvent avoir tombent dans les 53 % couverts.
 * Sur un PDF tiers exerçant une clause non couverte (transparence non
   isolée, annotation non conforme, signature, calque…), `pdf-validate`
   pourrait dire « conforme » là où veraPDF dirait « non conforme » :
@@ -180,6 +188,12 @@ XMP) — couverture clause-level partielle, comme annoncé.
   longueur des noms (≤ 127) et chaînes (≤ 32767), nombre d'objets
   indirects (≤ 8388607), colorants DeviceN (≤ 32), tailles des boîtes
   de page (3 à 14400). Hors champ : t8 (q/Q) et t10 (CID).
+* **§ 6.8** — une spécification de fichier avec embarqué (/EF) doit
+  porter /F et /UF (t2 ; la validité PDF/A du fichier embarqué, t5,
+  reste à faire).
+* **§ 6.9** — configurations de contenu optionnel (OCG) : /Name non
+  vide et unique, pas d'/AS (t1/t2/t4 ; la complétude de /Order, t3,
+  reste à faire).
 * **§ 6.10 / § 6.11 (100 %)** — pas d'/AlternatePresentations (Names)
   ni de /PresSteps (pages) ; pas de /Requirements dans le catalog.
 * **§ 6.2.2 (t1)** — tout opérateur de content stream doit être défini
@@ -236,9 +250,9 @@ XMP) — couverture clause-level partielle, comme annoncé.
 * **§ 6.1 structure (reste)** — § 6.1.7.1 t1 (/Length déclaré ==
   longueur réelle des données du stream ; reporté pour cause de
   /Length indirect et d'EOL ambigu), § 6.1.4 (EOL du mot-clé xref),
-  et les deux tests § 6.1.13 nécessitant un interpréteur (t8 q/Q,
-  t10 CID).
-* **§ 6.9 contenu optionnel** — clé /Name des configurations OCG.
+  § 6.1.13 t10 (valeur CID max, interpréteur CMap).
+* **§ 6.8 / § 6.9 (reste)** — validité PDF/A du fichier embarqué
+  (§ 6.8 t5, validation récursive) ; complétude de /Order (§ 6.9 t3).
 
 === Priorité basse (rare en pratique ALOLI)
 

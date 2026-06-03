@@ -206,6 +206,18 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : "unanchored device colour in content stream: #{bad.join(", ")}"
           )
+        when "embedded_filespecs_valid"
+          bad = ctx.embedded_filespec_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
+        when "optional_content_valid"
+          bad = ctx.optional_content_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
         else
           raise "Unknown check #{check.inspect} (rule set references a primitive the engine does not implement)"
         end

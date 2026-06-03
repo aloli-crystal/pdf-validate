@@ -394,6 +394,59 @@ module PDF
         result
       end
 
+      # Embedded-file specification violations (ISO 19005-2 § 6.8,
+      # t2) : a file specification that carries an embedded file (/EF)
+      # shall contain both /F and /UF. (t5 — the embedded file must
+      # itself be PDF/A-1/2 — needs recursive validation and is out of
+      # scope.)
+      getter embedded_filespec_violations : Array(String) do
+        issues = [] of String
+        each_object do |obj|
+          dict = obj.as?(PDF::Objects::Dictionary)
+          next unless dict && dict.has_key?("EF")
+          unless dict.has_key?("F") && dict.has_key?("UF")
+            issues << "embedded-file specification missing /F or /UF"
+          end
+        end
+        issues.uniq
+      end
+
+      # Optional-content (OCG) configuration violations (ISO 19005-2
+      # § 6.9) : each configuration dictionary (the /D config and every
+      # entry of /Configs) shall have a non-empty /Name (t1), the names
+      # shall be unique (t2), and no configuration shall contain /AS
+      # (t4). (t3 — /Order must list every OCG — needs an Order-tree
+      # walk and is out of scope.)
+      getter optional_content_violations : Array(String) do
+        issues = [] of String
+        ocprops = catalog["OCProperties"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+        return issues unless ocprops
+
+        configs = [] of PDF::Objects::Dictionary
+        if default = ocprops["D"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+          configs << default
+        end
+        if list = ocprops["Configs"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Array)
+          list.each do |entry|
+            cfg = resolve(entry).as?(PDF::Objects::Dictionary)
+            configs << cfg if cfg
+          end
+        end
+
+        names = [] of String
+        configs.each do |cfg|
+          name = cfg["Name"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Str).try(&.value)
+          if name.nil? || name.empty?
+            issues << "optional-content configuration without a non-empty /Name"
+          else
+            names << name
+          end
+          issues << "optional-content configuration contains forbidden /AS" if cfg.has_key?("AS")
+        end
+        issues << "duplicate optional-content configuration /Name" if names.size != names.uniq.size
+        issues.uniq
+      end
+
       # Implementation-limit violations (ISO 19005-2 § 6.1.13), the
       # dictionary/graph-checkable subset : integer range (t1), real
       # range (t2), real-near-zero (t5), string length (t3), name

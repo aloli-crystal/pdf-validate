@@ -43,7 +43,12 @@ not_covered = {"6.2.8.3"}
 #   6.1.13 t10 — maximum CID value (needs a CMap interpreter)
 #   6.2.2  t2  — content stream references all objects needed to render
 #                (resource-completeness, not operator validity)
-not_covered_tests = {("6.1.13", "10"), ("6.2.2", "2")}
+#   6.8    t5  — the embedded file must itself be PDF/A-1/2 (recursive
+#                validation)
+#   6.9    t3  — /Order must list every OCG (Order-tree walk)
+not_covered_tests = {
+    ("6.1.13", "10"), ("6.2.2", "2"), ("6.8", "5"), ("6.9", "3"),
+}
 
 def covered(cl, tn):
     if cl in not_covered:

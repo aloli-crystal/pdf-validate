@@ -140,6 +140,30 @@ private def pdf_with_structure_violations : Bytes
   ] of ObjBody)
 end
 
+# A file whose /AF-referenced file specification carries an embedded
+# file (/EF) but lacks the /F and /UF name keys, violating § 6.8.
+private def pdf_with_bad_filespec : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R /AF [4 0 R] >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+    "<< /Type /Filespec /EF << /F 5 0 R >> >>",
+    {"<< >>", "data".to_slice},
+  ] of ObjBody)
+end
+
+# A file whose optional-content /D configuration has no /Name and a
+# forbidden /AS key, violating § 6.9.
+private def pdf_with_bad_ocg : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R " \
+    "/OCProperties << /OCGs [4 0 R] /D << /AS [] >> >> >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+    "<< /Type /OCG /Name (Layer 1) >>",
+  ] of ObjBody)
+end
+
 # Builds a valid "mntr"/RGB sRGB-like ICC profile header (≥ 132 bytes).
 private def rgb_icc : Bytes
   icc = Bytes.new(132, 0_u8)
@@ -485,6 +509,23 @@ describe PDF::Validate do
   it "detects an invalid rendering intent set via the ri operator (§ 6.2.6)" do
     report = PDF::Validate.bytes(pdf_with_bad_rendering_intent, "pdf-a-2b")
     report.failures.map(&.rule.id).should contain("pdfa2-6.2.6-rendering-intent")
+  end
+
+  it "detects an embedded-file spec missing /F or /UF (§ 6.8)" do
+    report = PDF::Validate.bytes(pdf_with_bad_filespec, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.8-embedded-filespec")
+  end
+
+  it "detects optional-content configuration issues (§ 6.9)" do
+    report = PDF::Validate.bytes(pdf_with_bad_ocg, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.9-optional-content")
+  end
+
+  it "does not flag a clean document under § 6.8/6.9" do
+    report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
+    failed = report.failures.map(&.rule.id)
+    failed.should_not contain("pdfa2-6.8-embedded-filespec")
+    failed.should_not contain("pdfa2-6.9-optional-content")
   end
 
   it "does not flag a clean document under the byte-level § 6.1 rules" do
