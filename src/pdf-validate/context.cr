@@ -1090,6 +1090,101 @@ module PDF
         false
       end
 
+      # --- PDF/UA-1 structure-tree checks (ISO 14289-1) ---
+
+      # Yields every structure element dictionary (a node carrying /S)
+      # reachable from the catalog /StructTreeRoot via /K, with cycle
+      # protection. MCR/OBJR content references (no /S) are descended but
+      # not yielded.
+      private def each_struct_elem(&)
+        root = catalog["StructTreeRoot"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+        return unless root
+        visited = Set(UInt64).new
+        stack = [] of PDF::Objects::Base
+        push_struct_kids(root, stack)
+        until stack.empty?
+          dict = resolve(stack.pop).as?(PDF::Objects::Dictionary)
+          next unless dict
+          next unless visited.add?(dict.object_id)
+          yield dict if dict.has_key?("S")
+          push_struct_kids(dict, stack)
+        end
+      end
+
+      private def push_struct_kids(node : PDF::Objects::Dictionary, stack : Array(PDF::Objects::Base))
+        kids = node["K"]?.try { |ref| resolve(ref) }
+        return unless kids
+        if arr = kids.as?(PDF::Objects::Array)
+          arr.each { |entry| stack << entry }
+        else
+          stack << kids
+        end
+      end
+
+      # The standard structure type (/S) of an element, as a string.
+      private def struct_type(elem : PDF::Objects::Dictionary) : String?
+        elem["S"]?.try(&.as?(PDF::Objects::Name)).try(&.value)
+      end
+
+      # Figure and Formula structure elements must carry alternate text :
+      # a non-empty /Alt or an /ActualText (ISO 14289-1 § 7.3 t1 / § 7.7
+      # t1).
+      getter pdfua_alt_text_violations : Array(String) do
+        issues = [] of String
+        each_struct_elem do |elem|
+          type = struct_type(elem)
+          next unless type == "Figure" || type == "Formula"
+          alt = elem["Alt"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Str).try(&.value)
+          next if (alt && !alt.empty?) || elem.has_key?("ActualText")
+          issues << "#{type} structure element has neither /Alt nor /ActualText"
+        end
+        issues
+      end
+
+      # Every structure element must carry a /P (parent) entry
+      # (ISO 14289-1 § 7.1 t12, per ISO 32000-1 Table 355).
+      getter pdfua_struct_parent_violations : Array(String) do
+        issues = [] of String
+        each_struct_elem do |elem|
+          next if elem.has_key?("P")
+          issues << "structure element /#{struct_type(elem) || "?"} has no /P (parent)"
+        end
+        issues
+      end
+
+      # TH and TD structure elements must be contained in a TR
+      # (ISO 14289-1 § 7.2 t8 / t9).
+      getter pdfua_table_cell_violations : Array(String) do
+        issues = [] of String
+        each_struct_elem do |elem|
+          type = struct_type(elem)
+          next unless type == "TH" || type == "TD"
+          parent = elem["P"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+          parent_type = parent.try { |dict| struct_type(dict) }
+          next if parent_type == "TR"
+          issues << "#{type} is not contained in a TR (parent is /#{parent_type || "?"})"
+        end
+        issues
+      end
+
+      # Each Note structure element must have a non-empty, unique /ID
+      # (ISO 14289-1 § 7.9 t1 / t2).
+      getter pdfua_note_id_violations : Array(String) do
+        issues = [] of String
+        ids = [] of String
+        each_struct_elem do |elem|
+          next unless struct_type(elem) == "Note"
+          id = elem["ID"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Str).try(&.value)
+          if id.nil? || id.empty?
+            issues << "Note structure element has no /ID"
+          else
+            ids << id
+          end
+        end
+        issues << "duplicate Note /ID" if ids.size != ids.uniq.size
+        issues
+      end
+
       # Concatenated decoded bytes of a page's /Contents (a single
       # stream, or an array of streams joined by whitespace).
       private def page_content_bytes(page : PDF::Objects::Dictionary) : Bytes

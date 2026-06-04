@@ -46,3 +46,33 @@
   severity: error
   check: catalog_key_present
   args: ["Metadata"]
+
+# --- Per-element structure-tree rules (ISO 14289-1 § 7.2–7.9) ---
+
+- id: pdfua1-7.1-struct-parent
+  clause: "ISO 14289-1 § 7.1"
+  title: "Every structure element has a /P (parent) entry"
+  severity: error
+  check: struct_elements_have_parent
+  args: []
+
+- id: pdfua1-7.3-figure-alt
+  clause: "ISO 14289-1 § 7.3"
+  title: "Figure and Formula structure elements have /Alt or /ActualText"
+  severity: error
+  check: struct_alt_text_present
+  args: []
+
+- id: pdfua1-7.2-table-cells
+  clause: "ISO 14289-1 § 7.2"
+  title: "TH and TD structure elements are contained in a TR"
+  severity: error
+  check: table_cells_in_row
+  args: []
+
+- id: pdfua1-7.9-note-id
+  clause: "ISO 14289-1 § 7.9"
+  title: "Note structure elements have a non-empty, unique /ID"
+  severity: error
+  check: notes_have_unique_id
+  args: []

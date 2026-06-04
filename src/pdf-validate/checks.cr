@@ -314,6 +314,30 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : bad.join(", ")
           )
+        when "struct_alt_text_present"
+          bad = ctx.pdfua_alt_text_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
+        when "struct_elements_have_parent"
+          bad = ctx.pdfua_struct_parent_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
+        when "table_cells_in_row"
+          bad = ctx.pdfua_table_cell_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
+        when "notes_have_unique_id"
+          bad = ctx.pdfua_note_id_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
         when "content_resources_associated"
           bad = ctx.resource_inheritance_violations
           Outcome.new(

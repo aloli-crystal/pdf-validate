@@ -347,6 +347,64 @@ private def pdf_with_good_truetype_encoding : Bytes
   ] of ObjBody)
 end
 
+# --- PDF/UA-1 structure-tree fixtures ---
+
+# A Figure structure element with no /Alt or /ActualText (§ 7.3).
+private def pdfua_figure_no_alt : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R /StructTreeRoot 4 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+    "<< /Type /StructTreeRoot /K [5 0 R] >>",
+    "<< /Type /StructElem /S /Figure /P 4 0 R >>",
+  ] of ObjBody)
+end
+
+# A Figure structure element carrying /Alt (conformant under § 7.3).
+private def pdfua_figure_with_alt : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R /StructTreeRoot 4 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+    "<< /Type /StructTreeRoot /K [5 0 R] >>",
+    "<< /Type /StructElem /S /Figure /P 4 0 R /Alt (A bar chart) >>",
+  ] of ObjBody)
+end
+
+# A TH structure element whose parent is a Table, not a TR (§ 7.2).
+private def pdfua_th_not_in_tr : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R /StructTreeRoot 4 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+    "<< /Type /StructTreeRoot /K [5 0 R] >>",
+    "<< /Type /StructElem /S /Table /P 4 0 R /K [6 0 R] >>",
+    "<< /Type /StructElem /S /TH /P 5 0 R >>",
+  ] of ObjBody)
+end
+
+# A Note structure element with no /ID (§ 7.9).
+private def pdfua_note_no_id : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R /StructTreeRoot 4 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+    "<< /Type /StructTreeRoot /K [5 0 R] >>",
+    "<< /Type /StructElem /S /Note /P 4 0 R >>",
+  ] of ObjBody)
+end
+
+# A structure element with no /P (parent) entry (§ 7.1).
+private def pdfua_struct_no_parent : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R /StructTreeRoot 4 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+    "<< /Type /StructTreeRoot /K [5 0 R] >>",
+    "<< /Type /StructElem /S /P >>",
+  ] of ObjBody)
+end
+
 # A Type0 font whose /Encoding names a CMap that is neither predefined
 # (Table 118) nor embedded — violating § 6.2.11.3.3 t1.
 private def pdf_with_nonpredefined_cmap : Bytes
@@ -1286,6 +1344,38 @@ describe "pdf-ua-1 profile" do
 
     report = PDF::Validate.bytes(pdf.to_slice, "pdf-ua-1")
     report.conformant?.should be_true
+    # The per-element rules must not fire on a clean tagged document
+    # (every StructElem has /P ; no Figure/Note/table cells).
+    ids = report.failures.map(&.rule.id)
+    ids.should_not contain("pdfua1-7.1-struct-parent")
+    ids.should_not contain("pdfua1-7.3-figure-alt")
+    ids.should_not contain("pdfua1-7.2-table-cells")
+    ids.should_not contain("pdfua1-7.9-note-id")
+  end
+
+  it "flags a Figure without /Alt or /ActualText (§ 7.3)" do
+    report = PDF::Validate.bytes(pdfua_figure_no_alt, "pdf-ua-1")
+    report.failures.map(&.rule.id).should contain("pdfua1-7.3-figure-alt")
+  end
+
+  it "does not flag a Figure carrying /Alt (§ 7.3)" do
+    report = PDF::Validate.bytes(pdfua_figure_with_alt, "pdf-ua-1")
+    report.failures.map(&.rule.id).should_not contain("pdfua1-7.3-figure-alt")
+  end
+
+  it "flags a TH outside a TR (§ 7.2)" do
+    report = PDF::Validate.bytes(pdfua_th_not_in_tr, "pdf-ua-1")
+    report.failures.map(&.rule.id).should contain("pdfua1-7.2-table-cells")
+  end
+
+  it "flags a Note without an /ID (§ 7.9)" do
+    report = PDF::Validate.bytes(pdfua_note_no_id, "pdf-ua-1")
+    report.failures.map(&.rule.id).should contain("pdfua1-7.9-note-id")
+  end
+
+  it "flags a structure element without /P (§ 7.1)" do
+    report = PDF::Validate.bytes(pdfua_struct_no_parent, "pdf-ua-1")
+    report.failures.map(&.rule.id).should contain("pdfua1-7.1-struct-parent")
   end
 
   it "flags an untagged document as non-conformant for pdf-ua-1" do

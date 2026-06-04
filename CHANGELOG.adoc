@@ -7,6 +7,36 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.32.0 — 2026-06-04 — PDF/UA-1 per-element structure rules (ISO 14289-1)
+
+=== Added
+
+First per-element palier for the **pdf-ua-1** profile, driven by a
+structure-tree walker (`each_struct_elem`, following /StructTreeRoot →
+/K with cycle protection). The rules mirror the veraPDF PDF/UA-1 profile
+exactly :
+
+* **`struct_alt_text_present` (§ 7.3 / § 7.7)** — Figure and Formula
+  elements must carry a non-empty /Alt or an /ActualText.
+* **`struct_elements_have_parent` (§ 7.1 t12)** — every structure
+  element must have a /P (parent) entry.
+* **`table_cells_in_row` (§ 7.2 t8/t9)** — TH and TD elements must be
+  contained in a TR.
+* **`notes_have_unique_id` (§ 7.9 t1/t2)** — Note elements must carry a
+  non-empty, unique /ID.
+
+`Context` accessors : `pdfua_alt_text_violations`,
+`pdfua_struct_parent_violations`, `pdfua_table_cell_violations`,
+`pdfua_note_id_violations`.
+
+=== Tests
+
+A tagged document produced by the `pdf` shard (Document → P tree) trips
+none of these rules (every StructElem has /P ; no Figure/Note/table).
+Forged fixtures exercise each violation and the Figure-with-/Alt
+clean case. This palier does not change the PDF/A-2b coverage figure
+(it targets the PDF/UA-1 profile).
+
 == v0.31.0 — 2026-06-04 — Simple TrueType encoding (§ 6.2.11.6 t2/t3)
 
 === Added
