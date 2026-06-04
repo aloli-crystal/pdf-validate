@@ -313,6 +313,56 @@ module PDF
         issues.uniq
       end
 
+      # Embedded TrueType program cmap violations (ISO 19005-2 §
+      # 6.2.11.6 t1/t4), reached from a simple TrueType font's
+      # FontDescriptor /FontFile2 and parsed with the `pdf` shard's
+      # TrueType parser :
+      #   t1 — a non-symbolic font's program must contain a usable
+      #        non-symbolic cmap : if a (3,0) Microsoft Symbol subtable
+      #        is present there must be more than one subtable, otherwise
+      #        at least one.
+      #   t4 — a symbolic font's program cmap must have exactly one
+      #        subtable or contain a (3,0) Microsoft Symbol subtable.
+      getter truetype_program_cmap_violations : Array(String) do
+        issues = [] of String
+        each_font_dict do |dict|
+          next unless dict["Subtype"]?.try(&.as?(PDF::Objects::Name)).try(&.value) == "TrueType"
+          descriptor = dict["FontDescriptor"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+          next unless descriptor
+          program = descriptor["FontFile2"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Stream)
+          next unless program && program.decoded
+          records = truetype_cmap_records(program.encoded_data)
+          next unless records
+
+          base = dict["BaseFont"]?.try(&.as?(PDF::Objects::Name)).try(&.value) || "(unnamed)"
+          flags = descriptor["Flags"]?.try(&.as?(PDF::Objects::Number)).try(&.to_i64) || 0_i64
+          symbolic = (flags & 4) != 0
+          count = records.size
+          cmap30 = records.any? { |platform, encoding| platform == 3 && encoding == 0 }
+
+          if symbolic
+            unless count == 1 || cmap30
+              issues << "symbolic TrueType #{base} cmap has #{count} subtables and no (3,0) Microsoft Symbol subtable"
+            end
+          else
+            ok = cmap30 ? count > 1 : count > 0
+            issues << "non-symbolic TrueType #{base} embedded cmap has no usable non-symbolic subtable" unless ok
+          end
+        end
+        issues
+      end
+
+      # The (platform_id, encoding_id) pairs of the cmap subtables in an
+      # embedded TrueType program, or nil if it cannot be parsed / has no
+      # cmap (lenient — parsing failures are not reported as violations).
+      private def truetype_cmap_records(bytes : Bytes) : Array(Tuple(UInt16, UInt16))?
+        parser = PDF::Fonts::TrueType::Parser.parse(bytes)
+        return nil unless parser.has_table?("cmap")
+        parser.cmap.encoding_records.map { |record| {record.platform_id, record.encoding_id} }
+      rescue
+        nil
+      end
+
       # The base encoding name of a font's /Encoding value : the name
       # itself when /Encoding is a name, or the /BaseEncoding of an
       # encoding dictionary. nil when absent or unrecognised.

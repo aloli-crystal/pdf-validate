@@ -39,7 +39,7 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | Section | Thème | Règles veraPDF | Couvertes | %
 
 | § 6.1  | Structure de fichier (trailer, /ID, chiffrement, xref)     | 27  | 25  | 93 %
-| § 6.2  | Graphiques — couleur, polices, transparence, images        | 56  | 44  | 79 %
+| § 6.2  | Graphiques — couleur, polices, transparence, images        | 56  | 46  | 82 %
 | § 6.3  | Annotations                                                | 7   | 7   | 100 %
 | § 6.4  | Formulaires interactifs & signatures                       | 8   | 6   | 75 %
 | § 6.5  | Actions (JavaScript, /AA, actions nommées)                 | 4   | 4   | 100 %
@@ -48,7 +48,7 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | § 6.9  | Contenu optionnel (calques OCG)                            | 4   | 4   | 100 %
 | § 6.10 | Présentations alternatives                                 | 2   | 2   | 100 %
 | § 6.11 | Clé Requirements                                          | 1   | 1   | 100 %
-| *Total* | *PDF/A-2b*                                                | *144* | *127* | *88 %*
+| *Total* | *PDF/A-2b*                                                | *144* | *129* | *89 %*
 |===
 
 NOTE: Chiffres régénérés le 2026-06-03. Lot 1 (§ 6.2.5 fonctions de
@@ -270,6 +270,18 @@ CIDFontType2) et le corpus n'a aucune TrueType simple → 0 faux positif.
 Les tests t1/t4 (table cmap du programme de police embarqué) restent le
 **sous-projet modèle de glyphes** (parsing de programme), exclus du
 décompte. § 6.2 passe à **44/56 (79 %)**, le total à **127/144 (88 %)**.
++
+Enfin lot § 6.2.11.6 t1/t4 (0.33.0) : **première brique du modèle de
+glyphes par parsing de programme de police**. Le /FontFile2 d'une
+TrueType simple est analysé par le parseur TrueType du shard `pdf`
+(`PDF::Fonts::TrueType::Parser`, réutilisé) pour lire les sous-tables
+cmap. t1 — une police non symbolique doit avoir une cmap utilisable
+(si une sous-table (3,0) Microsoft Symbol est présente, plus d'une
+sous-table ; sinon au moins une). t4 — une police symbolique doit
+avoir exactement une sous-table ou une (3,0). Parsing tolérant (échec
+→ pas de violation). Le corpus n'a aucune TrueType simple → validé sur
+fixtures forgées (sfnt minimal + table cmap contrôlée). § 6.2 passe à
+**46/56 (82 %)**, le total à **129/144 (89 %)**.
 +
 NOTE: § 6.1.8 t1 (« les noms de polices, de colorants et de types de
 structure, après expansion des séquences `#XX`, doivent être de l'UTF-8

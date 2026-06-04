@@ -41,8 +41,6 @@ not_covered = {"6.2.8.3"}
 # Individual tests we do NOT implement, counted at test granularity so
 # a heterogeneous clause is not over-claimed :
 #   6.1.13 t10 — maximum CID value (needs a CMap interpreter)
-#   6.2.11.6 t1/t4 — the embedded TrueType program's cmap table
-#                    (font-program parsing — the glyph-model sub-project)
 #   6.8    t5  — the embedded file must itself be PDF/A-1/2 (recursive
 #                validation)
 #   6.2.4.2 t2 — overprint mode for ICCBased CMYK (graphics state)
@@ -51,7 +49,6 @@ not_covered = {"6.2.8.3"}
 not_covered_tests = {
     ("6.1.13", "10"), ("6.8", "5"),
     ("6.2.4.2", "2"),
-    ("6.2.11.6", "1"), ("6.2.11.6", "4"),
     ("6.4.3", "2"), ("6.4.3", "3"),
 }
 

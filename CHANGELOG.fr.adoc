@@ -7,6 +7,34 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.33.0 — 2026-06-04 — cmap du programme TrueType embarqué (§ 6.2.11.6 t1/t4)
+
+=== Ajouté
+
+Première brique du modèle de glyphes qui parse un programme de police.
+Le /FontFile2 d'une TrueType simple est analysé par le parseur TrueType
+du shard `pdf` (`PDF::Fonts::TrueType::Parser`, réutilisé) pour lire les
+sous-tables cmap.
+
+* **`truetype_program_cmap_valid` (§ 6.2.11.6 t1/t4)** — t1 : la cmap
+  d'une police non symbolique doit être utilisable (si une sous-table
+  (3,0) Microsoft Symbol est présente, plus d'une sous-table ; sinon au
+  moins une) ; t4 : la cmap d'une police symbolique doit avoir
+  exactement une sous-table ou une (3,0). Parsing tolérant — un
+  programme illisible n'est pas signalé comme violation.
+* Accesseur `Context` : `truetype_program_cmap_violations`, avec l'aide
+  privée `truetype_cmap_records`.
+* Specs : un sfnt minimal forgé avec une cmap contrôlée exerce une
+  violation symbolique (>1 sous-table sans (3,0)), un cas symbolique
+  (3,0) propre, une violation non symbolique (seulement (3,0)) et un
+  cas non symbolique (3,1) propre.
+
+=== Couverture (régénérée via `doc/gap-analysis/run.sh`)
+
+§ 6.2.11.6 t1/t4 sortent de `not_covered_tests`. § 6.2 passe à **46/56
+(82 %)**. Couverture clause-level totale : **127/144 → 129/144
+(88 % → 89 %)**.
+
 == v0.32.0 — 2026-06-04 — Règles PDF/UA-1 par élément de structure (ISO 14289-1)
 
 === Ajouté

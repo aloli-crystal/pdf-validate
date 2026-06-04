@@ -7,6 +7,33 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.33.0 — 2026-06-04 — Embedded TrueType cmap (§ 6.2.11.6 t1/t4)
+
+=== Added
+
+First glyph-model brick that parses a font program. A simple TrueType
+font's /FontFile2 is parsed by the `pdf` shard's TrueType parser
+(`PDF::Fonts::TrueType::Parser`, reused) to read the cmap subtables.
+
+* **`truetype_program_cmap_valid` (§ 6.2.11.6 t1/t4)** — t1 : a
+  non-symbolic font's program cmap must be usable (if a (3,0) Microsoft
+  Symbol subtable is present there must be more than one subtable,
+  otherwise at least one) ; t4 : a symbolic font's program cmap must
+  have exactly one subtable or contain a (3,0) subtable. Parsing is
+  lenient — an unparseable program is not reported as a violation.
+* `Context` accessor : `truetype_program_cmap_violations`, with the
+  private helper `truetype_cmap_records`.
+* Specs : a minimal forged sfnt with a controlled cmap exercises a
+  symbolic >1-subtable-no-(3,0) violation, a symbolic (3,0) clean case,
+  a non-symbolic only-(3,0) violation, and a non-symbolic (3,1) clean
+  case.
+
+=== Coverage (regenerated via `doc/gap-analysis/run.sh`)
+
+§ 6.2.11.6 t1/t4 leave `not_covered_tests`. § 6.2 rises to **46/56
+(82 %)**. Total clause-level coverage : **127/144 → 129/144
+(88 % → 89 %)**.
+
 == v0.32.0 — 2026-06-04 — PDF/UA-1 per-element structure rules (ISO 14289-1)
 
 === Added

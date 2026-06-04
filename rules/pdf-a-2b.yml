@@ -190,6 +190,13 @@
   check: truetype_encodings_valid
   args: []
 
+- id: pdfa2-6.2.11.6-truetype-cmap
+  clause: "ISO 19005-2 § 6.2.11.6"
+  title: "Embedded TrueType program cmap: non-symbolic has a usable subtable; symbolic has one subtable or a (3,0) table"
+  severity: error
+  check: truetype_program_cmap_valid
+  args: []
+
 - id: pdfa2-6.2.11.4.1-fonts-embedded
   clause: "ISO 19005-2 § 6.2.11.4.1"
   title: "Font programs for all rendered fonts shall be embedded"

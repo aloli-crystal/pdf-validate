@@ -296,6 +296,12 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : bad.join(", ")
           )
+        when "truetype_program_cmap_valid"
+          bad = ctx.truetype_program_cmap_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
         when "devicen_separation_valid"
           bad = ctx.devicen_separation_violations
           Outcome.new(

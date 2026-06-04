@@ -347,6 +347,56 @@ private def pdf_with_good_truetype_encoding : Bytes
   ] of ObjBody)
 end
 
+# Builds a minimal sfnt TrueType program with a single `cmap` table
+# whose encoding records are the given (platform_id, encoding_id) pairs,
+# all pointing at one shared format-0 subtable. Enough for the
+# § 6.2.11.6 t1/t4 cmap-subtable checks (no glyf/head/maxp needed).
+private def truetype_program_with_cmap(records : Array(Tuple(Int32, Int32))) : Bytes
+  be = IO::ByteFormat::BigEndian
+  cmap = IO::Memory.new
+  cmap.write_bytes(0_u16, be)                # version
+  cmap.write_bytes(records.size.to_u16, be)  # numTables
+  sub_offset = (4 + 8 * records.size).to_u32 # header + records
+  records.each do |platform, encoding|
+    cmap.write_bytes(platform.to_u16, be)
+    cmap.write_bytes(encoding.to_u16, be)
+    cmap.write_bytes(sub_offset, be)
+  end
+  # shared format-0 subtable : format(0), length(262), language(0), 256 ids
+  cmap.write_bytes(0_u16, be)
+  cmap.write_bytes(262_u16, be)
+  cmap.write_bytes(0_u16, be)
+  256.times { cmap.write_byte(0_u8) }
+  cmap_bytes = cmap.to_slice
+
+  io = IO::Memory.new
+  io.write_bytes(0x00010000_u32, be) # sfnt version (TrueType)
+  io.write_bytes(1_u16, be)          # numTables
+  io.write_bytes(0_u16, be)          # searchRange
+  io.write_bytes(0_u16, be)          # entrySelector
+  io.write_bytes(0_u16, be)          # rangeShift
+  io.write("cmap".to_slice)
+  io.write_bytes(0_u32, be)                  # checksum
+  io.write_bytes(28_u32, be)                 # offset (12 header + 16 record)
+  io.write_bytes(cmap_bytes.size.to_u32, be) # length
+  io.write(cmap_bytes)
+  io.to_slice
+end
+
+# A simple TrueType font embedding the given program as /FontFile2, with
+# the given FontDescriptor /Flags (4 = symbolic, 32 = non-symbolic).
+private def pdf_with_truetype_program(records : Array(Tuple(Int32, Int32)), flags : Int32) : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] " \
+    "/Resources << /Font << /F1 4 0 R >> >> >>",
+    "<< /Type /Font /Subtype /TrueType /BaseFont /Emb /Encoding /WinAnsiEncoding /FontDescriptor 5 0 R >>",
+    "<< /Type /FontDescriptor /FontName /Emb /Flags #{flags} /FontFile2 6 0 R >>",
+    {"<< /Length1 #{truetype_program_with_cmap(records).size} >>", truetype_program_with_cmap(records)},
+  ] of ObjBody)
+end
+
 # --- PDF/UA-1 structure-tree fixtures ---
 
 # A Figure structure element with no /Alt or /ActualText (§ 7.3).
@@ -1246,6 +1296,26 @@ describe PDF::Validate do
   it "does not flag a WinAnsi non-symbolic TrueType (§ 6.2.11.6)" do
     report = PDF::Validate.bytes(pdf_with_good_truetype_encoding, "pdf-a-2b")
     report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.11.6-truetype-encoding")
+  end
+
+  it "detects a symbolic TrueType program cmap with >1 subtable and no (3,0) (§ 6.2.11.6 t4)" do
+    report = PDF::Validate.bytes(pdf_with_truetype_program([{1, 0}, {0, 3}], 4), "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.2.11.6-truetype-cmap")
+  end
+
+  it "does not flag a symbolic TrueType program cmap with a (3,0) subtable (§ 6.2.11.6 t4)" do
+    report = PDF::Validate.bytes(pdf_with_truetype_program([{3, 0}], 4), "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.11.6-truetype-cmap")
+  end
+
+  it "detects a non-symbolic TrueType program with only a (3,0) cmap (§ 6.2.11.6 t1)" do
+    report = PDF::Validate.bytes(pdf_with_truetype_program([{3, 0}], 32), "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.2.11.6-truetype-cmap")
+  end
+
+  it "does not flag a non-symbolic TrueType program with a (3,1) cmap (§ 6.2.11.6 t1)" do
+    report = PDF::Validate.bytes(pdf_with_truetype_program([{3, 1}], 32), "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.11.6-truetype-cmap")
   end
 
   it "detects a non-predefined, non-embedded CMap name (§ 6.2.11.3.3 t1)" do
