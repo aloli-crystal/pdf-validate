@@ -414,6 +414,67 @@ module PDF
         0
       end
 
+      # /CIDSet completeness for embedded subset CIDFontType2 fonts
+      # (ISO 19005-2 § 6.2.11.4.2) : if the FontDescriptor carries a
+      # /CIDSet, that bitmap must mark every CID present in the font
+      # program. The rule only applies to subsets (a `XXXXXX+` BaseFont
+      # prefix) ; a font with no /CIDSet trivially passes. Lenient on
+      # parse failure.
+      getter cidset_completeness_violations : Array(String) do
+        issues = [] of String
+        each_font_dict do |dict|
+          next unless dict["Subtype"]?.try(&.as?(PDF::Objects::Name)).try(&.value) == "CIDFontType2"
+          base = dict["BaseFont"]?.try(&.as?(PDF::Objects::Name)).try(&.value) || "(unnamed)"
+          next unless base.matches?(/\A[A-Z]{6}\+/) # subsets only (t2 short-circuit)
+          descriptor = dict["FontDescriptor"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+          next unless descriptor
+          cidset = descriptor["CIDSet"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Stream)
+          next unless cidset && cidset.decoded # no /CIDSet → rule passes
+          program = descriptor["FontFile2"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Stream)
+          next unless program && program.decoded
+          num_glyphs = truetype_num_glyphs(program.encoded_data)
+          next unless num_glyphs
+
+          bits = cidset.encoded_data
+          missing = present_cids(num_glyphs, cidtogidmap_bytes(dict)).count { |cid| !cidset_bit_set?(bits, cid) }
+          if missing > 0
+            issues << "CIDFontType2 #{base} /CIDSet omits #{missing} CID(s) present in the font program"
+          end
+        end
+        issues
+      end
+
+      # The glyph count (maxp.numGlyphs) of an embedded TrueType program,
+      # or nil if it cannot be parsed.
+      private def truetype_num_glyphs(bytes : Bytes) : Int64?
+        PDF::Fonts::TrueType::Parser.parse(bytes).maxp.num_glyphs.to_i64
+      rescue
+        nil
+      end
+
+      # The CIDs present in a CIDFontType2 program : 0…numGlyphs-1 for an
+      # Identity /CIDToGIDMap, otherwise every CID whose mapped glyph
+      # index is non-zero (plus CID 0, .notdef).
+      private def present_cids(num_glyphs : Int64, gid_map : Bytes?) : Array(Int64)
+        return (0_i64...num_glyphs).to_a unless gid_map
+        result = [0_i64]
+        cid = 0_i64
+        while cid * 2 + 1 < gid_map.size
+          gid = (gid_map[cid * 2].to_i64 << 8) | gid_map[cid * 2 + 1].to_i64
+          result << cid if gid != 0 && gid < num_glyphs
+          cid += 1
+        end
+        result.uniq
+      end
+
+      # `true` if bit `cid` (MSB-first) is set in a /CIDSet bitmap ; CIDs
+      # beyond the bitmap are treated as unmarked.
+      private def cidset_bit_set?(bits : Bytes, cid : Int64) : Bool
+        byte_index = (cid // 8).to_i
+        return false if byte_index < 0 || byte_index >= bits.size
+        (bits[byte_index] & (1 << (7 - (cid % 8).to_i))) != 0
+      end
+
       # Parses a CIDFont /W array into a {CID => width} map. The array
       # alternates either `c [w1 w2 …]` (consecutive CIDs from c) or
       # `c_first c_last w` (a range sharing one width).

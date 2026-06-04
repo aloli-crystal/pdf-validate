@@ -7,6 +7,30 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.35.0 — 2026-06-04 — Complétude du /CIDSet (§ 6.2.11.4.2 t2)
+
+=== Ajouté
+
+* **`cidset_lists_all_glyphs` (§ 6.2.11.4.2 t2)** — pour une
+  CIDFontType2 **sous-ensemble** embarquée (préfixe `XXXXXX+`), si le
+  FontDescriptor porte un /CIDSet, ce bitmap doit marquer chaque CID
+  présent dans le programme. Le mappage CID → glyphe suit /CIDToGIDMap ;
+  chaque CID est un bit MSB-first. Une police sans /CIDSet passe
+  trivialement.
+* Accesseur `Context` : `cidset_completeness_violations`, avec les
+  aides privées `truetype_num_glyphs`, `present_cids` et
+  `cidset_bit_set?`.
+* Specs : une CIDFontType2 sous-ensemble dont le /CIDSet omet un CID
+  présent (détectée) et une qui marque tous les CID présents (propre).
+
+=== Couverture (régénérée via `doc/gap-analysis/run.sh`)
+
+Le corpus conforme utilise des sous-ensembles **sans** /CIDSet : la
+règle ne s'y déclenche jamais (zéro faux positif) ; le cas positif est
+forgé. § 6.2.11.4.2 t1 (CharSet Type1/CFF) reste dans
+`not_covered_tests`. § 6.2 passe à **48/56 (86 %)**. Couverture
+clause-level totale : **130/144 → 131/144 (90 %)**.
+
 == v0.34.0 — 2026-06-04 — Largeurs de glyphes CIDFontType2 (§ 6.2.11.5)
 
 === Ajouté

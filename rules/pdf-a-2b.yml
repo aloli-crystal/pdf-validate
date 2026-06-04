@@ -204,6 +204,13 @@
   check: cidfont_widths_consistent
   args: []
 
+- id: pdfa2-6.2.11.4.2-cidset
+  clause: "ISO 19005-2 § 6.2.11.4.2"
+  title: "A subset CIDFontType2 /CIDSet marks every CID present in the font program"
+  severity: error
+  check: cidset_lists_all_glyphs
+  args: []
+
 - id: pdfa2-6.2.11.4.1-fonts-embedded
   clause: "ISO 19005-2 § 6.2.11.4.1"
   title: "Font programs for all rendered fonts shall be embedded"

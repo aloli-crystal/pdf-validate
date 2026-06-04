@@ -454,6 +454,25 @@ private def pdf_with_cidfont_widths(declared_w : String) : Bytes
   ] of ObjBody)
 end
 
+# A subset CIDFontType2 (2-glyph program, Identity map) whose
+# FontDescriptor carries the given /CIDSet bitmap.
+private def pdf_with_cidset(cidset : Bytes) : Bytes
+  program = truetype_program_with_metrics([1000, 1000], 1000)
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] " \
+    "/Resources << /Font << /F1 4 0 R >> >> >>",
+    "<< /Type /Font /Subtype /Type0 /BaseFont /ABCDEF+Emb /Encoding /Identity-H /DescendantFonts [5 0 R] >>",
+    "<< /Type /Font /Subtype /CIDFontType2 /BaseFont /ABCDEF+Emb " \
+    "/CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> " \
+    "/CIDToGIDMap /Identity /FontDescriptor 6 0 R /W [0 [1000 1000]] >>",
+    "<< /Type /FontDescriptor /FontName /ABCDEF+Emb /FontFile2 7 0 R /CIDSet 8 0 R >>",
+    {"<< /Length1 #{program.size} >>", program},
+    {"<< >>", cidset},
+  ] of ObjBody)
+end
+
 # A simple TrueType font embedding the given program as /FontFile2, with
 # the given FontDescriptor /Flags (4 = symbolic, 32 = non-symbolic).
 private def pdf_with_truetype_program(records : Array(Tuple(Int32, Int32)), flags : Int32) : Bytes
@@ -1397,6 +1416,16 @@ describe PDF::Validate do
   it "does not flag a CIDFontType2 /W width matching the program (§ 6.2.11.5)" do
     report = PDF::Validate.bytes(pdf_with_cidfont_widths("[1 [1000]]"), "pdf-a-2b")
     report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.11.5-cidfont-widths")
+  end
+
+  it "detects a /CIDSet that omits a present CID (§ 6.2.11.4.2)" do
+    report = PDF::Validate.bytes(pdf_with_cidset(Bytes[0x80_u8]), "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.2.11.4.2-cidset")
+  end
+
+  it "does not flag a /CIDSet that marks all present CIDs (§ 6.2.11.4.2)" do
+    report = PDF::Validate.bytes(pdf_with_cidset(Bytes[0xC0_u8]), "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.11.4.2-cidset")
   end
 
   it "detects a non-predefined, non-embedded CMap name (§ 6.2.11.3.3 t1)" do
