@@ -417,6 +417,13 @@
   check: embedded_filespecs_valid
   args: []
 
+- id: pdfa2-6.8-embedded-pdfa
+  clause: "ISO 19005-2 § 6.8"
+  title: "Each embedded file shall itself be a valid PDF/A-1/2 file"
+  severity: error
+  check: embedded_files_pdfa
+  args: []
+
 # --- § 6.9 Optional content ---
 
 - id: pdfa2-6.9-optional-content

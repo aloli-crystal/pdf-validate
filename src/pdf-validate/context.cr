@@ -1153,6 +1153,44 @@ module PDF
         issues.uniq
       end
 
+      # Recursion guard for the embedded-file PDF/A check : bounds how
+      # deep we descend into embedded-file-within-embedded-file nesting.
+      @@embedded_recursion_depth = 0
+
+      # Embedded files that are not themselves valid PDF/A-1/2
+      # (ISO 19005-2 § 6.8 t5). Each /Type /EmbeddedFile stream is
+      # re-validated against the pdf-a-2b profile ; a non-PDF payload (or
+      # one that fails) is a violation. One level of nesting is checked
+      # (deeper embedding is bounded by the recursion guard).
+      getter embedded_pdfa_violations : Array(String) do
+        issues = [] of String
+        return issues if @@embedded_recursion_depth >= 1
+        index = 0
+        each_object do |obj|
+          stream = obj.as?(PDF::Objects::Stream)
+          next unless stream && stream.decoded
+          next unless stream.dictionary["Type"]?.try(&.as?(PDF::Objects::Name)).try(&.value) == "EmbeddedFile"
+          index += 1
+          issues << "embedded file ##{index} is not a valid PDF/A-1/2 file" if embedded_not_pdfa?(stream.encoded_data)
+        end
+        issues.uniq
+      end
+
+      # `true` if the embedded payload is not a valid PDF/A : either it is
+      # not a PDF at all, or it fails pdf-a-2b validation. The recursion
+      # depth guard prevents unbounded nesting.
+      private def embedded_not_pdfa?(bytes : Bytes) : Bool
+        return true unless bytes.size >= 5 && String.new(bytes[0, 5]) == "%PDF-"
+        @@embedded_recursion_depth += 1
+        begin
+          !PDF::Validate.bytes(bytes, "pdf-a-2b").conformant?
+        rescue
+          true
+        ensure
+          @@embedded_recursion_depth -= 1
+        end
+      end
+
       # Optional-content (OCG) configuration violations (ISO 19005-2
       # § 6.9) : each configuration dictionary (the /D config and every
       # entry of /Configs) shall have a non-empty /Name (t1), the names

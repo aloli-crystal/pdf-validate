@@ -454,6 +454,19 @@ private def pdf_with_cidfont_widths(declared_w : String) : Bytes
   ] of ObjBody)
 end
 
+# A document with one /Type /EmbeddedFile stream carrying `content`,
+# reachable from the catalog /Names /EmbeddedFiles name tree.
+private def pdf_with_embedded_file(content : Bytes) : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R " \
+    "/Names << /EmbeddedFiles << /Names [(data) 4 0 R] >> >> >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+    "<< /Type /Filespec /F (data) /UF (data) /EF << /F 5 0 R >> >>",
+    {"<< /Type /EmbeddedFile >>", content},
+  ] of ObjBody)
+end
+
 # Builds a minimal JP2 byte stream : signature box + jp2h{ihdr, colr}.
 # `bpc` is the raw BPC byte (depth-1, or 0xFF for varying) ; a colr box
 # with METH=1 carries `enum_cs`.
@@ -1546,6 +1559,19 @@ describe PDF::Validate do
     jp2 = jp2_bytes(nc: 3, bpc: 39, meth: 1, approx: 1, enum_cs: 16) # depth 40
     report = PDF::Validate.bytes(pdf_with_jpeg2000(jp2), "pdf-a-2b")
     report.failures.map(&.rule.id).should contain("pdfa2-6.2.8.3-jpeg2000")
+  end
+
+  it "detects an embedded file that is not a PDF/A (§ 6.8 t5)" do
+    report = PDF::Validate.bytes(pdf_with_embedded_file("not a pdf at all".to_slice), "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.8-embedded-pdfa")
+  end
+
+  it "does not flag an embedded conformant PDF/A file (§ 6.8 t5)" do
+    path = "#{__DIR__}/fixtures/ghostscript_pdfa2b.pdf"
+    pending! "fixture missing" unless File.exists?(path)
+    embedded = File.read(path).to_slice
+    report = PDF::Validate.bytes(pdf_with_embedded_file(embedded), "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.8-embedded-pdfa")
   end
 
   it "detects a non-predefined, non-embedded CMap name (§ 6.2.11.3.3 t1)" do

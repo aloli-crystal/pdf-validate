@@ -38,8 +38,6 @@ not_covered = set()
 # Individual tests we do NOT implement, counted at test granularity so
 # a heterogeneous clause is not over-claimed :
 #   6.1.13 t10 — maximum CID value (needs a CMap interpreter)
-#   6.8    t5  — the embedded file must itself be PDF/A-1/2 (recursive
-#                validation)
 #   6.2.4.2 t2 — overprint mode for ICCBased CMYK (graphics state)
 #   6.4.3  t2-t3 — PKCS#7 signing certificate / SignerInfo count
 #                  (ASN.1/DER parsing — belongs in pdf-signature)
@@ -47,7 +45,7 @@ not_covered = set()
 #                   charset parsing ; only the CIDFont /CIDSet, t2, is
 #                   implemented)
 not_covered_tests = {
-    ("6.1.13", "10"), ("6.8", "5"),
+    ("6.1.13", "10"),
     ("6.2.4.2", "2"),
     ("6.2.11.4.2", "1"),
     ("6.4.3", "2"), ("6.4.3", "3"),

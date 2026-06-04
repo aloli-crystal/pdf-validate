@@ -44,11 +44,11 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | § 6.4  | Formulaires interactifs & signatures                       | 8   | 6   | 75 %
 | § 6.5  | Actions (JavaScript, /AA, actions nommées)                 | 4   | 4   | 100 %
 | § 6.6  | Métadonnées (XMP, schéma d'extension PDF/A, pdfaid)        | 33  | 33  | 100 %
-| § 6.8  | Fichiers embarqués                                         | 2   | 1   | 50 %
+| § 6.8  | Fichiers embarqués                                         | 2   | 2   | 100 %
 | § 6.9  | Contenu optionnel (calques OCG)                            | 4   | 4   | 100 %
 | § 6.10 | Présentations alternatives                                 | 2   | 2   | 100 %
 | § 6.11 | Clé Requirements                                          | 1   | 1   | 100 %
-| *Total* | *PDF/A-2b*                                                | *144* | *137* | *95 %*
+| *Total* | *PDF/A-2b*                                                | *144* | *138* | *95 %*
 |===
 
 NOTE: Chiffres régénérés le 2026-06-03. Lot 1 (§ 6.2.5 fonctions de
@@ -350,6 +350,15 @@ uniforme dans 1..38 (t5). t2/t3/t4 court-circuités si l'image porte un
 `not_covered`** (il était exclu pour ne pas gonfler via l'ancêtre
 § 6.2.8). Forge-only (ALOLI/le corpus n'utilisent pas JPEG2000) → 0 FP.
 § 6.2 passe à **54/56 (96 %)**, le total à **137/144 (95 %)**.
++
+Enfin lot § 6.8 t5 (0.38.0) : chaque fichier embarqué doit lui-même
+être un PDF/A-1/2 valide. Chaque flux /Type /EmbeddedFile est
+**re-validé récursivement** contre le profil pdf-a-2b (le moteur
+s'appelle lui-même, avec une garde de profondeur bornant l'imbrication) ;
+un fichier qui n'est pas un PDF, ou qui échoue, est une violation. Le
+corpus n'a aucun /EF → 0 faux positif ; les cas sont forgés (un payload
+non-PDF détecté ; la fixture Ghostscript conforme embarquée acceptée).
+§ 6.8 passe à **2/2 (100 %)**, le total à **138/144 (95 %)**.
 
 == Lecture honnête du chiffre
 

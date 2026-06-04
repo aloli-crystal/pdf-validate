@@ -7,6 +7,26 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.38.0 — 2026-06-04 — PDF/A récursif des fichiers embarqués (§ 6.8 t5)
+
+=== Ajouté
+
+* **`embedded_files_pdfa` (§ 6.8 t5)** — chaque flux /Type /EmbeddedFile
+  est re-validé **récursivement** contre le profil pdf-a-2b (le moteur
+  s'appelle lui-même, borné par une garde de profondeur de récursion) ;
+  un payload qui n'est pas un PDF, ou qui échoue, est une violation.
+* Accesseur `Context` : `embedded_pdfa_violations`, avec l'aide privée
+  `embedded_not_pdfa?` et la garde `@@embedded_recursion_depth`.
+* Specs : un payload non-PDF (détecté) ; la fixture Ghostscript
+  conforme embarquée (propre).
+
+=== Couverture (régénérée via `doc/gap-analysis/run.sh`)
+
+§ 6.8 t5 quitte `not_covered_tests`. Le corpus conforme n'a aucun
+fichier embarqué : la règle ne s'y déclenche jamais (zéro faux
+positif). § 6.8 passe à **2/2 (100 %)**. Couverture clause-level
+totale : **137/144 → 138/144 (95 %)**.
+
 == v0.37.0 — 2026-06-04 — Codestream JPEG2000 (§ 6.2.8.3)
 
 === Ajouté
