@@ -386,6 +386,18 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : bad.join(", ")
           )
+        when "heading_structure_valid"
+          bad = ctx.pdfua_heading_structure_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
+        when "attribute_language_determinable"
+          bad = ctx.pdfua_attribute_language_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
         when "content_resources_associated"
           bad = ctx.resource_inheritance_violations
           Outcome.new(

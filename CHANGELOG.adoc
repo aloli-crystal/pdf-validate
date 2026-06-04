@@ -7,6 +7,33 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.40.0 — 2026-06-04 — PDF/UA-1 headings & attribute language (palier 2)
+
+=== Added
+
+Second per-element palier for the **pdf-ua-1** profile, on the same
+structure-tree walker :
+
+* **`heading_structure_valid` (§ 7.4.4)** — a document uses either weak
+  headings (H) or strong headings (H1–H6), not both (t2/t3) ; and no
+  structure element has more than one child H tag (t1).
+* **`attribute_language_determinable` (§ 7.2 t21–t23)** — a structure
+  element carrying /Alt, /ActualText or /E must have a determinable
+  natural language (its own /Lang, an ancestor's /Lang, or a catalog
+  default /Lang).
+
+`Context` accessors : `pdfua_heading_structure_violations`,
+`pdfua_attribute_language_violations`, with the private helpers
+`count_child_h` and `struct_ancestor_has_lang?`.
+
+=== Tests
+
+A tagged document produced by the `pdf` shell (catalog /Lang, a simple
+Document → P tree) trips none of these. Forged fixtures exercise mixed
+H/H1 headings, a node with two child H tags, and an /Alt with no
+determinable language. This palier targets the PDF/UA-1 profile and
+does not change the PDF/A-2b figure.
+
 == v0.39.0 — 2026-06-04 — Overprint mode for ICCBased CMYK (§ 6.2.4.2 t2)
 
 === Added

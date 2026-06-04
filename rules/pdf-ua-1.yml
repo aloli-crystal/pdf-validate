@@ -76,3 +76,17 @@
   severity: error
   check: notes_have_unique_id
   args: []
+
+- id: pdfua1-7.4.4-heading-structure
+  clause: "ISO 14289-1 § 7.4.4"
+  title: "Headings are either weak (H) or strong (H1-H6), not both; at most one child H per node"
+  severity: error
+  check: heading_structure_valid
+  args: []
+
+- id: pdfua1-7.2-attribute-language
+  clause: "ISO 14289-1 § 7.2"
+  title: "Alt/ActualText/E attributes have a determinable natural language"
+  severity: error
+  check: attribute_language_determinable
+  args: []

@@ -7,6 +7,33 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.40.0 — 2026-06-04 — PDF/UA-1 titres & langue des attributs (palier 2)
+
+=== Ajouté
+
+Deuxième palier per-élément du profil **pdf-ua-1**, sur le même
+marcheur d'arbre de structure :
+
+* **`heading_structure_valid` (§ 7.4.4)** — un document utilise soit des
+  titres faibles (H), soit des titres forts (H1–H6), pas les deux
+  (t2/t3) ; et aucun élément de structure n'a plus d'un enfant H (t1).
+* **`attribute_language_determinable` (§ 7.2 t21–t23)** — un élément de
+  structure portant /Alt, /ActualText ou /E doit avoir une langue
+  naturelle déterminable (son propre /Lang, le /Lang d'un ancêtre, ou
+  un /Lang par défaut du catalog).
+
+Accesseurs `Context` : `pdfua_heading_structure_violations`,
+`pdfua_attribute_language_violations`, avec les aides privées
+`count_child_h` et `struct_ancestor_has_lang?`.
+
+=== Tests
+
+Un document balisé produit par le shard `pdf` (catalog /Lang, arbre
+Document → P simple) ne déclenche rien. Des fixtures forgées exercent
+le mélange H/H1, un nœud à deux enfants H, et un /Alt sans langue
+déterminable. Ce palier vise le profil PDF/UA-1 et ne change pas le
+chiffre PDF/A-2b.
+
 == v0.39.0 — 2026-06-04 — Mode overprint des ICCBased CMYK (§ 6.2.4.2 t2)
 
 === Ajouté

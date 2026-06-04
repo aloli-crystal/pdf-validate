@@ -1653,6 +1653,63 @@ module PDF
         issues
       end
 
+      # Heading-structure violations (ISO 14289-1 § 7.4.4) : a document
+      # must use either weak headings (H) or strong headings (H1–H6) but
+      # not both (t2/t3) ; and no structure element may have more than
+      # one child H tag (t1).
+      getter pdfua_heading_structure_violations : Array(String) do
+        issues = [] of String
+        uses_h = false
+        uses_hn = false
+        each_struct_elem do |elem|
+          type = struct_type(elem)
+          uses_h = true if type == "H"
+          uses_hn = true if type && type.matches?(/\AH[1-6]\z/)
+          child_h = count_child_h(elem)
+          issues << "structure element has #{child_h} child H tags (at most one allowed)" if child_h > 1
+        end
+        issues << "document mixes weak (H) and strong (H1–H6) heading structure" if uses_h && uses_hn
+        issues.uniq
+      end
+
+      # The number of direct child structure elements of type H.
+      private def count_child_h(elem : PDF::Objects::Dictionary) : Int32
+        kids = elem["K"]?.try { |ref| resolve(ref) }
+        return 0 unless kids
+        entries = kids.as?(PDF::Objects::Array).try(&.to_a) || [kids]
+        entries.count do |entry|
+          child = resolve(entry).as?(PDF::Objects::Dictionary)
+          child ? struct_type(child) == "H" : false
+        end
+      end
+
+      # Structure elements whose /Alt, /ActualText or /E attribute has no
+      # determinable natural language (ISO 14289-1 § 7.2 t21–t23). When
+      # the catalog declares a default /Lang the requirement is met
+      # globally and no element is flagged.
+      getter pdfua_attribute_language_violations : Array(String) do
+        issues = [] of String
+        return issues if catalog.has_key?("Lang")
+        each_struct_elem do |elem|
+          next if elem.has_key?("Lang") || struct_ancestor_has_lang?(elem)
+          {"Alt", "ActualText", "E"}.each do |attr|
+            issues << "structure element /#{attr} has no determinable language" if elem.has_key?(attr)
+          end
+        end
+        issues.uniq
+      end
+
+      # `true` if an ancestor of `elem` (via the /P chain) declares /Lang.
+      private def struct_ancestor_has_lang?(elem : PDF::Objects::Dictionary) : Bool
+        visited = Set(UInt64).new
+        node = elem["P"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+        while node && visited.add?(node.object_id)
+          return true if node.has_key?("Lang")
+          node = node["P"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+        end
+        false
+      end
+
       # Concatenated decoded bytes of a page's /Contents (a single
       # stream, or an array of streams joined by whitespace).
       private def page_content_bytes(page : PDF::Objects::Dictionary) : Bytes
