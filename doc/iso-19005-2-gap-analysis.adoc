@@ -43,12 +43,12 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | § 6.3  | Annotations                                                | 7   | 7   | 100 %
 | § 6.4  | Formulaires interactifs & signatures                       | 8   | 6   | 75 %
 | § 6.5  | Actions (JavaScript, /AA, actions nommées)                 | 4   | 4   | 100 %
-| § 6.6  | Métadonnées (XMP, schéma d'extension PDF/A, pdfaid)        | 33  | 31  | 94 %
+| § 6.6  | Métadonnées (XMP, schéma d'extension PDF/A, pdfaid)        | 33  | 33  | 100 %
 | § 6.8  | Fichiers embarqués                                         | 2   | 1   | 50 %
 | § 6.9  | Contenu optionnel (calques OCG)                            | 4   | 4   | 100 %
 | § 6.10 | Présentations alternatives                                 | 2   | 2   | 100 %
 | § 6.11 | Clé Requirements                                          | 1   | 1   | 100 %
-| *Total* | *PDF/A-2b*                                                | *144* | *123* | *85 %*
+| *Total* | *PDF/A-2b*                                                | *144* | *125* | *86 %*
 |===
 
 NOTE: Chiffres régénérés le 2026-06-03. Lot 1 (§ 6.2.5 fonctions de
@@ -248,6 +248,18 @@ est en faute. Sort de `not_covered_tests`. Le corpus ne déclenche aucun
 faux positif (chaque page porte son /Resources). § 6.2 passe à
 **42/56 (75 %)**, le total à **123/144 (85 %)**.
 +
+Enfin lot § 6.6.2.3.1 (0.30.0) : chaque propriété XMP réellement
+utilisée doit appartenir à un schéma prédéfini (XMP 2005 + schémas
+d'identification PDF/A, PDF/UA, PDF/X) ou à un schéma d'extension PDF/A
+déclaré. Le parseur RDF collecte le namespace de chaque propriété
+(enfants et attributs des `rdf:Description`, hors RDF/XML) et compare à
+la table `PREDEFINED_XMP_NAMESPACES` augmentée des
+`pdfaSchema:namespaceURI` déclarés. Une déclaration `xmlns` non
+utilisée est sans effet (seules les propriétés comptent). 0 faux
+positif sur les 36 conformes + Ghostscript. Ce test sort de
+`not_covered_tests` : **§ 6.6 atteint 33/33 (100 %)**, le total
+**125/144 (86 %)**.
++
 NOTE: § 6.1.8 t1 (« les noms de polices, de colorants et de types de
 structure, après expansion des séquences `#XX`, doivent être de l'UTF-8
 valide ») est **différé**, et non compté : le parseur du shard `pdf`
@@ -367,13 +379,12 @@ XMP) — couverture clause-level partielle, comme annoncé.
 * **§ 6.2.11 polices, vérifs fines** — largeurs de glyphes cohérentes
   (Widths vs hmtx), CIDSet/CIDToGIDMap, ToUnicode, encodages TrueType
   (MacRoman/WinAnsi). On vérifie l'embarquement, pas ces détails.
-* **§ 6.6 XMP (reste)** — l'en-tête du paquet (pas de
-  `bytes`/`encoding`), le XML bien formé, la conformance A/B/U et la
-  **structure du schéma d'extension PDF/A** (§ 6.6.2.3, parseur RDF)
-  sont couverts. Reste : § 6.6.2.3.1 (chaque propriété XMP doit
-  appartenir à un schéma prédéfini ou défini — liste XMP 2005),
-  cohérence XMP ↔ /Info, UTF-8 explicite (§ 6.6.2.1 t5), préfixes
-  pdfaid (§ 6.6.4 t4-t7).
+* **§ 6.6 XMP — couvert à 100 %** : en-tête du paquet (pas de
+  `bytes`/`encoding`), XML bien formé, conformance A/B/U, structure du
+  schéma d'extension PDF/A (§ 6.6.2.3) et appartenance de chaque
+  propriété à un schéma prédéfini ou déclaré (§ 6.6.2.3.1). Les
+  raffinements hors décompte clause-level restent souhaitables :
+  cohérence fine XMP ↔ /Info et préfixes pdfaid normalisés.
 
 === Priorité moyenne
 

@@ -7,6 +7,31 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.30.0 — 2026-06-04 — Schémas XMP prédéfinis / d'extension (§ 6.6.2.3.1)
+
+=== Ajouté
+
+* **`xmp_property_schemas_valid` (§ 6.6.2.3.1)** — chaque propriété XMP
+  réellement utilisée doit appartenir à un schéma prédéfini (les
+  schémas XMP 2005 plus les schémas d'identification normalisés PDF/A,
+  PDF/UA et PDF/X) ou à un schéma d'extension PDF/A déclaré dans le
+  paquet. Le parseur RDF collecte le namespace de chaque propriété
+  (enfants élément et attributs hors RDF/XML de chaque
+  `rdf:Description`) et le compare à `PREDEFINED_XMP_NAMESPACES` plus
+  les `pdfaSchema:namespaceURI` déclarés. Une déclaration `xmlns` non
+  utilisée est ignorée — seules les propriétés comptent. Sort de
+  `not_covered_tests`.
+* `XmpExtensionSchema` expose désormais `declared_namespaces` et
+  `used_property_namespaces` ; `Context#xmp_property_schema_violations`.
+* Specs : une propriété dans un namespace custom non déclaré
+  (détectée) ; la même déclarée via un schéma d'extension (propre) ;
+  des propriétés prédéfinies dc/xmp/pdf/pdfaid (propre).
+
+=== Couverture (régénérée via `doc/gap-analysis/run.sh`)
+
+§ 6.6 atteint **33/33 (100 %)**. Couverture clause-level totale :
+**123/144 → 125/144 (85 % → 86 %)**.
+
 == v0.29.0 — 2026-06-04 — Association du /Resources d'un content stream (§ 6.2.2 t2)
 
 === Ajouté

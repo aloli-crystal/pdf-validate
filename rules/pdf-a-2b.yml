@@ -345,6 +345,13 @@
   check: xmp_extension_schema_valid
   args: []
 
+- id: pdfa2-6.6.2.3.1-property-schemas
+  clause: "ISO 19005-2 § 6.6.2.3.1"
+  title: "Every XMP property belongs to a predefined schema or a declared extension schema"
+  severity: error
+  check: xmp_property_schemas_valid
+  args: []
+
 - id: pdfa2-6.6.4-conformance-level
   clause: "ISO 19005-2 § 6.6.4"
   title: "pdfaid:conformance is A, B or U"

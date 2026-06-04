@@ -93,6 +93,45 @@ module PDF
         XmpExtensionSchema.new(xmp).validate.violations
       end
 
+      # The predefined XMP schema namespaces (XMP 2005 specification and
+      # the standardised PDF/A, PDF/UA, PDF/X identification schemas) —
+      # the namespaces a property may use without an extension schema
+      # (ISO 19005-2 § 6.6.2.3.1).
+      PREDEFINED_XMP_NAMESPACES = %w[
+        http://purl.org/dc/elements/1.1/
+        http://ns.adobe.com/xap/1.0/
+        http://ns.adobe.com/xap/1.0/rights/
+        http://ns.adobe.com/xap/1.0/mm/
+        http://ns.adobe.com/xap/1.0/bj/
+        http://ns.adobe.com/xap/1.0/t/pg/
+        http://ns.adobe.com/xmp/1.0/DynamicMedia/
+        http://ns.adobe.com/xmp/Identifier/qual/1.0/
+        http://ns.adobe.com/pdf/1.3/
+        http://ns.adobe.com/pdfx/1.3/
+        http://ns.adobe.com/photoshop/1.0/
+        http://ns.adobe.com/camera-raw-settings/1.0/
+        http://ns.adobe.com/exif/1.0/
+        http://ns.adobe.com/exif/1.0/aux/
+        http://ns.adobe.com/tiff/1.0/
+        http://www.aiim.org/pdfa/ns/id/
+        http://www.aiim.org/pdfua/ns/id/
+        http://www.npes.org/pdfx/ns/id/
+        http://www.aiim.org/pdfa/ns/extension/
+      ]
+
+      # XMP properties whose namespace is neither a predefined schema nor
+      # declared by a PDF/A extension schema (ISO 19005-2 § 6.6.2.3.1).
+      getter xmp_property_schema_violations : Array(String) do
+        issues = [] of String
+        return issues if xmp.empty?
+        schema = XmpExtensionSchema.new(xmp).validate
+        allowed = PREDEFINED_XMP_NAMESPACES + schema.declared_namespaces
+        schema.used_property_namespaces.each do |namespace|
+          issues << "XMP property namespace #{namespace} is neither predefined nor declared by an extension schema" unless allowed.includes?(namespace)
+        end
+        issues.uniq
+      end
+
       # Font subtypes ISO 32000-1 defines (§ 6.2.11.2 t2), the simple
       # (single-byte) subtypes, and the FontFile3 subtypes PDF/A allows
       # (§ 6.2.11.2 t7).

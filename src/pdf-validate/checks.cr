@@ -248,6 +248,12 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : "XMP extension-schema issue(s): #{bad.join(", ")}"
           )
+        when "xmp_property_schemas_valid"
+          bad = ctx.xmp_property_schema_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
         when "font_dictionaries_valid"
           bad = ctx.font_dictionary_violations
           Outcome.new(

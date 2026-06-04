@@ -26,6 +26,7 @@ module PDF
       TYPE_NS     = "http://www.aiim.org/pdfa/ns/type#"
       FIELD_NS    = "http://www.aiim.org/pdfa/ns/field#"
       RDF_NS      = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+      XML_NS      = "http://www.w3.org/XML/1998/namespace"
 
       SCHEMA_FIELDS   = %w[schema namespaceURI prefix property valueType]
       PROPERTY_FIELDS = %w[name valueType category description]
@@ -33,6 +34,9 @@ module PDF
       FIELD_FIELDS    = %w[name valueType description]
 
       getter violations = [] of String
+      # Namespace URIs declared by the document's extension schemas
+      # (each pdfaSchema:namespaceURI) — collected during validate.
+      getter declared_namespaces = [] of String
 
       def initialize(@xmp : String)
       end
@@ -50,6 +54,36 @@ module PDF
         self
       end
 
+      # Namespace URIs of every property actually used in the XMP packet
+      # — the direct children of each rdf:Description (element form) and
+      # its non-RDF/XML attributes (attribute form). Used for § 6.6.2.3.1
+      # (every property must belong to a predefined or extension schema).
+      # The RDF namespace and the reserved xml namespace are excluded.
+      def used_property_namespaces : Array(String)
+        result = [] of String
+        begin
+          document = XML.parse(@xmp)
+          descriptions = [] of XML::Node
+          collect_elements(document, RDF_NS, "Description", descriptions)
+          descriptions.each do |desc|
+            desc.children.each do |child|
+              next unless child.element?
+              ns = child.namespace.try(&.href)
+              result << ns if ns && ns != RDF_NS
+            end
+            desc.attributes.each do |attr|
+              ns = attr.namespace.try(&.href)
+              next unless ns
+              next if ns == RDF_NS || ns == XML_NS
+              result << ns
+            end
+          end
+        rescue
+          # Malformed XML is reported by the § 6.6.2.1 well-formedness rule.
+        end
+        result.uniq
+      end
+
       private def validate_container(node : XML::Node) : Nil
         bag = child_element(node, RDF_NS, "Bag")
         unless bag
@@ -63,6 +97,10 @@ module PDF
         require_field(node, SCHEMA_NS, "schema", "pdfaSchema:schema", "§ 6.6.2.3.3 t2")
         require_field(node, SCHEMA_NS, "namespaceURI", "pdfaSchema:namespaceURI", "§ 6.6.2.3.3 t3")
         require_field(node, SCHEMA_NS, "prefix", "pdfaSchema:prefix", "§ 6.6.2.3.3 t4")
+
+        if declared = field_value(node, SCHEMA_NS, "namespaceURI")
+          @declared_namespaces << declared
+        end
 
         if seq = field_seq(node, SCHEMA_NS, "property")
           li_items(seq).each { |item| validate_property(item) }

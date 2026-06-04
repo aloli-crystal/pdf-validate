@@ -32,6 +32,73 @@ VALID_EXTENSION_XMP = <<-XMP
 <?xpacket end="w"?>
 XMP
 
+# XMP using a property in a custom namespace that is neither predefined
+# nor declared by an extension schema — violating § 6.6.2.3.1.
+UNDECLARED_PROPERTY_XMP = <<-XMP
+<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/">
+ <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <rdf:Description rdf:about="" xmlns:custom="http://ns.example.com/custom/1.0/">
+   <custom:myProp>value</custom:myProp>
+  </rdf:Description>
+ </rdf:RDF>
+</x:xmpmeta>
+<?xpacket end="w"?>
+XMP
+
+# XMP that both declares the custom namespace via a PDF/A extension
+# schema and uses a property in it — conformant under § 6.6.2.3.1.
+DECLARED_PROPERTY_XMP = <<-XMP
+<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/">
+ <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <rdf:Description rdf:about="" xmlns:pdfaExtension="http://www.aiim.org/pdfa/ns/extension/" xmlns:pdfaSchema="http://www.aiim.org/pdfa/ns/schema#" xmlns:pdfaProperty="http://www.aiim.org/pdfa/ns/property#">
+   <pdfaExtension:schemas>
+    <rdf:Bag>
+     <rdf:li rdf:parseType="Resource">
+      <pdfaSchema:schema>Custom Schema</pdfaSchema:schema>
+      <pdfaSchema:namespaceURI>http://ns.example.com/custom/1.0/</pdfaSchema:namespaceURI>
+      <pdfaSchema:prefix>custom</pdfaSchema:prefix>
+      <pdfaSchema:property>
+       <rdf:Seq>
+        <rdf:li rdf:parseType="Resource">
+         <pdfaProperty:name>myProp</pdfaProperty:name>
+         <pdfaProperty:valueType>Text</pdfaProperty:valueType>
+         <pdfaProperty:category>internal</pdfaProperty:category>
+         <pdfaProperty:description>A custom property</pdfaProperty:description>
+        </rdf:li>
+       </rdf:Seq>
+      </pdfaSchema:property>
+     </rdf:li>
+    </rdf:Bag>
+   </pdfaExtension:schemas>
+  </rdf:Description>
+  <rdf:Description rdf:about="" xmlns:custom="http://ns.example.com/custom/1.0/">
+   <custom:myProp>value</custom:myProp>
+  </rdf:Description>
+ </rdf:RDF>
+</x:xmpmeta>
+<?xpacket end="w"?>
+XMP
+
+private def pdf_with_undeclared_xmp_property : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R /Metadata 4 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+    {"<< /Type /Metadata /Subtype /XML >>", UNDECLARED_PROPERTY_XMP.to_slice},
+  ] of ObjBody)
+end
+
+private def pdf_with_declared_xmp_property : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R /Metadata 4 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+    {"<< /Type /Metadata /Subtype /XML >>", DECLARED_PROPERTY_XMP.to_slice},
+  ] of ObjBody)
+end
+
 # A PDF whose /Metadata carries an extension schema with an invalid
 # property category, violating § 6.6.2.3.
 private def pdf_with_invalid_extension_schema : Bytes
@@ -1105,6 +1172,21 @@ describe PDF::Validate do
   it "does not flag a document with no extension schema (§ 6.6.2.3)" do
     report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
     report.failures.map(&.rule.id).should_not contain("pdfa2-6.6.2.3-extension-schema")
+  end
+
+  it "detects an XMP property in an undeclared namespace (§ 6.6.2.3.1)" do
+    report = PDF::Validate.bytes(pdf_with_undeclared_xmp_property, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.6.2.3.1-property-schemas")
+  end
+
+  it "does not flag a property declared by an extension schema (§ 6.6.2.3.1)" do
+    report = PDF::Validate.bytes(pdf_with_declared_xmp_property, "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.6.2.3.1-property-schemas")
+  end
+
+  it "does not flag predefined-schema XMP properties (§ 6.6.2.3.1)" do
+    report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.6.2.3.1-property-schemas")
   end
 
   it "does not flag a clean document under the byte-level § 6.1 rules" do
