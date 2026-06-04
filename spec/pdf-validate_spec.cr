@@ -525,6 +525,34 @@ private def pdf_with_bad_operator : Bytes
   ] of ObjBody)
 end
 
+# A classic cross-reference table with a doubled EOL between the `xref`
+# keyword and its subsection header — violating § 6.1.4 t2. Built by
+# inserting one extra LF after the first `xref\n` of a normal file
+# (object offsets precede the table, so they stay valid).
+private def pdf_with_bad_xref_eol : Bytes
+  base = build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+  ] of ObjBody)
+  needle = "xref\n".to_slice
+  io = IO::Memory.new
+  inserted = false
+  i = 0
+  while i < base.size
+    if !inserted && i + needle.size <= base.size && base[i, needle.size] == needle
+      io.write(needle)
+      io.write_byte(0x0A_u8) # extra EOL marker → two between xref and header
+      i += needle.size
+      inserted = true
+    else
+      io.write_byte(base[i])
+      i += 1
+    end
+  end
+  io.to_slice
+end
+
 # A page whose content stream embeds an inline image using the LZW
 # filter (/F /LZW) — forbidden by § 6.1.10.
 private def pdf_with_inline_lzw_filter : Bytes
@@ -926,6 +954,16 @@ describe PDF::Validate do
   it "does not flag a document without a permissions dictionary (§ 6.1.12)" do
     report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
     report.failures.map(&.rule.id).should_not contain("pdfa2-6.1.12-permissions-dictionary")
+  end
+
+  it "detects a doubled EOL after the xref keyword (§ 6.1.4 t2)" do
+    report = PDF::Validate.bytes(pdf_with_bad_xref_eol, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.1.4-xref-eol")
+  end
+
+  it "does not flag a single EOL after the xref keyword (§ 6.1.4 t2)" do
+    report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.1.4-xref-eol")
   end
 
   it "detects an inline image using the LZW filter (§ 6.1.10)" do

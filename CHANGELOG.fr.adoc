@@ -7,6 +7,27 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.28.0 — 2026-06-04 — EOL de la table de références croisées (§ 6.1.4 t2)
+
+=== Ajouté
+
+* **`xref_eol_valid` (§ 6.1.4 t2)** — un EOL unique sépare le mot-clé
+  `xref` et l'en-tête de sa sous-section de références croisées. Vérifié
+  sur les octets bruts ; ne concerne que les tables xref classiques
+  (les fichiers à flux XRef n'ont pas de mot-clé `xref`), et `startxref`
+  est exclu (son `xref` n'est pas en début de ligne). Un candidat doit
+  être un `xref` en début de ligne suivi de marqueur(s) EOL puis d'un
+  chiffre, de sorte que des données binaires ne soient jamais prises
+  pour une table.
+* Accesseur `Context` : `xref_eol_violations`, avec les aides privées
+  `count_eol_markers` et `digit?`.
+* Specs : un EOL doublé après `xref` (détecté) ; un EOL unique (propre).
+
+=== Couverture (régénérée via `doc/gap-analysis/run.sh`)
+
+§ 6.1 passe à **25/27 (93 %)**. Couverture clause-level totale :
+**121/144 → 122/144 (84 %)**.
+
 == v0.27.0 — 2026-06-04 — Filtre des images en ligne (§ 6.1.10)
 
 === Ajouté

@@ -69,6 +69,13 @@
   check: inline_image_filters_valid
   args: []
 
+- id: pdfa2-6.1.4-xref-eol
+  clause: "ISO 19005-2 § 6.1.4"
+  title: "The xref keyword and the subsection header are separated by a single EOL marker"
+  severity: error
+  check: xref_eol_valid
+  args: []
+
 - id: pdfa2-6.1.3-no-encryption
   clause: "ISO 19005-2 § 6.1.3"
   title: "The trailer shall not contain the Encrypt key"

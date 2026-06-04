@@ -7,6 +7,26 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.28.0 — 2026-06-04 — Cross-reference table EOL (§ 6.1.4 t2)
+
+=== Added
+
+* **`xref_eol_valid` (§ 6.1.4 t2)** — a single EOL marker separates the
+  `xref` keyword and its cross-reference subsection header. Checked on
+  the raw bytes ; only classic cross-reference tables are affected
+  (files using cross-reference streams have no `xref` keyword), and
+  `startxref` is excluded (its `xref` is not line-initial). A candidate
+  must be a line-initial `xref` followed by EOL marker(s) then a digit,
+  so binary data is never mistaken for a table.
+* `Context` accessor : `xref_eol_violations`, with the private helpers
+  `count_eol_markers` and `digit?`.
+* Specs : a doubled EOL after `xref` (detected) ; a single EOL (clean).
+
+=== Coverage (regenerated via `doc/gap-analysis/run.sh`)
+
+§ 6.1 rises to **25/27 (93 %)**. Total clause-level coverage :
+**121/144 → 122/144 (84 %)**.
+
 == v0.27.0 — 2026-06-04 — Inline image filter (§ 6.1.10)
 
 === Added

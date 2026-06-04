@@ -1084,6 +1084,58 @@ module PDF
         issues
       end
 
+      # Cross-reference table EOL violations (ISO 19005-2 § 6.1.4 t2) :
+      # the `xref` keyword and the first cross-reference subsection
+      # header must be separated by a single EOL marker. Only classic
+      # cross-reference tables are affected — files using cross-reference
+      # streams have no `xref` keyword. `startxref` is excluded (its
+      # `xref` is not line-initial). Conservative : a candidate is a
+      # line-initial `xref` immediately followed by EOL marker(s) and
+      # then a digit (the `start count` header), so binary data is never
+      # mistaken for a table.
+      getter xref_eol_violations : Array(String) do
+        issues = [] of String
+        raw = @raw
+        return issues unless raw
+        size = raw.size
+        i = 0
+        while i + 4 <= size
+          if raw[i] == 0x78 && raw[i, 4] == "xref".to_slice &&
+             (i == 0 || raw[i - 1] == 0x0A || raw[i - 1] == 0x0D)
+            count, after = count_eol_markers(raw, i + 4)
+            if count >= 1 && after < size && digit?(raw[after])
+              issues << "#{count} EOL markers between the xref keyword and its subsection header (one required)" if count != 1
+            end
+          end
+          i += 1
+        end
+        issues.uniq
+      end
+
+      # Counts consecutive EOL markers from `from` (CRLF counts as one),
+      # returning {marker_count, index_past_them}.
+      private def count_eol_markers(raw : Bytes, from : Int32) : Tuple(Int32, Int32)
+        count = 0
+        idx = from
+        while idx < raw.size
+          case raw[idx]
+          when 0x0D # CR (optionally CRLF)
+            count += 1
+            idx += (idx + 1 < raw.size && raw[idx + 1] == 0x0A) ? 2 : 1
+          when 0x0A # LF
+            count += 1
+            idx += 1
+          else
+            break
+          end
+        end
+        {count, idx}
+      end
+
+      private def digit?(byte : UInt8) : Bool
+        byte >= 0x30 && byte <= 0x39
+      end
+
       # `true` if the four bytes starting at `from` are all > 127.
       private def four_high_bytes?(raw : Bytes, from : Int32) : Bool
         offset = from

@@ -296,6 +296,12 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : "forbidden inline-image filter(s): #{bad.join(", ")}"
           )
+        when "xref_eol_valid"
+          bad = ctx.xref_eol_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
         else
           raise "Unknown check #{check.inspect} (rule set references a primitive the engine does not implement)"
         end
