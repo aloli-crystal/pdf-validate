@@ -33,10 +33,7 @@ for line in open(rules_yml):
 # Distinct sub-clauses that prefix-match an ancestor we DO list, but
 # that cover a separate sub-topic we have NOT implemented. Kept
 # explicit so the coverage figure is not silently inflated.
-#   6.2.8.3 — JPEG2000 codestream conformance (a descendant of 6.2.8,
-#             whose t1-t5 image-dictionary keys we check, but the
-#             JPEG2000 codestream parsing we do not).
-not_covered = {"6.2.8.3"}
+not_covered = set()
 
 # Individual tests we do NOT implement, counted at test granularity so
 # a heterogeneous clause is not over-claimed :

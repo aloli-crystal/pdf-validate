@@ -454,6 +454,55 @@ private def pdf_with_cidfont_widths(declared_w : String) : Bytes
   ] of ObjBody)
 end
 
+# Builds a minimal JP2 byte stream : signature box + jp2h{ihdr, colr}.
+# `bpc` is the raw BPC byte (depth-1, or 0xFF for varying) ; a colr box
+# with METH=1 carries `enum_cs`.
+private def jp2_bytes(nc : Int32, bpc : Int32, meth : Int32, approx : Int32, enum_cs : Int32) : Bytes
+  be = IO::ByteFormat::BigEndian
+  ihdr = IO::Memory.new
+  ihdr.write_bytes(1_u32, be) # height
+  ihdr.write_bytes(1_u32, be) # width
+  ihdr.write_bytes(nc.to_u16, be)
+  ihdr.write_byte(bpc.to_u8)
+  ihdr.write_byte(7_u8) # C
+  ihdr.write_byte(0_u8) # UnkC
+  ihdr.write_byte(0_u8) # IPR
+  colr = IO::Memory.new
+  colr.write_byte(meth.to_u8)
+  colr.write_byte(0_u8) # PREC
+  colr.write_byte(approx.to_u8)
+  colr.write_bytes(enum_cs.to_u32, be) if meth == 1
+
+  write_jp2_box = ->(io : IO::Memory, type : String, body : Bytes) do
+    io.write_bytes((8 + body.size).to_u32, be)
+    io.write(type.to_slice)
+    io.write(body)
+  end
+  jp2h = IO::Memory.new
+  write_jp2_box.call(jp2h, "ihdr", ihdr.to_slice)
+  write_jp2_box.call(jp2h, "colr", colr.to_slice)
+
+  io = IO::Memory.new
+  io.write_bytes(12_u32, be)
+  io.write("jP  ".to_slice)
+  io.write_bytes(0x0D0A870A_u32, be)
+  write_jp2_box.call(io, "jp2h", jp2h.to_slice)
+  io.to_slice
+end
+
+# A page with a /JPXDecode image XObject carrying the given JP2 data,
+# optionally with a PDF /ColorSpace (which overrides the embedded one).
+private def pdf_with_jpeg2000(jp2 : Bytes, color_space : Bool = false) : Bytes
+  cs = color_space ? "/ColorSpace /DeviceRGB " : ""
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] " \
+    "/Resources << /XObject << /Im0 4 0 R >> >> >>",
+    {"<< /Type /XObject /Subtype /Image /Width 1 /Height 1 /BitsPerComponent 8 #{cs}/Filter /JPXDecode >>", jp2},
+  ] of ObjBody)
+end
+
 # A page whose content stream is `content`, using a Type0 Identity-H
 # font backed by a 2-glyph CIDFontType2 program (CIDs 0 and 1 valid).
 private def pdf_with_glyph_text(content : String) : Bytes
@@ -1467,6 +1516,36 @@ describe PDF::Validate do
   it "exempts invisible text (rendering mode 3) from the .notdef check (§ 6.2.11.8)" do
     report = PDF::Validate.bytes(pdf_with_glyph_text("BT /F1 12 Tf 3 Tr <0000> Tj ET"), "pdf-a-2b")
     report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.11.8-notdef")
+  end
+
+  it "does not flag a conformant JPEG2000 image (§ 6.2.8.3)" do
+    jp2 = jp2_bytes(nc: 3, bpc: 7, meth: 1, approx: 1, enum_cs: 16)
+    report = PDF::Validate.bytes(pdf_with_jpeg2000(jp2), "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.8.3-jpeg2000")
+  end
+
+  it "detects a JPEG2000 image with an invalid channel count (§ 6.2.8.3 t1)" do
+    jp2 = jp2_bytes(nc: 5, bpc: 7, meth: 1, approx: 1, enum_cs: 16)
+    report = PDF::Validate.bytes(pdf_with_jpeg2000(jp2), "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.2.8.3-jpeg2000")
+  end
+
+  it "detects a JPEG2000 image using CIEJab (EnumCS 19) (§ 6.2.8.3 t4)" do
+    jp2 = jp2_bytes(nc: 3, bpc: 7, meth: 1, approx: 1, enum_cs: 19)
+    report = PDF::Validate.bytes(pdf_with_jpeg2000(jp2), "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.2.8.3-jpeg2000")
+  end
+
+  it "exempts JPEG2000 colour-space checks when a PDF /ColorSpace is present (§ 6.2.8.3)" do
+    jp2 = jp2_bytes(nc: 3, bpc: 7, meth: 1, approx: 1, enum_cs: 19)
+    report = PDF::Validate.bytes(pdf_with_jpeg2000(jp2, color_space: true), "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.8.3-jpeg2000")
+  end
+
+  it "detects a JPEG2000 image with an out-of-range bit depth (§ 6.2.8.3 t5)" do
+    jp2 = jp2_bytes(nc: 3, bpc: 39, meth: 1, approx: 1, enum_cs: 16) # depth 40
+    report = PDF::Validate.bytes(pdf_with_jpeg2000(jp2), "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.2.8.3-jpeg2000")
   end
 
   it "detects a non-predefined, non-embedded CMap name (§ 6.2.11.3.3 t1)" do

@@ -934,6 +934,73 @@ module PDF
         issues
       end
 
+      # JPEG2000 codestream conformance (ISO 19005-2 § 6.2.8.3) for image
+      # XObjects filtered with /JPXDecode : channel count ∈ {1,3,4} (t1),
+      # colour-space specs with a single APPROX=1 when more than one (t2),
+      # colr METH ∈ {1,2,3} (t3), enumerated colour space ≠ 19/CIEJab
+      # (t4), and a uniform bit depth in 1..38 (t5). t2/t3/t4 are skipped
+      # when the image carries a PDF /ColorSpace (it overrides the
+      # embedded one). Lenient when the JPEG2000 data cannot be parsed.
+      getter jpeg2000_violations : Array(String) do
+        issues = [] of String
+        index = 0
+        each_object do |obj|
+          stream = obj.as?(PDF::Objects::Stream)
+          next unless stream
+          dict = stream.dictionary
+          next unless dict["Subtype"]?.try(&.as?(PDF::Objects::Name)).try(&.to_pdf) == "/Image"
+          next unless jpx_filtered?(dict)
+          jp2 = Jpeg2000.parse(stream.encoded_data)
+          next unless jp2
+          index += 1
+          issues.concat(jpeg2000_issues(jp2, "JPEG2000 image##{index}", dict.has_key?("ColorSpace")))
+        end
+        issues
+      end
+
+      # `true` if an image's /Filter is, or includes, /JPXDecode.
+      private def jpx_filtered?(dict : PDF::Objects::Dictionary) : Bool
+        filter = dict["Filter"]?.try { |ref| resolve(ref) }
+        case filter
+        when PDF::Objects::Name
+          filter.value == "JPXDecode"
+        when PDF::Objects::Array
+          filter.any? { |entry| resolve(entry).as?(PDF::Objects::Name).try(&.value) == "JPXDecode" }
+        else
+          false
+        end
+      end
+
+      # The § 6.2.8.3 issues of one parsed JPEG2000 image.
+      private def jpeg2000_issues(jp2 : Jpeg2000, label : String, has_colour_space : Bool) : Array(String)
+        issues = [] of String
+        if nc = jp2.num_components
+          issues << "#{label}: #{nc} colour channels (must be 1, 3 or 4)" unless nc == 1 || nc == 3 || nc == 4
+        end
+        issues << "#{label}: colour channels have differing bit-depths" if jp2.bpcc_present?
+        if depth = jp2.bit_depth
+          issues << "#{label}: bit-depth #{depth} outside 1..38" unless depth >= 1 && depth <= 38
+        end
+        issues.concat(jpeg2000_colour_issues(jp2, label)) unless has_colour_space
+        issues
+      end
+
+      # The colour-space-specification issues (t2/t3/t4), checked only
+      # when the image relies on the JPEG2000 internal colour space.
+      private def jpeg2000_colour_issues(jp2 : Jpeg2000, label : String) : Array(String)
+        issues = [] of String
+        specs = jp2.colr_specs
+        return issues if specs.empty?
+        unless specs.size == 1 || specs.count { |spec| spec.approx == 1 } == 1
+          issues << "#{label}: #{specs.size} colour-space specs without exactly one APPROX=1"
+        end
+        specs.each do |spec|
+          issues << "#{label}: colr METH #{spec.meth} (must be 1, 2 or 3)" unless (1..3).includes?(spec.meth)
+          issues << "#{label}: enumerated colour space 19 (CIEJab) is forbidden" if spec.enum_cs == 19
+        end
+        issues
+      end
+
       # Non-standard rendering intents (ISO 19005-2 § 6.2.6), from both
       # serialisations : the /Intent key on image XObjects and the `ri`
       # operator in page content streams.

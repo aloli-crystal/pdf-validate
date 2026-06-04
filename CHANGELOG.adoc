@@ -7,6 +7,32 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.37.0 — 2026-06-04 — JPEG2000 codestream (§ 6.2.8.3)
+
+=== Added
+
+* **`Jpeg2000`** — a minimal reader for JPEG2000 structural metadata
+  (JP2 boxes + a raw codestream's SIZ marker), never raising.
+* **`jpeg2000_valid` (§ 6.2.8.3)** — for /JPXDecode image XObjects :
+  colour-channel count ∈ {1,3,4} (t1) ; with more than one colour-space
+  spec, exactly one carries APPROX=1 (t2) ; colr METH ∈ {1,2,3} (t3) ;
+  enumerated colour space ≠ 19/CIEJab (t4) ; uniform bit depth in 1..38
+  (t5). t2/t3/t4 are skipped when the image has a PDF /ColorSpace (which
+  overrides the embedded one). Lenient when the data is unparseable.
+* `Context` accessor : `jpeg2000_violations`, with `jpx_filtered?`,
+  `jpeg2000_issues` and `jpeg2000_colour_issues`.
+* Specs : a conformant JP2 ; an invalid channel count (t1) ; CIEJab
+  EnumCS 19 (t4) ; the same exempted by a PDF /ColorSpace ; an
+  out-of-range bit depth (t5).
+
+=== Coverage (regenerated via `doc/gap-analysis/run.sh`)
+
+§ 6.2.8.3 leaves `not_covered` (it was excluded to avoid inflating via
+its § 6.2.8 ancestor). The conform corpus uses no JPEG2000, so the rule
+never fires there (zero false positives) ; the cases are forged. § 6.2
+rises to **54/56 (96 %)**. Total clause-level coverage : **132/144 →
+137/144 (91 % → 95 %)**.
+
 == v0.36.0 — 2026-06-04 — Content→glyph interpreter (§ 6.2.11.4.1 t2 & § 6.2.11.8)
 
 === Added
