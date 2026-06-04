@@ -475,6 +475,102 @@ module PDF
         (bits[byte_index] & (1 << (7 - (cid % 8).to_i))) != 0
       end
 
+      # Glyphs referenced by text-showing operators that are absent from
+      # the embedded program (ISO 19005-2 § 6.2.11.4.1 t2).
+      getter referenced_glyph_absent_violations : Array(String) do
+        glyph_reference_scan[:absent]
+      end
+
+      # References to the .notdef glyph from text-showing operators
+      # (ISO 19005-2 § 6.2.11.8).
+      getter notdef_reference_violations : Array(String) do
+        glyph_reference_scan[:notdef]
+      end
+
+      # Content→glyph interpreter, run once over every page : tracks the
+      # current font (Tf) and text rendering mode (Tr), decodes the bytes
+      # shown by Tj/TJ/'/" and, for Type0 Identity-H/V fonts backed by a
+      # CIDFontType2 program, resolves each CID to a glyph index. Glyphs
+      # shown in rendering mode 3 (invisible, e.g. an OCR layer) are
+      # exempt. Returns the absent-glyph and .notdef references found.
+      private getter glyph_reference_scan : {absent: Array(String), notdef: Array(String)} do
+        absent = [] of String
+        notdef = [] of String
+        each_page do |page|
+          fonts = page_font_resources(page)
+          next if fonts.empty?
+          data = page_content_bytes(page)
+          next if data.empty?
+          ContentStreamScanner.new(data).scan.glyph_runs.each do |run|
+            next if run[:mode] == 3 # invisible text is exempt
+            font = fonts[run[:font]]?
+            next unless font
+            scan_type0_glyphs(font, run[:bytes], absent, notdef)
+          end
+        end
+        {absent: absent.uniq, notdef: notdef.uniq}
+      end
+
+      # Resolves the glyphs a Type0 Identity-H/V font shows, appending
+      # absent-glyph and .notdef messages. Only CIDFontType2 descendants
+      # with an embedded /FontFile2 are resolved (others are skipped).
+      private def scan_type0_glyphs(font : PDF::Objects::Dictionary, bytes : Bytes, absent : Array(String), notdef : Array(String))
+        return unless font["Subtype"]?.try(&.as?(PDF::Objects::Name)).try(&.value) == "Type0"
+        encoding = font["Encoding"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Name).try(&.value)
+        return unless encoding == "Identity-H" || encoding == "Identity-V"
+        cidfont = descendant_cidfont(font)
+        return unless cidfont && cidfont["Subtype"]?.try(&.as?(PDF::Objects::Name)).try(&.value) == "CIDFontType2"
+        descriptor = cidfont["FontDescriptor"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+        return unless descriptor
+        program = descriptor["FontFile2"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Stream)
+        return unless program && program.decoded
+        num_glyphs = truetype_num_glyphs(program.encoded_data)
+        return unless num_glyphs
+        gid_map = cidtogidmap_bytes(cidfont)
+        base = font["BaseFont"]?.try(&.as?(PDF::Objects::Name)).try(&.value) || "(unnamed)"
+
+        index = 0
+        while index + 1 < bytes.size
+          cid = (bytes[index].to_i64 << 8) | bytes[index + 1].to_i64
+          gid = cid_to_gid(cid, gid_map)
+          if gid < 0 || gid >= num_glyphs
+            absent << "#{base}: glyph for CID #{cid} (gid #{gid}) is absent from the embedded program"
+          elsif gid == 0
+            notdef << "#{base}: text shows the .notdef glyph (CID #{cid})"
+          end
+          index += 2
+        end
+      end
+
+      # The font resource dictionaries of a page, keyed by resource name,
+      # following inherited /Resources up the /Parent chain if needed.
+      private def page_font_resources(page : PDF::Objects::Dictionary) : Hash(String, PDF::Objects::Dictionary)
+        result = {} of String => PDF::Objects::Dictionary
+        resources = resolve_page_resources(page)
+        return result unless resources
+        fonts = resources["Font"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+        return result unless fonts
+        fonts.each do |name, ref|
+          dict = resolve(ref).as?(PDF::Objects::Dictionary)
+          result[name.value] = dict if dict
+        end
+        result
+      end
+
+      # A page's /Resources dictionary, own or inherited (cycle-safe).
+      private def resolve_page_resources(page : PDF::Objects::Dictionary) : PDF::Objects::Dictionary?
+        own = page["Resources"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+        return own if own
+        visited = Set(UInt64).new
+        node = page["Parent"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+        while node && visited.add?(node.object_id)
+          inherited = node["Resources"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+          return inherited if inherited
+          node = node["Parent"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+        end
+        nil
+      end
+
       # Parses a CIDFont /W array into a {CID => width} map. The array
       # alternates either `c [w1 w2 …]` (consecutive CIDs from c) or
       # `c_first c_last w` (a range sharing one width).

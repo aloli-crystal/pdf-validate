@@ -7,6 +7,41 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.36.0 — 2026-06-04 — Content→glyph interpreter (§ 6.2.11.4.1 t2 & § 6.2.11.8)
+
+=== Added
+
+The `ContentStreamScanner` now tracks the current font (`Tf`) and text
+rendering mode (`Tr`), captures the bytes shown by `Tj`/`TJ`/`'`/`"`
+(decoding literal and hexadecimal string escapes), and exposes them as
+glyph runs. The `Context` resolves, for Type0 Identity-H/V fonts backed
+by a CIDFontType2 program, each shown CID to a glyph index via
+/CIDToGIDMap.
+
+* **`referenced_glyphs_present` (§ 6.2.11.4.1 t2)** — a glyph referenced
+  for rendering must exist in the embedded program (glyph index within
+  range).
+* **`no_notdef_references` (§ 6.2.11.8)** — a text-showing operator must
+  not reference the .notdef glyph (glyph index 0).
+* Text shown in **rendering mode 3 (invisible, e.g. an OCR layer) is
+  exempt**, matching ISO 19005-2.
+* `Context` accessors : `referenced_glyph_absent_violations`,
+  `notdef_reference_violations`, the memoized `glyph_reference_scan`,
+  and helpers `scan_type0_glyphs`, `page_font_resources`,
+  `resolve_page_resources`.
+
+=== Validation
+
+Zero false positives on the 36 conformant PDFs (real OCR text with the
+invisible-text layer) and Ghostscript — the rendering-mode-3 exemption
+is what keeps the OCR corpus clean. § 6.2.11.4.1 t2 was already counted
+clause-level (this makes it genuinely verified) ; § 6.2.11.8 is new.
+
+=== Coverage (regenerated via `doc/gap-analysis/run.sh`)
+
+§ 6.2 rises to **49/56 (88 %)**. Total clause-level coverage : **131/144
+→ 132/144 (90 % → 91 %)**.
+
 == v0.35.0 — 2026-06-04 — CIDSet completeness (§ 6.2.11.4.2 t2)
 
 === Added

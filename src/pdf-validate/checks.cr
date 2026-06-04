@@ -314,6 +314,18 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : bad.join(", ")
           )
+        when "referenced_glyphs_present"
+          bad = ctx.referenced_glyph_absent_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
+        when "no_notdef_references"
+          bad = ctx.notdef_reference_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
         when "devicen_separation_valid"
           bad = ctx.devicen_separation_violations
           Outcome.new(

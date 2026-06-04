@@ -218,6 +218,20 @@
   check: all_fonts_embedded
   args: []
 
+- id: pdfa2-6.2.11.4.1-glyphs-present
+  clause: "ISO 19005-2 § 6.2.11.4.1"
+  title: "Embedded fonts define every glyph referenced for rendering (Type0/Identity)"
+  severity: error
+  check: referenced_glyphs_present
+  args: []
+
+- id: pdfa2-6.2.11.8-notdef
+  clause: "ISO 19005-2 § 6.2.11.8"
+  title: "Text-showing operators shall not reference the .notdef glyph"
+  severity: error
+  check: no_notdef_references
+  args: []
+
 - id: pdfa2-6.2.5-extgstate-no-transfer
   clause: "ISO 19005-2 § 6.2.5"
   title: "ExtGState shall not contain /TR or /HTP, and /TR2 only with value /Default"

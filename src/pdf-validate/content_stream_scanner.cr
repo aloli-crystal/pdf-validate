@@ -68,6 +68,15 @@ module PDF
       @inline_expect_filter = false
       @inline_in_filter_array = false
 
+      # Text-showing state for the glyph checks (§ 6.2.11.4.1 / § 6.2.11.8).
+      # Each run records the current font resource name, the shown bytes
+      # and the text rendering mode in effect.
+      getter glyph_runs = [] of NamedTuple(font: String, bytes: Bytes, mode: Int32)
+      @current_font : String? = nil
+      @text_render_mode = 0
+      @last_number : Int32? = nil
+      @pending_strings = [] of Bytes
+
       def initialize(@data : Bytes)
       end
 
@@ -88,12 +97,16 @@ module PDF
               i += 1
             end
           when byte == 0x28 # '(' literal string
-            i = skip_literal_string(i)
+            stop, bytes = read_literal_string(i)
+            @pending_strings << bytes
+            i = stop
           when byte == 0x3C # '<'
             if i + 1 < size && raw[i + 1] == 0x3C
               i += 2 # '<<' dictionary open
             else
-              i = skip_hex_string(i)
+              stop, bytes = read_hex_string(i)
+              @pending_strings << bytes
+              i = stop
             end
           when byte == 0x2F # '/' name
             name_end = skip_token(i + 1)
@@ -105,7 +118,9 @@ module PDF
             note_inline_delimiter(byte) if @in_inline_image
             i += 1
           when number_start?(byte)
-            i = skip_token(i)
+            token_end = skip_token(i)
+            @last_number = String.new(raw[i, token_end - i]).to_i?
+            i = token_end
           else
             token_end = skip_token(i)
             token = String.new(raw[i, token_end - i])
@@ -132,12 +147,23 @@ module PDF
           @inline_in_filter_array = false
         when "ID"
           @in_inline_image = false
+          @pending_strings.clear
           return skip_inline_image_data(token_end)
         when "ri"
           intent = @last_name
           @invalid_rendering_intents << intent if intent && !VALID_RENDERING_INTENTS.includes?(intent)
-        when "Tf", "Do", "gs", "sh"
+        when "Tf"
+          @current_font = @last_name
           @uses_named_resources = true
+          @pending_strings.clear
+        when "Tr"
+          @text_render_mode = @last_number || 0
+          @pending_strings.clear
+        when "Tj", "TJ", "'", "\""
+          flush_text_run
+        when "Do", "gs", "sh"
+          @uses_named_resources = true
+          @pending_strings.clear
         else
           if space = DEVICE_COLOUR_OPERATORS[token]?
             @device_colour_spaces << space
@@ -145,8 +171,21 @@ module PDF
           unless OPERATORS.includes?(token) || OPERAND_KEYWORDS.includes?(token)
             @undefined_operators << token
           end
+          @pending_strings.clear
         end
         token_end
+      end
+
+      # Records the pending shown strings as glyph runs under the current
+      # font and text rendering mode (the text-showing operators Tj, TJ,
+      # ', ").
+      private def flush_text_run
+        if font = @current_font
+          @pending_strings.each do |bytes|
+            @glyph_runs << {font: font, bytes: bytes, mode: @text_render_mode}
+          end
+        end
+        @pending_strings.clear
       end
 
       # Handles a name token while inside an inline image dictionary
@@ -212,32 +251,110 @@ module PDF
         j == from ? from + 1 : j
       end
 
-      private def skip_literal_string(i : Int32) : Int32
+      # Reads a literal string starting at '(' : returns the index past
+      # the closing ')' and the decoded bytes (PDF escape sequences
+      # resolved). These bytes are the character codes a following text
+      # operator shows.
+      private def read_literal_string(start : Int32) : Tuple(Int32, Bytes)
         raw = @data
         size = raw.size
-        j = i + 1
+        buf = IO::Memory.new
+        j = start + 1
         depth = 1
         while j < size && depth > 0
           byte = raw[j]
-          if byte == 0x5C
-            j += 2
+          if byte == 0x5C # backslash escape
+            j = read_string_escape(j, buf)
           else
             depth += 1 if byte == 0x28
             depth -= 1 if byte == 0x29
+            buf.write_byte(byte) if depth > 0
             j += 1
           end
         end
+        {j, buf.to_slice}
+      end
+
+      # Single-character backslash escapes → the byte they produce
+      # (\n \r \t \b \f).
+      SIMPLE_ESCAPES = {
+        0x6E_u8 => 0x0A_u8, 0x72_u8 => 0x0D_u8, 0x74_u8 => 0x09_u8,
+        0x62_u8 => 0x08_u8, 0x66_u8 => 0x0C_u8,
+      }
+
+      # Decodes one backslash escape at index `escape_at` (the
+      # backslash), appending the resolved byte(s) to `buf` ; returns the
+      # next index.
+      private def read_string_escape(escape_at : Int32, buf : IO::Memory) : Int32
+        raw = @data
+        j = escape_at + 1
+        return j if j >= raw.size
+        byte = raw[j]
+        if mapped = SIMPLE_ESCAPES[byte]?
+          buf.write_byte(mapped)
+          j + 1
+        elsif byte == 0x0A # line continuation \<LF>
+          j + 1
+        elsif byte == 0x0D # line continuation \<CR> or \<CRLF>
+          (j + 1 < raw.size && raw[j + 1] == 0x0A) ? j + 2 : j + 1
+        elsif byte >= 0x30 && byte <= 0x37 # octal \ddd
+          read_octal_escape(j, buf)
+        else
+          buf.write_byte(byte) # \( \) \\ or unknown → literal char
+          j + 1
+        end
+      end
+
+      # Reads a 1–3 digit octal escape starting at `start`, appends the
+      # resulting byte to `buf`, and returns the next index.
+      private def read_octal_escape(start : Int32, buf : IO::Memory) : Int32
+        raw = @data
+        size = raw.size
+        value = 0
+        count = 0
+        j = start
+        while count < 3 && j < size && raw[j] >= 0x30 && raw[j] <= 0x37
+          value = value * 8 + (raw[j] - 0x30)
+          j += 1
+          count += 1
+        end
+        buf.write_byte((value & 0xFF).to_u8)
         j
       end
 
-      private def skip_hex_string(i : Int32) : Int32
+      # Reads a hex string starting at '<' : returns the index past the
+      # closing '>' and the decoded bytes (whitespace ignored, an odd
+      # final digit padded with 0).
+      private def read_hex_string(start : Int32) : Tuple(Int32, Bytes)
         raw = @data
         size = raw.size
-        j = i + 1
+        buf = IO::Memory.new
+        j = start + 1
+        high : Int32? = nil
         while j < size && raw[j] != 0x3E
+          value = hex_value(raw[j])
+          if value
+            if previous = high
+              buf.write_byte(((previous << 4) | value).to_u8)
+              high = nil
+            else
+              high = value
+            end
+          end
           j += 1
         end
-        j < size ? j + 1 : j
+        buf.write_byte(((high || 0) << 4).to_u8) if high
+        {j < size ? j + 1 : j, buf.to_slice}
+      end
+
+      # The numeric value of a hexadecimal digit byte, or nil.
+      private def hex_value(byte : UInt8) : Int32?
+        case byte
+        when 0x30..0x39 then (byte - 0x30).to_i
+        when 0x41..0x46 then (byte - 0x41 + 10).to_i
+        when 0x61..0x66 then (byte - 0x61 + 10).to_i
+        else                 nil
+        end
       end
 
       # Skips inline-image binary data after the `ID` operator, up to a

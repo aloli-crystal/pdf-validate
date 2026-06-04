@@ -454,6 +454,25 @@ private def pdf_with_cidfont_widths(declared_w : String) : Bytes
   ] of ObjBody)
 end
 
+# A page whose content stream is `content`, using a Type0 Identity-H
+# font backed by a 2-glyph CIDFontType2 program (CIDs 0 and 1 valid).
+private def pdf_with_glyph_text(content : String) : Bytes
+  program = truetype_program_with_metrics([1000, 1000], 1000)
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 7 0 R " \
+    "/Resources << /Font << /F1 4 0 R >> >> >>",
+    "<< /Type /Font /Subtype /Type0 /BaseFont /Emb /Encoding /Identity-H /DescendantFonts [5 0 R] >>",
+    "<< /Type /Font /Subtype /CIDFontType2 /BaseFont /Emb " \
+    "/CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> " \
+    "/CIDToGIDMap /Identity /FontDescriptor 6 0 R >>",
+    "<< /Type /FontDescriptor /FontName /Emb /FontFile2 8 0 R >>",
+    {"<< >>", content.to_slice},
+    {"<< /Length1 #{program.size} >>", program},
+  ] of ObjBody)
+end
+
 # A subset CIDFontType2 (2-glyph program, Identity map) whose
 # FontDescriptor carries the given /CIDSet bitmap.
 private def pdf_with_cidset(cidset : Bytes) : Bytes
@@ -1426,6 +1445,28 @@ describe PDF::Validate do
   it "does not flag a /CIDSet that marks all present CIDs (§ 6.2.11.4.2)" do
     report = PDF::Validate.bytes(pdf_with_cidset(Bytes[0xC0_u8]), "pdf-a-2b")
     report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.11.4.2-cidset")
+  end
+
+  it "detects text referencing a glyph absent from the program (§ 6.2.11.4.1 t2)" do
+    report = PDF::Validate.bytes(pdf_with_glyph_text("BT /F1 12 Tf <0005> Tj ET"), "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.2.11.4.1-glyphs-present")
+  end
+
+  it "detects text referencing the .notdef glyph (§ 6.2.11.8)" do
+    report = PDF::Validate.bytes(pdf_with_glyph_text("BT /F1 12 Tf <0000> Tj ET"), "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.2.11.8-notdef")
+  end
+
+  it "does not flag text showing a present, non-notdef glyph (§ 6.2.11.4.1/§ 6.2.11.8)" do
+    report = PDF::Validate.bytes(pdf_with_glyph_text("BT /F1 12 Tf <0001> Tj ET"), "pdf-a-2b")
+    ids = report.failures.map(&.rule.id)
+    ids.should_not contain("pdfa2-6.2.11.4.1-glyphs-present")
+    ids.should_not contain("pdfa2-6.2.11.8-notdef")
+  end
+
+  it "exempts invisible text (rendering mode 3) from the .notdef check (§ 6.2.11.8)" do
+    report = PDF::Validate.bytes(pdf_with_glyph_text("BT /F1 12 Tf 3 Tr <0000> Tj ET"), "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.11.8-notdef")
   end
 
   it "detects a non-predefined, non-embedded CMap name (§ 6.2.11.3.3 t1)" do

@@ -7,6 +7,42 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.36.0 — 2026-06-04 — Interpréteur contenu→glyphes (§ 6.2.11.4.1 t2 & § 6.2.11.8)
+
+=== Ajouté
+
+Le `ContentStreamScanner` suit désormais la police courante (`Tf`) et
+le mode de rendu de texte (`Tr`), capture les octets montrés par
+`Tj`/`TJ`/`'`/`"` (en décodant les échappements des chaînes littérales
+et hexadécimales) et les expose sous forme de « runs » de glyphes. Le
+`Context` résout, pour une police Type0 Identity-H/V adossée à une
+CIDFontType2, chaque CID montré en index de glyphe via /CIDToGIDMap.
+
+* **`referenced_glyphs_present` (§ 6.2.11.4.1 t2)** — un glyphe
+  référencé pour le rendu doit exister dans le programme embarqué
+  (index dans les bornes).
+* **`no_notdef_references` (§ 6.2.11.8)** — un opérateur de texte ne
+  doit pas référencer le glyphe .notdef (index 0).
+* Le texte en **mode de rendu 3 (invisible, p. ex. couche OCR) est
+  exempté**, conformément à ISO 19005-2.
+* Accesseurs `Context` : `referenced_glyph_absent_violations`,
+  `notdef_reference_violations`, le `glyph_reference_scan` mémoïsé, et
+  les aides `scan_type0_glyphs`, `page_font_resources`,
+  `resolve_page_resources`.
+
+=== Validation
+
+Zéro faux positif sur les 36 PDF conformes (texte OCR réel avec la
+couche de texte invisible) + Ghostscript — l'exemption du mode de rendu
+3 est ce qui garde le corpus océrisé propre. § 6.2.11.4.1 t2 était déjà
+comptée au niveau clause (cette version la rend réellement vérifiée) ;
+§ 6.2.11.8 est nouvelle.
+
+=== Couverture (régénérée via `doc/gap-analysis/run.sh`)
+
+§ 6.2 passe à **49/56 (88 %)**. Couverture clause-level totale :
+**131/144 → 132/144 (90 % → 91 %)**.
+
 == v0.35.0 — 2026-06-04 — Complétude du /CIDSet (§ 6.2.11.4.2 t2)
 
 === Ajouté

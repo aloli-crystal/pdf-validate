@@ -39,7 +39,7 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | Section | Thème | Règles veraPDF | Couvertes | %
 
 | § 6.1  | Structure de fichier (trailer, /ID, chiffrement, xref)     | 27  | 25  | 93 %
-| § 6.2  | Graphiques — couleur, polices, transparence, images        | 56  | 48  | 86 %
+| § 6.2  | Graphiques — couleur, polices, transparence, images        | 56  | 49  | 88 %
 | § 6.3  | Annotations                                                | 7   | 7   | 100 %
 | § 6.4  | Formulaires interactifs & signatures                       | 8   | 6   | 75 %
 | § 6.5  | Actions (JavaScript, /AA, actions nommées)                 | 4   | 4   | 100 %
@@ -48,7 +48,7 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | § 6.9  | Contenu optionnel (calques OCG)                            | 4   | 4   | 100 %
 | § 6.10 | Présentations alternatives                                 | 2   | 2   | 100 %
 | § 6.11 | Clé Requirements                                          | 1   | 1   | 100 %
-| *Total* | *PDF/A-2b*                                                | *144* | *131* | *90 %*
+| *Total* | *PDF/A-2b*                                                | *144* | *132* | *91 %*
 |===
 
 NOTE: Chiffres régénérés le 2026-06-03. Lot 1 (§ 6.2.5 fonctions de
@@ -303,6 +303,20 @@ par CID). Le corpus a des sous-ensembles **sans** /CIDSet → la règle ne
 s'y déclenche jamais (0 FP) ; positif validé en forge. t1 (CharSet
 Type1/CFF) reste exclu du décompte (`not_covered_tests`). § 6.2 passe à
 **48/56 (86 %)**, le total à **131/144 (90 %)**.
++
+Enfin **interpréteur contenu→glyphes** (0.36.0) : § 6.2.11.4.1 t2 (tout
+glyphe référencé pour le rendu doit exister dans le programme) et
+§ 6.2.11.8 (le glyphe `.notdef` ne doit pas être référencé). Le
+`ContentStreamScanner` suit la police courante (`Tf`) et le mode de
+rendu de texte (`Tr`), décode les octets montrés par `Tj`/`TJ`/`'`/`"`,
+et pour une police Type0 Identity-H/V adossée à une CIDFontType2 résout
+chaque CID en index de glyphe (via /CIDToGIDMap). Glyphe absent →
+§ 6.2.11.4.1 t2 ; glyphe d'index 0 → § 6.2.11.8. **Le texte en mode de
+rendu 3 (invisible, couche OCR) est exempté** — indispensable pour ne
+pas faussement signaler le corpus océrisé. Validé : 0 faux positif sur
+les 36 conformes (texte réel OCR) + Ghostscript. § 6.2.11.4.1 t2 était
+déjà comptée au niveau clause (substance) ; § 6.2.11.8 est nouvelle.
+§ 6.2 passe à **49/56 (88 %)**, le total à **132/144 (91 %)**.
 +
 NOTE: § 6.1.8 t1 (« les noms de polices, de colorants et de types de
 structure, après expansion des séquences `#XX`, doivent être de l'UTF-8
