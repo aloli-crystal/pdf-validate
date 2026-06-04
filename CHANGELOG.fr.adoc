@@ -7,6 +7,36 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.27.0 — 2026-06-04 — Filtre des images en ligne (§ 6.1.10)
+
+=== Ajouté
+
+* **`inline_image_filters_valid` (§ 6.1.10)** — le `ContentStreamScanner`
+  suit désormais l'état BI…ID d'une image en ligne et examine la valeur
+  de sa clé /F (ou /Filter) — nom unique ou tableau — en signalant le
+  filtre LZW (/LZW ou /LZWDecode) et /Crypt.
+* Accesseur `Context` : `inline_image_filter_violations` (agrégé sur
+  tous les flux de contenu de page via `content_scan`).
+* Specs : une image en ligne avec /F /LZW (détectée) ; LZW dans un
+  tableau /Filter (détecté) ; une image en ligne avec /Fl (propre) ; un
+  document sans image en ligne (propre).
+
+=== Différé
+
+* **§ 6.1.8 t1** (les noms de polices / colorants / types de structure
+  doivent être de l'UTF-8 valide après expansion des `#XX`) n'est *pas*
+  implémenté ni compté : le parseur du shard `pdf` décode chaque
+  séquence `#XX` en codepoint Unicode puis la réencode en UTF-8, si bien
+  qu'un nom est toujours UTF-8 valide au niveau du modèle objet — la
+  séquence d'octets d'origine est perdue. Détecter un nom non-UTF-8
+  exigerait que le reader préserve les octets bruts, ou une corrélation
+  byte-level entre positions de noms et rôles sémantiques.
+
+=== Couverture (régénérée via `doc/gap-analysis/run.sh`)
+
+§ 6.1 passe à **24/27 (89 %)**. Couverture clause-level totale :
+**120/144 → 121/144 (83 % → 84 %)**.
+
 == v0.26.0 — 2026-06-04 — Colorants DeviceN / Separation (§ 6.2.4.4)
 
 === Ajouté

@@ -7,6 +7,35 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.27.0 — 2026-06-04 — Inline image filter (§ 6.1.10)
+
+=== Added
+
+* **`inline_image_filters_valid` (§ 6.1.10)** — the `ContentStreamScanner`
+  now tracks the BI…ID state of an inline image and inspects the value
+  of its /F (or /Filter) key — a single name or an array — flagging the
+  LZW filter (/LZW or /LZWDecode) and /Crypt.
+* `Context` accessor : `inline_image_filter_violations` (aggregated over
+  all page content streams via `content_scan`).
+* Specs : an inline image with /F /LZW (detected) ; LZW inside a /Filter
+  array (detected) ; an inline image with /Fl (clean) ; a document with
+  no inline images (clean).
+
+=== Deferred
+
+* **§ 6.1.8 t1** (font / colourant / structure-type names must be valid
+  UTF-8 after `#XX` expansion) is *not* implemented and *not* counted :
+  the `pdf` parser decodes each `#XX` escape into a Unicode codepoint
+  and re-encodes it as UTF-8, so a name is always valid UTF-8 at the
+  object-model level — the original byte sequence is lost. Detecting a
+  non-UTF-8 name would require the reader to preserve raw name bytes or
+  a byte-level correlation of name positions to their semantic roles.
+
+=== Coverage (regenerated via `doc/gap-analysis/run.sh`)
+
+§ 6.1 rises to **24/27 (89 %)**. Total clause-level coverage :
+**120/144 → 121/144 (83 % → 84 %)**.
+
 == v0.26.0 — 2026-06-04 — DeviceN / Separation colorants (§ 6.2.4.4)
 
 === Added

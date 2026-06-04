@@ -525,6 +525,39 @@ private def pdf_with_bad_operator : Bytes
   ] of ObjBody)
 end
 
+# A page whose content stream embeds an inline image using the LZW
+# filter (/F /LZW) — forbidden by § 6.1.10.
+private def pdf_with_inline_lzw_filter : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>",
+    {"<< >>", "q BI /W 1 /H 1 /CS /G /BPC 8 /F /LZW ID \u{0}\u{0} EI Q".to_slice},
+  ] of ObjBody)
+end
+
+# An inline image whose /Filter array contains LZW — also forbidden
+# (§ 6.1.10), exercising the array-valued filter path.
+private def pdf_with_inline_lzw_array : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>",
+    {"<< >>", "q BI /W 1 /H 1 /CS /G /BPC 8 /Filter [/AHx /LZW] ID 00 EI Q".to_slice},
+  ] of ObjBody)
+end
+
+# An inline image using the allowed Flate filter (/F /Fl) — conformant
+# under § 6.1.10.
+private def pdf_with_inline_flate_filter : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>",
+    {"<< >>", "q BI /W 1 /H 1 /CS /G /BPC 8 /F /Fl ID \u{0}\u{0} EI Q".to_slice},
+  ] of ObjBody)
+end
+
 # A file whose XMP packet header carries a forbidden `bytes` attribute
 # (§ 6.6.2.1 t2) and declares an invalid conformance level (§ 6.6.4
 # t3). The XML itself is well-formed so only those two rules fire.
@@ -893,6 +926,26 @@ describe PDF::Validate do
   it "does not flag a document without a permissions dictionary (§ 6.1.12)" do
     report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
     report.failures.map(&.rule.id).should_not contain("pdfa2-6.1.12-permissions-dictionary")
+  end
+
+  it "detects an inline image using the LZW filter (§ 6.1.10)" do
+    report = PDF::Validate.bytes(pdf_with_inline_lzw_filter, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.1.10-inline-image-filter")
+  end
+
+  it "detects LZW in an inline image /Filter array (§ 6.1.10)" do
+    report = PDF::Validate.bytes(pdf_with_inline_lzw_array, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.1.10-inline-image-filter")
+  end
+
+  it "does not flag an inline image using Flate (§ 6.1.10)" do
+    report = PDF::Validate.bytes(pdf_with_inline_flate_filter, "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.1.10-inline-image-filter")
+  end
+
+  it "does not flag a document without inline images (§ 6.1.10)" do
+    report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.1.10-inline-image-filter")
   end
 
   it "detects interactive-form action violations (§ 6.4.1)" do

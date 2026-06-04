@@ -43,6 +43,10 @@ module PDF
         "Perceptual", "Saturation",
       }
 
+      # Inline-image filters PDF/A forbids (ISO 19005-2 § 6.1.10) — the
+      # LZW filter (abbreviated /LZW or full /LZWDecode) and /Crypt.
+      FORBIDDEN_INLINE_FILTERS = Set{"LZW", "LZWDecode", "Crypt"}
+
       getter undefined_operators = [] of String
       getter max_q_depth = 0
       # Device colour spaces (RGB/CMYK/GRAY) set directly in the content
@@ -50,9 +54,15 @@ module PDF
       getter device_colour_spaces = Set(String).new
       # Non-standard rendering intents passed to the `ri` operator.
       getter invalid_rendering_intents = [] of String
+      # Forbidden filters named in an inline image's /F (or /Filter) key.
+      getter inline_image_filters = [] of String
       # The most recent name token — the operand a following `ri`
       # consumes (`/Perceptual ri`).
       @last_name : String? = nil
+      # Inline-image (BI…ID) parsing state for the § 6.1.10 filter check.
+      @in_inline_image = false
+      @inline_expect_filter = false
+      @inline_in_filter_array = false
 
       def initialize(@data : Bytes)
       end
@@ -83,9 +93,12 @@ module PDF
             end
           when byte == 0x2F # '/' name
             name_end = skip_token(i + 1)
-            @last_name = String.new(raw[i + 1, name_end - i - 1])
+            name = String.new(raw[i + 1, name_end - i - 1])
+            @last_name = name
+            note_inline_name(name) if @in_inline_image
             i = name_end
           when delimiter?(byte) # ) > ] [ { } etc. — single delimiter
+            note_inline_delimiter(byte) if @in_inline_image
             i += 1
           when number_start?(byte)
             i = skip_token(i)
@@ -109,7 +122,12 @@ module PDF
           @max_q_depth = depth.value if depth.value > @max_q_depth
         when "Q"
           depth.value -= 1 if depth.value > 0
+        when "BI"
+          @in_inline_image = true
+          @inline_expect_filter = false
+          @inline_in_filter_array = false
         when "ID"
+          @in_inline_image = false
           return skip_inline_image_data(token_end)
         when "ri"
           intent = @last_name
@@ -123,6 +141,37 @@ module PDF
           end
         end
         token_end
+      end
+
+      # Handles a name token while inside an inline image dictionary
+      # (between BI and ID) : records forbidden filter names and tracks
+      # whether the next name(s) are the value of /F or /Filter.
+      private def note_inline_name(name : String)
+        if @inline_expect_filter
+          record_inline_filter(name)
+          @inline_expect_filter = false
+          return
+        end
+        if @inline_in_filter_array
+          record_inline_filter(name)
+          return
+        end
+        @inline_expect_filter = true if name == "F" || name == "Filter"
+      end
+
+      # Tracks the `[ … ]` array delimiters of an inline image's /Filter
+      # value so each filter name inside is examined.
+      private def note_inline_delimiter(byte : UInt8)
+        if byte == 0x5B && @inline_expect_filter # '['
+          @inline_in_filter_array = true
+          @inline_expect_filter = false
+        elsif byte == 0x5D && @inline_in_filter_array # ']'
+          @inline_in_filter_array = false
+        end
+      end
+
+      private def record_inline_filter(name : String)
+        @inline_image_filters << "/#{name}" if FORBIDDEN_INLINE_FILTERS.includes?(name)
       end
 
       # --- byte helpers ---

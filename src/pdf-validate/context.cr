@@ -949,9 +949,10 @@ module PDF
       # operators, the maximum q/Q nesting depth, and the invalid `ri`
       # rendering intents. Built once. Empty when there is no page
       # content.
-      private getter content_scan : {undefined: Array(String), max_q: Int32, invalid_ri: Array(String)} do
+      private getter content_scan : {undefined: Array(String), max_q: Int32, invalid_ri: Array(String), inline_filters: Array(String)} do
         undefined = [] of String
         invalid_ri = [] of String
+        inline_filters = [] of String
         max_q = 0
         each_page do |page|
           data = page_content_bytes(page)
@@ -959,9 +960,16 @@ module PDF
           scanner = ContentStreamScanner.new(data).scan
           undefined.concat(scanner.undefined_operators)
           invalid_ri.concat(scanner.invalid_rendering_intents)
+          inline_filters.concat(scanner.inline_image_filters)
           max_q = scanner.max_q_depth if scanner.max_q_depth > max_q
         end
-        {undefined: undefined.uniq, max_q: max_q, invalid_ri: invalid_ri.uniq}
+        {undefined: undefined.uniq, max_q: max_q, invalid_ri: invalid_ri.uniq, inline_filters: inline_filters.uniq}
+      end
+
+      # Forbidden filters named in an inline image's /F (or /Filter) key
+      # across all page content streams (ISO 19005-2 § 6.1.10).
+      getter inline_image_filter_violations : Array(String) do
+        content_scan[:inline_filters]
       end
 
       # Concatenated decoded bytes of a page's /Contents (a single
