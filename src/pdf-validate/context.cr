@@ -282,6 +282,52 @@ module PDF
         end
       end
 
+      # Simple TrueType font encoding violations (ISO 19005-2
+      # § 6.2.11.6, the dictionary-level tests t2/t3) :
+      #   t2 — a non-symbolic TrueType font's /Encoding (a name, or the
+      #        /BaseEncoding of an encoding dictionary) must be
+      #        MacRomanEncoding or WinAnsiEncoding.
+      #   t3 — a symbolic TrueType font must not carry an /Encoding entry.
+      # The symbolic flag is bit 3 (value 4) of the FontDescriptor
+      # /Flags. (t1/t4 — the embedded program's cmap table — need
+      # font-program parsing and are out of the dictionary-level scope.)
+      getter truetype_encoding_violations : Array(String) do
+        issues = [] of String
+        each_font_dict do |dict|
+          next unless dict["Subtype"]?.try(&.as?(PDF::Objects::Name)).try(&.value) == "TrueType"
+          base = dict["BaseFont"]?.try(&.as?(PDF::Objects::Name)).try(&.value) || "(unnamed)"
+          descriptor = dict["FontDescriptor"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+          flags = descriptor.try { |desc| desc["Flags"]?.try(&.as?(PDF::Objects::Number)).try(&.to_i64) } || 0_i64
+          symbolic = (flags & 4) != 0
+          encoding = dict["Encoding"]?
+
+          if symbolic
+            issues << "symbolic TrueType #{base} must not carry an /Encoding entry" if encoding
+          else
+            name = truetype_base_encoding(encoding)
+            unless name == "MacRomanEncoding" || name == "WinAnsiEncoding"
+              issues << "non-symbolic TrueType #{base} /Encoding must be MacRomanEncoding or WinAnsiEncoding"
+            end
+          end
+        end
+        issues.uniq
+      end
+
+      # The base encoding name of a font's /Encoding value : the name
+      # itself when /Encoding is a name, or the /BaseEncoding of an
+      # encoding dictionary. nil when absent or unrecognised.
+      private def truetype_base_encoding(encoding : PDF::Objects::Base?) : String?
+        return nil unless encoding
+        resolved = resolve(encoding)
+        if name = resolved.as?(PDF::Objects::Name)
+          return name.value
+        end
+        if dict = resolved.as?(PDF::Objects::Dictionary)
+          return dict["BaseEncoding"]?.try { |base| resolve(base) }.as?(PDF::Objects::Name).try(&.value)
+        end
+        nil
+      end
+
       # The descendant CIDFont of a Type0 font (/DescendantFonts[0]).
       private def descendant_cidfont(type0 : PDF::Objects::Dictionary) : PDF::Objects::Dictionary?
         list = type0["DescendantFonts"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Array)

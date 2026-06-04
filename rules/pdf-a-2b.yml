@@ -183,6 +183,13 @@
   check: cmaps_valid
   args: []
 
+- id: pdfa2-6.2.11.6-truetype-encoding
+  clause: "ISO 19005-2 § 6.2.11.6"
+  title: "Non-symbolic TrueType uses MacRoman/WinAnsi encoding; symbolic TrueType has no Encoding entry"
+  severity: error
+  check: truetype_encodings_valid
+  args: []
+
 - id: pdfa2-6.2.11.4.1-fonts-embedded
   clause: "ISO 19005-2 § 6.2.11.4.1"
   title: "Font programs for all rendered fonts shall be embedded"

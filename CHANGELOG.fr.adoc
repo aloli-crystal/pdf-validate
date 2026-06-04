@@ -7,6 +7,34 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.31.0 — 2026-06-04 — Encodage des TrueType simples (§ 6.2.11.6 t2/t3)
+
+=== Ajouté
+
+* **`truetype_encodings_valid` (§ 6.2.11.6 t2/t3)** — règles d'encodage
+  au niveau dictionnaire pour les polices TrueType simples. t2 : une
+  TrueType non symbolique (bit 3 des /Flags du FontDescriptor à 0) doit
+  avoir un /Encoding (nom, ou /BaseEncoding d'un dict d'encodage) égal à
+  MacRomanEncoding ou WinAnsiEncoding. t3 : une TrueType symbolique
+  (bit 3 à 1) ne doit porter aucun /Encoding.
+* Accesseur `Context` : `truetype_encoding_violations`, avec l'aide
+  privée `truetype_base_encoding`.
+* Specs : une TrueType non symbolique en StandardEncoding (détectée) ;
+  une TrueType symbolique avec /Encoding (détectée) ; une TrueType non
+  symbolique en WinAnsi (propre).
+
+=== Différé
+
+* **§ 6.2.11.6 t1/t4** (table cmap du programme TrueType embarqué)
+  exigent le parsing du programme de police et restent dans le
+  sous-projet « modèle de glyphes » ; exclus du décompte via
+  `not_covered_tests`.
+
+=== Couverture (régénérée via `doc/gap-analysis/run.sh`)
+
+§ 6.2 passe à **44/56 (79 %)**. Couverture clause-level totale :
+**125/144 → 127/144 (86 % → 88 %)**.
+
 == v0.30.0 — 2026-06-04 — Schémas XMP prédéfinis / d'extension (§ 6.6.2.3.1)
 
 === Ajouté

@@ -309,6 +309,44 @@ private def pdf_with_identity_type0 : Bytes
   ] of ObjBody)
 end
 
+# A non-symbolic simple TrueType font (Flags 32) whose /Encoding is
+# StandardEncoding — violating § 6.2.11.6 t2 (must be MacRoman/WinAnsi).
+private def pdf_with_bad_truetype_encoding : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] " \
+    "/Resources << /Font << /F1 4 0 R >> >> >>",
+    "<< /Type /Font /Subtype /TrueType /BaseFont /Arial /Encoding /StandardEncoding /FontDescriptor 5 0 R >>",
+    "<< /Type /FontDescriptor /FontName /Arial /Flags 32 >>",
+  ] of ObjBody)
+end
+
+# A symbolic simple TrueType font (Flags 4) carrying an /Encoding entry
+# — violating § 6.2.11.6 t3 (symbolic fonts must have no Encoding).
+private def pdf_with_symbolic_truetype_encoding : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] " \
+    "/Resources << /Font << /F1 4 0 R >> >> >>",
+    "<< /Type /Font /Subtype /TrueType /BaseFont /Sym /Encoding /WinAnsiEncoding /FontDescriptor 5 0 R >>",
+    "<< /Type /FontDescriptor /FontName /Sym /Flags 4 >>",
+  ] of ObjBody)
+end
+
+# A conformant non-symbolic TrueType font : WinAnsiEncoding, Flags 32.
+private def pdf_with_good_truetype_encoding : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] " \
+    "/Resources << /Font << /F1 4 0 R >> >> >>",
+    "<< /Type /Font /Subtype /TrueType /BaseFont /Arial /Encoding /WinAnsiEncoding /FontDescriptor 5 0 R >>",
+    "<< /Type /FontDescriptor /FontName /Arial /Flags 32 >>",
+  ] of ObjBody)
+end
+
 # A Type0 font whose /Encoding names a CMap that is neither predefined
 # (Table 118) nor embedded — violating § 6.2.11.3.3 t1.
 private def pdf_with_nonpredefined_cmap : Bytes
@@ -1135,6 +1173,21 @@ describe PDF::Validate do
   it "does not flag an Identity-H Type0 font (§ 6.2.11.3.1)" do
     report = PDF::Validate.bytes(pdf_with_identity_type0, "pdf-a-2b")
     report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.11.3.1-type0-encoding")
+  end
+
+  it "detects a non-symbolic TrueType without MacRoman/WinAnsi (§ 6.2.11.6 t2)" do
+    report = PDF::Validate.bytes(pdf_with_bad_truetype_encoding, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.2.11.6-truetype-encoding")
+  end
+
+  it "detects a symbolic TrueType carrying an /Encoding (§ 6.2.11.6 t3)" do
+    report = PDF::Validate.bytes(pdf_with_symbolic_truetype_encoding, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.2.11.6-truetype-encoding")
+  end
+
+  it "does not flag a WinAnsi non-symbolic TrueType (§ 6.2.11.6)" do
+    report = PDF::Validate.bytes(pdf_with_good_truetype_encoding, "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.11.6-truetype-encoding")
   end
 
   it "detects a non-predefined, non-embedded CMap name (§ 6.2.11.3.3 t1)" do
