@@ -7,6 +7,29 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.26.0 — 2026-06-04 — DeviceN / Separation colorants (§ 6.2.4.4)
+
+=== Added
+
+* **`devicen_separation_valid` (§ 6.2.4.4)** — every spot colorant of a
+  DeviceN/NChannel colour space (a name that is neither a standard
+  process colorant — Cyan/Magenta/Yellow/Black — nor listed in the
+  attributes' /Process /Components) must have an entry in the
+  attributes' /Colorants dictionary (t1) ; all Separation colour spaces
+  sharing one colorant name must share the same alternate space and
+  tint transform (t2).
+* `Context` accessor : `devicen_separation_violations`, with private
+  helpers `devicen_colorant_issues`, `separation_consistency_issue` and
+  `colour_space_signature`, plus the `PROCESS_COLORANTS` table.
+* Specs : a DeviceN spot colorant without /Colorants (detected) ; a
+  DeviceN with complete /Colorants (clean) ; two same-named Separations
+  with different alternates (detected) ; a document with neither (clean).
+
+=== Coverage (regenerated via `doc/gap-analysis/run.sh`)
+
+§ 6.2 rises to **41/56 (73 %)**. Total clause-level coverage :
+**118/144 → 120/144 (81 % → 83 %)**.
+
 == v0.25.0 — 2026-06-04 — CMap restrictions (§ 6.2.11.3.3)
 
 === Added

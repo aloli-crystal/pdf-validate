@@ -127,6 +127,13 @@
   check: iccbased_profiles_valid
   args: []
 
+- id: pdfa2-6.2.4.4-devicen-separation
+  clause: "ISO 19005-2 § 6.2.4.4"
+  title: "DeviceN/NChannel spot colorants are in /Colorants; Separations with one name share alternate & tint"
+  severity: error
+  check: devicen_separation_valid
+  args: []
+
 - id: pdfa2-6.2.11.2-font-dictionary
   clause: "ISO 19005-2 § 6.2.11.2"
   title: "Font dictionary: valid /Subtype, /BaseFont, FirstChar/LastChar/Widths, FontFile3 subtype"

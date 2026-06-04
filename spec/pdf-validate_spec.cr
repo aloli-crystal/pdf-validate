@@ -413,6 +413,48 @@ private def pdf_with_transparency_no_group_cs : Bytes
   ] of ObjBody)
 end
 
+# A DeviceN colour space with a spot colorant (/SpotRed) and no
+# /Colorants dictionary — violating § 6.2.4.4 t1.
+private def pdf_with_devicen_no_colorants : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] " \
+    "/Resources << /ColorSpace << /CS0 4 0 R >> >> >>",
+    "[ /DeviceN [ /SpotRed ] /DeviceRGB 5 0 R ]",
+    "<< /FunctionType 2 /Domain [0 1] /C0 [0 0 0] /C1 [1 0 0] /N 1 >>",
+  ] of ObjBody)
+end
+
+# A DeviceN whose attributes dictionary lists the spot colorant in
+# /Colorants — conformant under § 6.2.4.4 t1.
+private def pdf_with_devicen_colorants : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] " \
+    "/Resources << /ColorSpace << /CS0 4 0 R >> >> >>",
+    "[ /DeviceN [ /SpotRed ] /DeviceRGB 5 0 R << /Colorants << /SpotRed 6 0 R >> >> ]",
+    "<< /FunctionType 2 /Domain [0 1] /C0 [0 0 0] /C1 [1 0 0] /N 1 >>",
+    "[ /Separation /SpotRed /DeviceRGB 5 0 R ]",
+  ] of ObjBody)
+end
+
+# Two Separation colour spaces sharing the name /Spot but with
+# different alternate spaces — violating § 6.2.4.4 t2.
+private def pdf_with_inconsistent_separations : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] " \
+    "/Resources << /ColorSpace << /CS0 4 0 R /CS1 5 0 R >> >> >>",
+    "[ /Separation /Spot /DeviceRGB 6 0 R ]",
+    "[ /Separation /Spot /DeviceCMYK 7 0 R ]",
+    "<< /FunctionType 2 /Domain [0 1] /C0 [0 0 0] /C1 [1 0 0] /N 1 >>",
+    "<< /FunctionType 2 /Domain [0 1] /C0 [0 0 0 0] /C1 [1 0 0 0] /N 1 >>",
+  ] of ObjBody)
+end
+
 # The same transparency page but with a /CS on its /Group — conformant
 # under § 6.2.10 t2 even without an OutputIntent.
 private def pdf_with_transparency_and_group_cs : Bytes
@@ -796,6 +838,26 @@ describe PDF::Validate do
   it "does not flag a complete /Order array (§ 6.9 t3)" do
     report = PDF::Validate.bytes(pdf_with_complete_oc_order, "pdf-a-2b")
     report.failures.map(&.rule.id).should_not contain("pdfa2-6.9-optional-content")
+  end
+
+  it "detects a DeviceN spot colorant without /Colorants (§ 6.2.4.4 t1)" do
+    report = PDF::Validate.bytes(pdf_with_devicen_no_colorants, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.2.4.4-devicen-separation")
+  end
+
+  it "does not flag a DeviceN with a complete /Colorants (§ 6.2.4.4 t1)" do
+    report = PDF::Validate.bytes(pdf_with_devicen_colorants, "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.4.4-devicen-separation")
+  end
+
+  it "detects inconsistent Separations sharing one name (§ 6.2.4.4 t2)" do
+    report = PDF::Validate.bytes(pdf_with_inconsistent_separations, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.2.4.4-devicen-separation")
+  end
+
+  it "does not flag a document without DeviceN/Separation (§ 6.2.4.4)" do
+    report = PDF::Validate.bytes(pdfa_bytes, "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.4.4-devicen-separation")
   end
 
   it "detects a transparency page without a /Group /CS (§ 6.2.10 t2)" do

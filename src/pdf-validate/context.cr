@@ -412,6 +412,79 @@ module PDF
         issues
       end
 
+      # Standard process colorant names plus the two reserved names
+      # (ISO 32000-1 § 8.6.6.4) — these never require a /Colorants entry.
+      PROCESS_COLORANTS = %w[Cyan Magenta Yellow Black None All]
+
+      # DeviceN / Separation violations (ISO 19005-2 § 6.2.4.4) :
+      #   t1 — every *spot* colorant of a DeviceN/NChannel colour space
+      #        (a name that is neither a standard process colorant nor
+      #        listed in the attributes' /Process /Components) must have
+      #        an entry in the attributes' /Colorants dictionary.
+      #   t2 — all Separation colour spaces sharing one colorant name
+      #        must share the same alternate space and tint transform.
+      getter devicen_separation_violations : Array(String) do
+        issues = [] of String
+        seen = {} of String => Tuple(String, UInt64)
+        each_object do |obj|
+          arr = obj.as?(PDF::Objects::Array)
+          next unless arr && arr.size >= 2
+          case resolve(arr[0]).as?(PDF::Objects::Name).try(&.value)
+          when "DeviceN", "NChannel"
+            issues.concat(devicen_colorant_issues(arr))
+          when "Separation"
+            separation_consistency_issue(arr, seen).try { |msg| issues << msg }
+          end
+        end
+        issues.uniq
+      end
+
+      # Spot colorants of a DeviceN/NChannel array that lack a /Colorants
+      # entry (ISO 19005-2 § 6.2.4.4 t1).
+      private def devicen_colorant_issues(arr : PDF::Objects::Array) : Array(String)
+        issues = [] of String
+        names = resolve(arr[1]).as?(PDF::Objects::Array)
+        return issues unless names
+        attrs = arr.size >= 5 ? resolve(arr[4]).as?(PDF::Objects::Dictionary) : nil
+        colorants = attrs.try { |dict| dict["Colorants"]? }.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+        process = attrs.try { |dict| dict["Process"]? }.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+        comps = process.try { |dict| dict["Components"]? }.try { |ref| resolve(ref) }.as?(PDF::Objects::Array)
+        process_names = comps.try(&.compact_map { |comp| resolve(comp).as?(PDF::Objects::Name).try(&.value) }) || [] of String
+
+        names.each do |entry|
+          cname = resolve(entry).as?(PDF::Objects::Name).try(&.value)
+          next unless cname
+          next if PROCESS_COLORANTS.includes?(cname) || process_names.includes?(cname)
+          unless colorants && colorants.has_key?(cname)
+            issues << "DeviceN spot colorant /#{cname} has no entry in the /Colorants dictionary"
+          end
+        end
+        issues
+      end
+
+      # Records a Separation's {alternate, tint} signature under its
+      # colorant name ; returns a message when a later Separation of the
+      # same name disagrees (ISO 19005-2 § 6.2.4.4 t2).
+      private def separation_consistency_issue(arr : PDF::Objects::Array, seen : Hash(String, Tuple(String, UInt64))) : String?
+        return nil unless arr.size >= 4
+        cname = resolve(arr[1]).as?(PDF::Objects::Name).try(&.value)
+        return nil unless cname
+        signature = {colour_space_signature(arr[2]), resolve(arr[3]).object_id}
+        if prev = seen[cname]?
+          return "Separation /#{cname} has inconsistent alternate space or tint transform across the file" if prev != signature
+        else
+          seen[cname] = signature
+        end
+        nil
+      end
+
+      # A stable signature for an alternate colour space : its name when
+      # a device space, otherwise the resolved object identity.
+      private def colour_space_signature(space : PDF::Objects::Base) : String
+        resolved = resolve(space)
+        resolved.as?(PDF::Objects::Name).try(&.value) || resolved.object_id.to_s
+      end
+
       # Forbidden XObject constructs (ISO 19005-2 § 6.2.9) : PostScript
       # XObjects (`/Subtype /PS` or form `/Subtype2 /PS` / `/PS` key),
       # reference XObjects (`/Ref`), and `/OPI`.
