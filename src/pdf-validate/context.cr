@@ -100,6 +100,27 @@ module PDF
       SIMPLE_FONT_SUBTYPES     = %w[Type1 MMType1 TrueType]
       VALID_FONTFILE3_SUBTYPES = %w[Type1C CIDFontType0C OpenType]
 
+      # The predefined CMaps of ISO 32000-1:2008, 9.7.5.2, Table 118 —
+      # the only CMaps a PDF/A-2 file may name without embedding
+      # (ISO 19005-2 § 6.2.11.3.3). Any other CMap must be an embedded
+      # stream.
+      PREDEFINED_CMAPS = %w[
+        Identity-H Identity-V
+        GB-EUC-H GB-EUC-V GBpc-EUC-H GBpc-EUC-V GBK-EUC-H GBK-EUC-V
+        GBKp-EUC-H GBKp-EUC-V GBK2K-H GBK2K-V UniGB-UCS2-H UniGB-UCS2-V
+        UniGB-UTF16-H UniGB-UTF16-V
+        B5pc-H B5pc-V HKscs-B5-H HKscs-B5-V ETen-B5-H ETen-B5-V
+        ETenms-B5-H ETenms-B5-V CNS-EUC-H CNS-EUC-V UniCNS-UCS2-H
+        UniCNS-UCS2-V UniCNS-UTF16-H UniCNS-UTF16-V
+        83pv-RKSJ-H 90ms-RKSJ-H 90ms-RKSJ-V 90msp-RKSJ-H 90msp-RKSJ-V
+        90pv-RKSJ-H Add-RKSJ-H Add-RKSJ-V EUC-H EUC-V Ext-RKSJ-H
+        Ext-RKSJ-V H V UniJIS-UCS2-H UniJIS-UCS2-V UniJIS-UCS2-HW-H
+        UniJIS-UCS2-HW-V UniJIS-UTF16-H UniJIS-UTF16-V
+        KSC-EUC-H KSC-EUC-V KSCms-UHC-H KSCms-UHC-V KSCms-UHC-HW-H
+        KSCms-UHC-HW-V KSCpc-EUC-H UniKS-UCS2-H UniKS-UCS2-V
+        UniKS-UTF16-H UniKS-UTF16-V
+      ]
+
       # Font-dictionary violations (ISO 19005-2 § 6.2.11.2), checkable
       # from the dictionaries (no font program needed) : /Subtype is a
       # defined type (t2) ; /BaseFont is present except for Type3 (t3) ;
@@ -170,6 +191,56 @@ module PDF
           end
         end
         issues.uniq
+      end
+
+      # CMap restrictions (ISO 19005-2 § 6.2.11.3.3) for Type0 fonts :
+      #   t1 — /Encoding is a predefined CMap name (Table 118) or an
+      #        embedded CMap stream ; any other name is forbidden.
+      #   t2 — for an embedded CMap, the /WMode in the CMap dictionary
+      #        equals the WMode declared in the CMap stream content.
+      #   t3 — a CMap's /UseCMap may reference only a predefined CMap.
+      getter cmap_violations : Array(String) do
+        issues = [] of String
+        each_font_dict do |dict|
+          next unless dict["Subtype"]?.try(&.as?(PDF::Objects::Name)).try(&.value) == "Type0"
+          encoding = dict["Encoding"]?.try { |ref| resolve(ref) }
+          next unless encoding
+
+          if name = encoding.as?(PDF::Objects::Name).try(&.value)
+            unless PREDEFINED_CMAPS.includes?(name)
+              issues << "Type0 /Encoding names CMap /#{name}, which is neither predefined nor embedded"
+            end
+            next
+          end
+
+          stream = encoding.as?(PDF::Objects::Stream)
+          next unless stream
+          cmap_dict = stream.dictionary
+
+          dict_wmode = cmap_dict["WMode"]?.try(&.as?(PDF::Objects::Number)).try(&.to_i64)
+          stream_wmode = cmap_stream_wmode(stream)
+          if dict_wmode && stream_wmode && dict_wmode != stream_wmode
+            issues << "embedded CMap /WMode #{dict_wmode} differs from the stream's WMode #{stream_wmode}"
+          end
+
+          if use = cmap_dict["UseCMap"]?.try { |ref| resolve(ref) }
+            use_name = use.as?(PDF::Objects::Name).try(&.value)
+            if use_name && !PREDEFINED_CMAPS.includes?(use_name)
+              issues << "embedded CMap /UseCMap references non-predefined CMap /#{use_name}"
+            end
+          end
+        end
+        issues.uniq
+      end
+
+      # The WMode integer declared inside a CMap stream's content
+      # (`/WMode n def`), or nil if absent/unreadable.
+      private def cmap_stream_wmode(stream : PDF::Objects::Stream) : Int64?
+        return nil unless stream.decoded
+        text = String.new(stream.encoded_data)
+        if md = text.match(/\/WMode\s+(\d+)\s+def/)
+          md[1].to_i64
+        end
       end
 
       # The descendant CIDFont of a Type0 font (/DescendantFonts[0]).

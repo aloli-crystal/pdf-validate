@@ -39,7 +39,7 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | Section | Thème | Règles veraPDF | Couvertes | %
 
 | § 6.1  | Structure de fichier (trailer, /ID, chiffrement, xref)     | 27  | 23  | 85 %
-| § 6.2  | Graphiques — couleur, polices, transparence, images        | 56  | 36  | 64 %
+| § 6.2  | Graphiques — couleur, polices, transparence, images        | 56  | 39  | 70 %
 | § 6.3  | Annotations                                                | 7   | 7   | 100 %
 | § 6.4  | Formulaires interactifs & signatures                       | 8   | 6   | 75 %
 | § 6.5  | Actions (JavaScript, /AA, actions nommées)                 | 4   | 4   | 100 %
@@ -48,7 +48,7 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | § 6.9  | Contenu optionnel (calques OCG)                            | 4   | 4   | 100 %
 | § 6.10 | Présentations alternatives                                 | 2   | 2   | 100 %
 | § 6.11 | Clé Requirements                                          | 1   | 1   | 100 %
-| *Total* | *PDF/A-2b*                                                | *144* | *115* | *79 %*
+| *Total* | *PDF/A-2b*                                                | *144* | *118* | *81 %*
 |===
 
 NOTE: Chiffres régénérés le 2026-06-03. Lot 1 (§ 6.2.5 fonctions de
@@ -202,6 +202,16 @@ est présent, aucun dictionnaire de référence de signature
 /DigestValue. Pur dict-level, aucune crypto. Nos PDF et le corpus n'ont
 pas de /Perms → 0 faux positif. § 6.1 passe à **23/27 (85 %)**, le
 total à **115/144 (79 %)**.
++
+Enfin lot § 6.2.11.3.3 (0.25.0) : restrictions sur les CMaps des polices
+Type0. t1 — l'/Encoding est soit une CMap prédéfinie (les 61 noms de la
+Table 118 d'ISO 32000-1), soit un flux CMap embarqué ; tout autre nom
+est interdit. t2 — pour une CMap embarquée, le /WMode du dictionnaire
+doit égaler le WMode déclaré dans le contenu du flux (`/WMode n def`).
+t3 — une CMap ne référence via /UseCMap qu'une CMap prédéfinie. Nos
+polices (Identity-H) passent t1 ; le corpus (Identity-H ou CMaps
+embarquées valides) ne déclenche aucun faux positif. § 6.2 passe à
+**39/56 (70 %)**, le total à **118/144 (81 %)**.
 Couverture clause-level partielle assumée pour quelques clauses : les
 contrôles « octets bruts » ne sont pas (encore) implémentés faute de
 scanner d'octets, si bien que § 6.1.3 (on couvre t1 /ID + t2 /Encrypt,

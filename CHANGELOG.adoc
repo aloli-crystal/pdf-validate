@@ -7,6 +7,27 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.25.0 — 2026-06-04 — CMap restrictions (§ 6.2.11.3.3)
+
+=== Added
+
+* **`cmaps_valid` (§ 6.2.11.3.3)** — for Type0 fonts : the /Encoding is
+  either a predefined CMap name (the 61 names of ISO 32000-1:2008,
+  9.7.5.2, Table 118) or an embedded CMap stream — any other name is
+  forbidden (t1) ; for an embedded CMap, the dictionary /WMode matches
+  the WMode declared in the stream content (`/WMode n def`, t2) ; a
+  CMap's /UseCMap references only a predefined CMap (t3).
+* `Context` accessor : `cmap_violations`, with the private helper
+  `cmap_stream_wmode` and the `PREDEFINED_CMAPS` table.
+* Specs : a non-predefined, non-embedded CMap name (detected) ; an
+  embedded CMap whose dict WMode differs from the stream's (detected) ;
+  an Identity-H font (clean).
+
+=== Coverage (regenerated via `doc/gap-analysis/run.sh`)
+
+§ 6.2 rises to **39/56 (70 %)**. Total clause-level coverage :
+**115/144 → 118/144 (79 % → 81 %)**.
+
 == v0.24.0 — 2026-06-04 — Permissions dictionary (§ 6.1.12)
 
 === Added

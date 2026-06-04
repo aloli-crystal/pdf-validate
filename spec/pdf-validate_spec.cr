@@ -242,6 +242,36 @@ private def pdf_with_identity_type0 : Bytes
   ] of ObjBody)
 end
 
+# A Type0 font whose /Encoding names a CMap that is neither predefined
+# (Table 118) nor embedded — violating § 6.2.11.3.3 t1.
+private def pdf_with_nonpredefined_cmap : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] " \
+    "/Resources << /Font << /F1 4 0 R >> >> >>",
+    "<< /Type /Font /Subtype /Type0 /BaseFont /Foo /Encoding /Bogus-CMap-H /DescendantFonts [5 0 R] >>",
+    "<< /Type /Font /Subtype /CIDFontType2 /BaseFont /Foo " \
+    "/CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /CIDToGIDMap /Identity >>",
+  ] of ObjBody)
+end
+
+# A Type0 font with an embedded CMap whose dictionary /WMode (0) differs
+# from the WMode declared in the stream content (1) — violating
+# § 6.2.11.3.3 t2.
+private def pdf_with_cmap_wmode_mismatch : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] " \
+    "/Resources << /Font << /F1 4 0 R >> >> >>",
+    "<< /Type /Font /Subtype /Type0 /BaseFont /Foo /Encoding 5 0 R /DescendantFonts [6 0 R] >>",
+    {"<< /Type /CMap /CMapName /Custom /WMode 0 >>", "%!PS\n/WMode 1 def\nbegincmap\nendcmap\n".to_slice},
+    "<< /Type /Font /Subtype /CIDFontType2 /BaseFont /Foo " \
+    "/CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /CIDToGIDMap /Identity >>",
+  ] of ObjBody)
+end
+
 # A CIDFontType2 with an embedded /FontFile2 but no /CIDToGIDMap,
 # violating § 6.2.11.3.2.
 private def pdf_with_cidfont_no_gidmap : Bytes
@@ -849,6 +879,21 @@ describe PDF::Validate do
   it "does not flag an Identity-H Type0 font (§ 6.2.11.3.1)" do
     report = PDF::Validate.bytes(pdf_with_identity_type0, "pdf-a-2b")
     report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.11.3.1-type0-encoding")
+  end
+
+  it "detects a non-predefined, non-embedded CMap name (§ 6.2.11.3.3 t1)" do
+    report = PDF::Validate.bytes(pdf_with_nonpredefined_cmap, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.2.11.3.3-cmap-restrictions")
+  end
+
+  it "detects an embedded CMap WMode mismatch (§ 6.2.11.3.3 t2)" do
+    report = PDF::Validate.bytes(pdf_with_cmap_wmode_mismatch, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.2.11.3.3-cmap-restrictions")
+  end
+
+  it "does not flag an Identity-H CMap (§ 6.2.11.3.3)" do
+    report = PDF::Validate.bytes(pdf_with_identity_type0, "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.11.3.3-cmap-restrictions")
   end
 
   it "does not flag a clean document under § 6.2.11" do

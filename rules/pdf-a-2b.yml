@@ -148,6 +148,13 @@
   check: cidfont_gidmap_present
   args: []
 
+- id: pdfa2-6.2.11.3.3-cmap-restrictions
+  clause: "ISO 19005-2 § 6.2.11.3.3"
+  title: "CMap is predefined (Table 118) or embedded; WMode consistent; /UseCMap predefined"
+  severity: error
+  check: cmaps_valid
+  args: []
+
 - id: pdfa2-6.2.11.4.1-fonts-embedded
   clause: "ISO 19005-2 § 6.2.11.4.1"
   title: "Font programs for all rendered fonts shall be embedded"

@@ -7,6 +7,28 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.25.0 — 2026-06-04 — Restrictions sur les CMaps (§ 6.2.11.3.3)
+
+=== Ajouté
+
+* **`cmaps_valid` (§ 6.2.11.3.3)** — pour les polices Type0 :
+  l'/Encoding est soit une CMap prédéfinie (les 61 noms de la Table 118
+  d'ISO 32000-1:2008, 9.7.5.2), soit un flux CMap embarqué — tout autre
+  nom est interdit (t1) ; pour une CMap embarquée, le /WMode du
+  dictionnaire égale le WMode déclaré dans le contenu du flux
+  (`/WMode n def`, t2) ; le /UseCMap d'une CMap ne référence qu'une
+  CMap prédéfinie (t3).
+* Accesseur `Context` : `cmap_violations`, avec l'aide privée
+  `cmap_stream_wmode` et la table `PREDEFINED_CMAPS`.
+* Specs : un nom de CMap ni prédéfini ni embarqué (détecté) ; une CMap
+  embarquée dont le WMode du dict diffère de celui du flux (détectée) ;
+  une police Identity-H (propre).
+
+=== Couverture (régénérée via `doc/gap-analysis/run.sh`)
+
+§ 6.2 passe à **39/56 (70 %)**. Couverture clause-level totale :
+**115/144 → 118/144 (79 % → 81 %)**.
+
 == v0.24.0 — 2026-06-04 — Dictionnaire de permissions (§ 6.1.12)
 
 === Ajouté
