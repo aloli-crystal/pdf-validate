@@ -39,7 +39,7 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | Section | Thème | Règles veraPDF | Couvertes | %
 
 | § 6.1  | Structure de fichier (trailer, /ID, chiffrement, xref)     | 27  | 25  | 93 %
-| § 6.2  | Graphiques — couleur, polices, transparence, images        | 56  | 54  | 96 %
+| § 6.2  | Graphiques — couleur, polices, transparence, images        | 56  | 55  | 98 %
 | § 6.3  | Annotations                                                | 7   | 7   | 100 %
 | § 6.4  | Formulaires interactifs & signatures                       | 8   | 6   | 75 %
 | § 6.5  | Actions (JavaScript, /AA, actions nommées)                 | 4   | 4   | 100 %
@@ -48,7 +48,7 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | § 6.9  | Contenu optionnel (calques OCG)                            | 4   | 4   | 100 %
 | § 6.10 | Présentations alternatives                                 | 2   | 2   | 100 %
 | § 6.11 | Clé Requirements                                          | 1   | 1   | 100 %
-| *Total* | *PDF/A-2b*                                                | *144* | *138* | *95 %*
+| *Total* | *PDF/A-2b*                                                | *144* | *139* | *96 %*
 |===
 
 NOTE: Chiffres régénérés le 2026-06-03. Lot 1 (§ 6.2.5 fonctions de
@@ -359,6 +359,16 @@ un fichier qui n'est pas un PDF, ou qui échoue, est une violation. Le
 corpus n'a aucun /EF → 0 faux positif ; les cas sont forgés (un payload
 non-PDF détecté ; la fixture Ghostscript conforme embarquée acceptée).
 § 6.8 passe à **2/2 (100 %)**, le total à **138/144 (95 %)**.
++
+Enfin lot § 6.2.4.2 t2 (0.39.0) : overprint d'un espace ICCBased CMYK.
+Le `ContentStreamScanner` suit désormais l'**état graphique** (pile
+q/Q ; `gs` applique l'OPM et les drapeaux d'overprint OP/op d'une
+ExtGState ; `CS`/`cs` fixent l'espace couleur de trait/remplissage),
+piloté par les ressources résolues de chaque page (table ExtGState +
+ensemble des espaces ICCBased à 4 canaux). Au moment de peindre, une
+couleur ICCBased CMYK peinte avec overprint actif et OPM = 1 est une
+violation. Le corpus n'a ni /OPM ni overprint → 0 faux positif. § 6.2
+passe à **55/56 (98 %)**, le total à **139/144 (96 %)**.
 
 == Lecture honnête du chiffre
 

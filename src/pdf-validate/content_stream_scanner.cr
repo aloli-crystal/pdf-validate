@@ -77,7 +77,32 @@ module PDF
       @last_number : Int32? = nil
       @pending_strings = [] of Bytes
 
+      # Overprint/ICCBased-CMYK graphic-state tracking (§ 6.2.4.2 t2),
+      # active only once `configure_overprint` injects the page's
+      # resolved ExtGState and ICCBased-CMYK resource maps.
+      getter? overprint_cmyk_violation = false
+      @track_overprint = false
+      @overprint_gs = {} of String => Tuple(Int32, Bool, Bool)
+      @cmyk_iccbased = Set(String).new
+      @gs_opm = 0
+      @gs_op_stroke = false
+      @gs_op_fill = false
+      @gs_stroke_cmyk = false
+      @gs_fill_cmyk = false
+      @gs_stack = [] of Tuple(Int32, Bool, Bool, Bool, Bool)
+
       def initialize(@data : Bytes)
+      end
+
+      # Enables § 6.2.4.2 t2 tracking. `extgstates` maps each ExtGState
+      # resource name to {OPM, overprint-stroke, overprint-fill} ;
+      # `cmyk_iccbased` is the set of ICCBased-CMYK colour-space resource
+      # names.
+      def configure_overprint(extgstates : Hash(String, Tuple(Int32, Bool, Bool)), cmyk_iccbased : Set(String)) : self
+        @track_overprint = true
+        @overprint_gs = extgstates
+        @cmyk_iccbased = cmyk_iccbased
+        self
       end
 
       # ameba:disable Metrics/CyclomaticComplexity
@@ -135,6 +160,7 @@ module PDF
       #
       # ameba:disable Metrics/CyclomaticComplexity
       private def handle_operator(token : String, token_end : Int32, depth : Int32*) : Int32
+        apply_overprint(token) if @track_overprint
         case token
         when "q"
           depth.value += 1
@@ -174,6 +200,45 @@ module PDF
           @pending_strings.clear
         end
         token_end
+      end
+
+      # Painting operators that paint a stroke / a fill (§ 6.2.4.2 t2).
+      STROKE_PAINT_OPS = Set{"S", "s", "B", "B*", "b", "b*"}
+      FILL_PAINT_OPS   = Set{"f", "F", "f*", "B", "B*", "b", "b*"}
+
+      # Updates the overprint/colour-space graphic state on the relevant
+      # operators and flags the § 6.2.4.2 t2 violation at paint time.
+      private def apply_overprint(token : String)
+        case token
+        when "q"
+          @gs_stack << {@gs_opm, @gs_op_stroke, @gs_op_fill, @gs_stroke_cmyk, @gs_fill_cmyk}
+        when "Q"
+          if state = @gs_stack.pop?
+            @gs_opm, @gs_op_stroke, @gs_op_fill, @gs_stroke_cmyk, @gs_fill_cmyk = state
+          end
+        when "gs"
+          if entry = @overprint_gs[@last_name]?
+            @gs_opm, @gs_op_stroke, @gs_op_fill = entry
+          end
+        when "CS"
+          @gs_stroke_cmyk = (name = @last_name) ? @cmyk_iccbased.includes?(name) : false
+        when "cs"
+          @gs_fill_cmyk = (name = @last_name) ? @cmyk_iccbased.includes?(name) : false
+        else
+          check_overprint(token)
+        end
+      end
+
+      # Flags the violation when an ICCBased CMYK colour is painted with
+      # overprint on and OPM = 1.
+      private def check_overprint(token : String)
+        return unless @gs_opm == 1
+        if STROKE_PAINT_OPS.includes?(token) && @gs_op_stroke && @gs_stroke_cmyk
+          @overprint_cmyk_violation = true
+        end
+        if FILL_PAINT_OPS.includes?(token) && @gs_op_fill && @gs_fill_cmyk
+          @overprint_cmyk_violation = true
+        end
       end
 
       # Records the pending shown strings as glyph runs under the current

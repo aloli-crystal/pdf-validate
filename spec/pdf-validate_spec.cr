@@ -454,6 +454,21 @@ private def pdf_with_cidfont_widths(declared_w : String) : Bytes
   ] of ObjBody)
 end
 
+# A page that strokes a path in an ICCBased CMYK colour space under an
+# ExtGState with the given /OPM and /OP (stroke overprint) values.
+private def pdf_with_overprint_cmyk(opm : Int32, op : String) : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 6 0 R " \
+    "/Resources << /ExtGState << /GS1 4 0 R >> /ColorSpace << /CS0 5 0 R >> >> >>",
+    "<< /Type /ExtGState /OPM #{opm} /OP #{op} >>",
+    "[ /ICCBased 7 0 R ]",
+    {"<< >>", "/CS0 CS /GS1 gs 10 10 m 20 20 l S".to_slice},
+    {"<< /N 4 >>", Bytes.new(8, 0_u8)},
+  ] of ObjBody)
+end
+
 # A document with one /Type /EmbeddedFile stream carrying `content`,
 # reachable from the catalog /Names /EmbeddedFiles name tree.
 private def pdf_with_embedded_file(content : Bytes) : Bytes
@@ -1572,6 +1587,21 @@ describe PDF::Validate do
     embedded = File.read(path).to_slice
     report = PDF::Validate.bytes(pdf_with_embedded_file(embedded), "pdf-a-2b")
     report.failures.map(&.rule.id).should_not contain("pdfa2-6.8-embedded-pdfa")
+  end
+
+  it "detects ICCBased CMYK painted with overprint and OPM=1 (§ 6.2.4.2 t2)" do
+    report = PDF::Validate.bytes(pdf_with_overprint_cmyk(1, "true"), "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.2.4.2-overprint-cmyk")
+  end
+
+  it "does not flag ICCBased CMYK overprint when OPM=0 (§ 6.2.4.2 t2)" do
+    report = PDF::Validate.bytes(pdf_with_overprint_cmyk(0, "true"), "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.4.2-overprint-cmyk")
+  end
+
+  it "does not flag ICCBased CMYK with OPM=1 but no overprint (§ 6.2.4.2 t2)" do
+    report = PDF::Validate.bytes(pdf_with_overprint_cmyk(1, "false"), "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.4.2-overprint-cmyk")
   end
 
   it "detects a non-predefined, non-embedded CMap name (§ 6.2.11.3.3 t1)" do

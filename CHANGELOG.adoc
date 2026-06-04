@@ -7,6 +7,31 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.39.0 — 2026-06-04 — Overprint mode for ICCBased CMYK (§ 6.2.4.2 t2)
+
+=== Added
+
+* **`overprint_iccbased_cmyk_valid` (§ 6.2.4.2 t2)** — the
+  `ContentStreamScanner` now tracks the graphic state (a q/Q stack ;
+  `gs` applies an ExtGState's OPM and OP/op overprint flags ; `CS`/`cs`
+  set the stroke/fill colour space), driven by each page's resolved
+  resources. An ICCBased CMYK colour painted with overprint on and
+  OPM = 1 is a violation.
+* `ContentStreamScanner#configure_overprint` + `overprint_cmyk_violation?`,
+  with `apply_overprint`/`check_overprint` and `STROKE_PAINT_OPS` /
+  `FILL_PAINT_OPS`.
+* `Context` accessor : `overprint_icc_cmyk_violations`, with
+  `overprint_extgstate_map` and `iccbased_cmyk_resource_names`.
+* Specs : OPM=1 + overprint (detected) ; OPM=0 (clean) ; OPM=1 without
+  overprint (clean).
+
+=== Coverage (regenerated via `doc/gap-analysis/run.sh`)
+
+§ 6.2.4.2 t2 leaves `not_covered_tests`. The conform corpus uses no
+/OPM and no overprint, so the rule never fires there (zero false
+positives). § 6.2 rises to **55/56 (98 %)**. Total clause-level
+coverage : **138/144 → 139/144 (95 % → 96 %)**.
+
 == v0.38.0 — 2026-06-04 — Recursive embedded-file PDF/A (§ 6.8 t5)
 
 === Added

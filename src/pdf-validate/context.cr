@@ -1001,6 +1001,67 @@ module PDF
         issues
       end
 
+      # Overprint-mode violations for ICCBased CMYK colour spaces
+      # (ISO 19005-2 § 6.2.4.2 t2) : an ICCBased CMYK colour painted with
+      # overprint on (OP for stroke, op for fill) while OPM = 1. The
+      # graphic-state interpreter runs per page with that page's resolved
+      # ExtGState and ICCBased-CMYK resource maps. Pages without an
+      # ICCBased CMYK colour space cannot trip it and are skipped.
+      getter overprint_icc_cmyk_violations : Array(String) do
+        issues = [] of String
+        index = 0
+        each_page do |page|
+          index += 1
+          data = page_content_bytes(page)
+          next if data.empty?
+          resources = resolve_page_resources(page)
+          next unless resources
+          cmyk = iccbased_cmyk_resource_names(resources)
+          next if cmyk.empty?
+          scanner = ContentStreamScanner.new(data).configure_overprint(overprint_extgstate_map(resources), cmyk)
+          scanner.scan
+          if scanner.overprint_cmyk_violation?
+            issues << "page ##{index}: ICCBased CMYK colour painted with overprint and OPM=1"
+          end
+        end
+        issues
+      end
+
+      # {name => {OPM, overprint-stroke, overprint-fill}} for the
+      # ExtGState resources of a page (overprint-fill defaults to the
+      # overprint-stroke value when /op is absent).
+      private def overprint_extgstate_map(resources : PDF::Objects::Dictionary) : Hash(String, Tuple(Int32, Bool, Bool))
+        map = {} of String => Tuple(Int32, Bool, Bool)
+        egs = resources["ExtGState"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+        return map unless egs
+        egs.each do |name, ref|
+          gstate = resolve(ref).as?(PDF::Objects::Dictionary)
+          next unless gstate
+          opm = (gstate["OPM"]?.try(&.as?(PDF::Objects::Number)).try(&.to_i64) || 0_i64).to_i
+          op_stroke = gstate["OP"]?.try(&.as?(PDF::Objects::Boolean)).try(&.value) || false
+          op_fill = gstate["op"]?.try(&.as?(PDF::Objects::Boolean)).try(&.value)
+          map[name.value] = {opm, op_stroke, op_fill.nil? ? op_stroke : op_fill}
+        end
+        map
+      end
+
+      # The resource names of ICCBased colour spaces with 4 components
+      # (CMYK) in a page's /Resources /ColorSpace.
+      private def iccbased_cmyk_resource_names(resources : PDF::Objects::Dictionary) : Set(String)
+        names = Set(String).new
+        spaces = resources["ColorSpace"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+        return names unless spaces
+        spaces.each do |name, ref|
+          arr = resolve(ref).as?(PDF::Objects::Array)
+          next unless arr && arr.size >= 2
+          next unless resolve(arr[0]).as?(PDF::Objects::Name).try(&.value) == "ICCBased"
+          stream = resolve(arr[1]).as?(PDF::Objects::Stream)
+          next unless stream
+          names << name.value if stream.dictionary["N"]?.try(&.as?(PDF::Objects::Number)).try(&.to_i64) == 4
+        end
+        names
+      end
+
       # Non-standard rendering intents (ISO 19005-2 § 6.2.6), from both
       # serialisations : the /Intent key on image XObjects and the `ri`
       # operator in page content streams.
