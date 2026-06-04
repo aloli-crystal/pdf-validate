@@ -7,6 +7,21 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.42.0 — 2026-06-04 — PDF/UA-1 /RoleMap integrity (§ 7.1)
+
+=== Added
+
+* **`rolemap_valid` (§ 7.1)** — the StructTreeRoot /RoleMap must not
+  remap a standard structure type (t7) and must contain no circular
+  mapping (t6, detected by following each mapping chain).
+* `Context` accessor : `pdfua_rolemap_violations`, with the private
+  helper `rolemap_cycle?` and the `STANDARD_STRUCT_TYPES` table.
+* Specs : remapping /P (detected) ; a /Foo→/Bar→/Foo cycle (detected) ;
+  a custom /MyHead→/H1 mapping (clean).
+
+This palier targets the PDF/UA-1 profile and does not change the
+PDF/A-2b figure.
+
 == v0.41.0 — 2026-06-04 — PDF/UA-1 heading nesting (§ 7.4.2)
 
 === Added

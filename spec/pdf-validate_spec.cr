@@ -656,6 +656,16 @@ private def pdfua_two_child_h : Bytes
   ] of ObjBody)
 end
 
+# A StructTreeRoot with the given /RoleMap dictionary (§ 7.1).
+private def pdfua_rolemap(rolemap : String) : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R /Lang (fr) /StructTreeRoot 4 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+    "<< /Type /StructTreeRoot /RoleMap #{rolemap} >>",
+  ] of ObjBody)
+end
+
 # Numbered headings that skip a level (H1 then H3) — violating § 7.4.2.
 private def pdfua_skipped_heading : Bytes
   build_pdf([
@@ -1773,6 +1783,7 @@ describe "pdf-ua-1 profile" do
     ids.should_not contain("pdfua1-7.4.4-heading-structure")
     ids.should_not contain("pdfua1-7.2-attribute-language")
     ids.should_not contain("pdfua1-7.4.2-heading-nesting")
+    ids.should_not contain("pdfua1-7.1-rolemap")
   end
 
   it "flags a Figure without /Alt or /ActualText (§ 7.3)" do
@@ -1823,6 +1834,21 @@ describe "pdf-ua-1 profile" do
   it "does not flag properly nested headings (§ 7.4.2)" do
     report = PDF::Validate.bytes(pdfua_proper_headings, "pdf-ua-1")
     report.failures.map(&.rule.id).should_not contain("pdfua1-7.4.2-heading-nesting")
+  end
+
+  it "flags a /RoleMap that remaps a standard type (§ 7.1)" do
+    report = PDF::Validate.bytes(pdfua_rolemap("<< /P /Span >>"), "pdf-ua-1")
+    report.failures.map(&.rule.id).should contain("pdfua1-7.1-rolemap")
+  end
+
+  it "flags a circular /RoleMap mapping (§ 7.1)" do
+    report = PDF::Validate.bytes(pdfua_rolemap("<< /Foo /Bar /Bar /Foo >>"), "pdf-ua-1")
+    report.failures.map(&.rule.id).should contain("pdfua1-7.1-rolemap")
+  end
+
+  it "does not flag a valid custom-to-standard /RoleMap (§ 7.1)" do
+    report = PDF::Validate.bytes(pdfua_rolemap("<< /MyHead /H1 >>"), "pdf-ua-1")
+    report.failures.map(&.rule.id).should_not contain("pdfua1-7.1-rolemap")
   end
 
   it "flags an untagged document as non-conformant for pdf-ua-1" do

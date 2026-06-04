@@ -7,6 +7,21 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.42.0 — 2026-06-04 — Intégrité du /RoleMap PDF/UA-1 (§ 7.1)
+
+=== Ajouté
+
+* **`rolemap_valid` (§ 7.1)** — le /RoleMap du StructTreeRoot ne doit
+  pas remapper un type de structure standard (t7) et ne doit contenir
+  aucun mapping circulaire (t6, détecté en suivant chaque chaîne de
+  mapping).
+* Accesseur `Context` : `pdfua_rolemap_violations`, avec l'aide privée
+  `rolemap_cycle?` et la table `STANDARD_STRUCT_TYPES`.
+* Specs : remapper /P (détecté) ; un cycle /Foo→/Bar→/Foo (détecté) ;
+  un mapping custom /MyHead→/H1 (propre).
+
+Ce palier vise le profil PDF/UA-1 et ne change pas le chiffre PDF/A-2b.
+
 == v0.41.0 — 2026-06-04 — PDF/UA-1 hiérarchie de titres (§ 7.4.2)
 
 === Ajouté

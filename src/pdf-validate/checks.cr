@@ -404,6 +404,12 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : bad.join(", ")
           )
+        when "rolemap_valid"
+          bad = ctx.pdfua_rolemap_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
         when "content_resources_associated"
           bad = ctx.resource_inheritance_violations
           Outcome.new(

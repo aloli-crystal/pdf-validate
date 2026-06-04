@@ -97,3 +97,10 @@
   severity: error
   check: heading_nesting_valid
   args: []
+
+- id: pdfua1-7.1-rolemap
+  clause: "ISO 14289-1 § 7.1"
+  title: "/RoleMap does not remap standard types and has no circular mapping"
+  severity: error
+  check: rolemap_valid
+  args: []

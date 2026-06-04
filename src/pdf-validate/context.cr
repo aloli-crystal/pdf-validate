@@ -1683,6 +1683,45 @@ module PDF
         end
       end
 
+      # The standard structure types of ISO 32000-1:2008, 14.8.4. A
+      # /RoleMap must not remap any of these (ISO 14289-1 § 7.1 t7).
+      STANDARD_STRUCT_TYPES = %w[
+        Document Part Art Sect Div BlockQuote Caption TOC TOCI Index
+        NonStruct Private P H H1 H2 H3 H4 H5 H6 L LI Lbl LBody Table
+        TR TH TD THead TBody TFoot Span Quote Note Reference BibEntry
+        Code Link Annot Ruby RB RT RP Warichu WT WP Figure Formula Form
+      ]
+
+      # /RoleMap integrity (ISO 14289-1 § 7.1) : no standard structure
+      # type is remapped (t7), and the mapping contains no cycle (t6).
+      getter pdfua_rolemap_violations : Array(String) do
+        issues = [] of String
+        root = catalog["StructTreeRoot"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+        return issues unless root
+        rolemap = root["RoleMap"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+        return issues unless rolemap
+
+        rolemap.keys.each do |key|
+          issues << "standard structure type /#{key.value} is remapped in /RoleMap" if STANDARD_STRUCT_TYPES.includes?(key.value)
+          issues << "circular /RoleMap mapping at /#{key.value}" if rolemap_cycle?(rolemap, key.value)
+        end
+        issues.uniq
+      end
+
+      # `true` if following `start` through the /RoleMap returns to an
+      # already-seen type (a cycle).
+      private def rolemap_cycle?(rolemap : PDF::Objects::Dictionary, start : String) : Bool
+        visited = Set(String).new
+        current = start
+        loop do
+          return true unless visited.add?(current)
+          value = rolemap[current]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Name).try(&.value)
+          return false if value.nil?
+          current = value
+        end
+        false
+      end
+
       # Heading-nesting violations (ISO 14289-1 § 7.4.2) : in documents
       # that use numbered headings (H1–H6), the levels must not skip when
       # going deeper — the first heading is H1 and each heading is at
