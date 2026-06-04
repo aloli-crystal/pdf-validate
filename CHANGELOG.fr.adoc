@@ -7,6 +7,28 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.29.0 — 2026-06-04 — Association du /Resources d'un content stream (§ 6.2.2 t2)
+
+=== Ajouté
+
+* **`content_resources_associated` (§ 6.2.2 t2)** — un content stream
+  qui référence des ressources nommées (police via `Tf`, XObject via
+  `Do`, ExtGState via `gs`, shading via `sh`) doit disposer de son
+  propre dictionnaire /Resources plutôt que d'en hériter d'un nœud
+  /Pages ancêtre. Le `ContentStreamScanner` signale l'usage de
+  ressources (`uses_named_resources?`) ; le `Context` signale une page
+  qui utilise des ressources, n'a pas son /Resources propre et dont un
+  ancêtre en fournit un. Sort de `not_covered_tests`.
+* Accesseur `Context` : `resource_inheritance_violations`, avec l'aide
+  privée `inherited_resources?`.
+* Specs : une page utilisant /F1 Tf avec /Resources seulement sur le
+  /Pages parent (détectée) ; la même page avec son /Resources (propre).
+
+=== Couverture (régénérée via `doc/gap-analysis/run.sh`)
+
+§ 6.2 passe à **42/56 (75 %)**. Couverture clause-level totale :
+**122/144 → 123/144 (84 % → 85 %)**.
+
 == v0.28.0 — 2026-06-04 — EOL de la table de références croisées (§ 6.1.4 t2)
 
 === Ajouté

@@ -39,7 +39,7 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | Section | Thème | Règles veraPDF | Couvertes | %
 
 | § 6.1  | Structure de fichier (trailer, /ID, chiffrement, xref)     | 27  | 25  | 93 %
-| § 6.2  | Graphiques — couleur, polices, transparence, images        | 56  | 41  | 73 %
+| § 6.2  | Graphiques — couleur, polices, transparence, images        | 56  | 42  | 75 %
 | § 6.3  | Annotations                                                | 7   | 7   | 100 %
 | § 6.4  | Formulaires interactifs & signatures                       | 8   | 6   | 75 %
 | § 6.5  | Actions (JavaScript, /AA, actions nommées)                 | 4   | 4   | 100 %
@@ -48,7 +48,7 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | § 6.9  | Contenu optionnel (calques OCG)                            | 4   | 4   | 100 %
 | § 6.10 | Présentations alternatives                                 | 2   | 2   | 100 %
 | § 6.11 | Clé Requirements                                          | 1   | 1   | 100 %
-| *Total* | *PDF/A-2b*                                                | *144* | *122* | *84 %*
+| *Total* | *PDF/A-2b*                                                | *144* | *123* | *85 %*
 |===
 
 NOTE: Chiffres régénérés le 2026-06-03. Lot 1 (§ 6.2.5 fonctions de
@@ -237,6 +237,16 @@ n'ont pas de mot-clé `xref`) ; `startxref` est exclu (son `xref` n'est
 pas en début de ligne). Les 36 PDF conformes du corpus utilisent une
 table classique à EOL unique → 0 faux positif. § 6.1 passe à
 **25/27 (93 %)**, le total à **122/144 (84 %)**.
++
+Enfin lot § 6.2.2 t2 (0.29.0) : un content stream qui référence des
+ressources nommées (police via `Tf`, XObject via `Do`, ExtGState via
+`gs`, shading via `sh`) doit disposer de son **propre** dictionnaire
+/Resources, et non en hériter d'un nœud /Pages ancêtre. Le scanner
+signale l'usage de ressources ; le `Context` vérifie que la page porte
+/Resources, sinon — et seulement si un ancêtre en fournit un — la page
+est en faute. Sort de `not_covered_tests`. Le corpus ne déclenche aucun
+faux positif (chaque page porte son /Resources). § 6.2 passe à
+**42/56 (75 %)**, le total à **123/144 (85 %)**.
 +
 NOTE: § 6.1.8 t1 (« les noms de polices, de colorants et de types de
 structure, après expansion des séquences `#XX`, doivent être de l'UTF-8

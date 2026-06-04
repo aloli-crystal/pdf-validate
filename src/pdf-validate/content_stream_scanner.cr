@@ -56,6 +56,10 @@ module PDF
       getter invalid_rendering_intents = [] of String
       # Forbidden filters named in an inline image's /F (or /Filter) key.
       getter inline_image_filters = [] of String
+      # `true` once an operator that references a named resource appears
+      # (Tf font, Do XObject, gs ExtGState, sh shading) — used for the
+      # § 6.2.2 t2 Resources-dictionary check.
+      getter? uses_named_resources = false
       # The most recent name token — the operand a following `ri`
       # consumes (`/Perceptual ri`).
       @last_name : String? = nil
@@ -132,6 +136,8 @@ module PDF
         when "ri"
           intent = @last_name
           @invalid_rendering_intents << intent if intent && !VALID_RENDERING_INTENTS.includes?(intent)
+        when "Tf", "Do", "gs", "sh"
+          @uses_named_resources = true
         else
           if space = DEVICE_COLOUR_OPERATORS[token]?
             @device_colour_spaces << space

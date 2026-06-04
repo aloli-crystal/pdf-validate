@@ -113,6 +113,13 @@
   check: content_operators_defined
   args: []
 
+- id: pdfa2-6.2.2-resources-associated
+  clause: "ISO 19005-2 § 6.2.2"
+  title: "A content stream referencing resources has its own Resources dictionary (not inherited)"
+  severity: error
+  check: content_resources_associated
+  args: []
+
 - id: pdfa2-6.2.10-output-intent
   clause: "ISO 19005-2 § 6.2.10"
   title: "Device colour spaces require a PDF/A OutputIntent (present)"

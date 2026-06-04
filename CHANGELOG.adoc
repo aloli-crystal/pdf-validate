@@ -7,6 +7,28 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.29.0 — 2026-06-04 — Content stream Resources association (§ 6.2.2 t2)
+
+=== Added
+
+* **`content_resources_associated` (§ 6.2.2 t2)** — a content stream
+  that references named resources (a font via `Tf`, an XObject via
+  `Do`, an ExtGState via `gs`, a shading via `sh`) must have its own
+  /Resources dictionary rather than inheriting one from an ancestor
+  /Pages node. The `ContentStreamScanner` flags resource usage
+  (`uses_named_resources?`) ; the `Context` flags a page that uses
+  resources, lacks its own /Resources and has an ancestor that supplies
+  one. Leaves `not_covered_tests`.
+* `Context` accessor : `resource_inheritance_violations`, with the
+  private helper `inherited_resources?`.
+* Specs : a page using /F1 Tf with Resources only on the parent /Pages
+  (detected) ; the same page with its own /Resources (clean).
+
+=== Coverage (regenerated via `doc/gap-analysis/run.sh`)
+
+§ 6.2 rises to **42/56 (75 %)**. Total clause-level coverage :
+**122/144 → 123/144 (84 % → 85 %)**.
+
 == v0.28.0 — 2026-06-04 — Cross-reference table EOL (§ 6.1.4 t2)
 
 === Added

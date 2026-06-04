@@ -972,6 +972,39 @@ module PDF
         content_scan[:inline_filters]
       end
 
+      # Pages whose content stream references named resources (a font,
+      # XObject, ExtGState or shading) but that carry no /Resources of
+      # their own, relying on a Resources dictionary inherited from an
+      # ancestor /Pages node (ISO 19005-2 § 6.2.2 t2 :
+      # `inheritedResourceNames == ''`). A page with its own /Resources
+      # is accepted ; a page that uses no named resources is irrelevant.
+      getter resource_inheritance_violations : Array(String) do
+        issues = [] of String
+        index = 0
+        each_page do |page|
+          index += 1
+          next if page.has_key?("Resources")
+          data = page_content_bytes(page)
+          next if data.empty?
+          next unless ContentStreamScanner.new(data).scan.uses_named_resources?
+          next unless inherited_resources?(page)
+          issues << "page ##{index} uses named resources but has no own /Resources (inherited)"
+        end
+        issues
+      end
+
+      # `true` if an ancestor /Pages node of `page` carries a /Resources
+      # dictionary (cycle-protected walk up the /Parent chain).
+      private def inherited_resources?(page : PDF::Objects::Dictionary) : Bool
+        visited = Set(UInt64).new
+        node = page["Parent"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+        while node && visited.add?(node.object_id)
+          return true if node.has_key?("Resources")
+          node = node["Parent"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+        end
+        false
+      end
+
       # Concatenated decoded bytes of a page's /Contents (a single
       # stream, or an array of streams joined by whitespace).
       private def page_content_bytes(page : PDF::Objects::Dictionary) : Bytes

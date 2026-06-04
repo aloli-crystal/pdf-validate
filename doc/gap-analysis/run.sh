@@ -41,8 +41,6 @@ not_covered = {"6.2.8.3"}
 # Individual tests we do NOT implement, counted at test granularity so
 # a heterogeneous clause is not over-claimed :
 #   6.1.13 t10 — maximum CID value (needs a CMap interpreter)
-#   6.2.2  t2  — content stream references all objects needed to render
-#                (resource-completeness, not operator validity)
 #   6.8    t5  — the embedded file must itself be PDF/A-1/2 (recursive
 #                validation)
 #   6.2.4.2 t2 — overprint mode for ICCBased CMYK (graphics state)
@@ -51,7 +49,7 @@ not_covered = {"6.2.8.3"}
 #   6.6.2.3.1 t1-t2 — every XMP property must belong to a predefined or
 #                     defined schema (needs the full XMP-2005 schema set)
 not_covered_tests = {
-    ("6.1.13", "10"), ("6.2.2", "2"), ("6.8", "5"),
+    ("6.1.13", "10"), ("6.8", "5"),
     ("6.2.4.2", "2"),
     ("6.4.3", "2"), ("6.4.3", "3"),
     ("6.6.2.3.1", "1"), ("6.6.2.3.1", "2"),
