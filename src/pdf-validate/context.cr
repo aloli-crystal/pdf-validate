@@ -363,6 +363,101 @@ module PDF
         nil
       end
 
+      # Glyph-width consistency for embedded CIDFontType2 fonts
+      # (ISO 19005-2 § 6.2.11.5) : each width declared in the /W array
+      # must equal the advance width in the embedded TrueType program,
+      # scaled by 1000 / unitsPerEm. The CID → glyph index mapping comes
+      # from /CIDToGIDMap (Identity, or a stream of big-endian uint16).
+      # A tolerance of 1 unit absorbs legitimate rounding ; the conform
+      # corpus matches exactly (maximum observed difference : 0). Lenient
+      # on parse failure.
+      getter cidfont_width_violations : Array(String) do
+        issues = [] of String
+        each_font_dict do |dict|
+          next unless dict["Subtype"]?.try(&.as?(PDF::Objects::Name)).try(&.value) == "CIDFontType2"
+          descriptor = dict["FontDescriptor"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+          next unless descriptor
+          program = descriptor["FontFile2"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Stream)
+          next unless program && program.decoded
+          widths = parse_cid_widths(dict["W"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Array))
+          next if widths.empty?
+
+          base = dict["BaseFont"]?.try(&.as?(PDF::Objects::Name)).try(&.value) || "(unnamed)"
+          mismatches = cidfont_width_mismatches(program.encoded_data, widths, cidtogidmap_bytes(dict))
+          if mismatches > 0
+            issues << "CIDFontType2 #{base} declares #{mismatches} glyph width(s) inconsistent with the embedded program"
+          end
+        end
+        issues
+      end
+
+      # Counts CIDs whose declared width differs (beyond a 1-unit
+      # tolerance) from the scaled advance width of their glyph in the
+      # embedded TrueType program. Returns 0 if the program is
+      # unparseable or lacks the metric tables (lenient).
+      private def cidfont_width_mismatches(bytes : Bytes, widths : Hash(Int64, Int64), gid_map : Bytes?) : Int32
+        parser = PDF::Fonts::TrueType::Parser.parse(bytes)
+        return 0 unless parser.has_table?("hmtx") && parser.has_table?("head") && parser.has_table?("maxp")
+        upem = parser.head.units_per_em
+        return 0 if upem == 0
+        hmtx = parser.hmtx
+        num_glyphs = parser.maxp.num_glyphs.to_i64
+        mismatches = 0
+        widths.each do |cid, width|
+          gid = cid_to_gid(cid, gid_map)
+          next if gid < 0 || gid >= num_glyphs
+          computed = (hmtx.advance_width(gid.to_u16).to_f * 1000.0 / upem).round.to_i64
+          mismatches += 1 if (width - computed).abs > 1
+        end
+        mismatches
+      rescue
+        0
+      end
+
+      # Parses a CIDFont /W array into a {CID => width} map. The array
+      # alternates either `c [w1 w2 …]` (consecutive CIDs from c) or
+      # `c_first c_last w` (a range sharing one width).
+      private def parse_cid_widths(arr : PDF::Objects::Array?) : Hash(Int64, Int64)
+        widths = {} of Int64 => Int64
+        return widths unless arr
+        index = 0
+        while index < arr.size
+          first = resolve(arr[index]).as?(PDF::Objects::Number).try(&.to_i64)
+          break unless first
+          if list = arr[index + 1]?.try { |obj| resolve(obj) }.as?(PDF::Objects::Array)
+            list.each_with_index do |entry, offset|
+              value = resolve(entry).as?(PDF::Objects::Number).try(&.to_i64)
+              widths[first + offset] = value if value
+            end
+            index += 2
+          else
+            last = arr[index + 1]?.try { |obj| resolve(obj) }.as?(PDF::Objects::Number).try(&.to_i64)
+            value = arr[index + 2]?.try { |obj| resolve(obj) }.as?(PDF::Objects::Number).try(&.to_i64)
+            (first..last).each { |cid| widths[cid] = value } if last && value && last >= first
+            index += 3
+          end
+        end
+        widths
+      end
+
+      # The /CIDToGIDMap stream bytes (big-endian uint16 per CID), or nil
+      # when the map is Identity (a name or absent).
+      private def cidtogidmap_bytes(dict : PDF::Objects::Dictionary) : Bytes?
+        value = dict["CIDToGIDMap"]?.try { |ref| resolve(ref) }
+        stream = value.as?(PDF::Objects::Stream)
+        return nil unless stream && stream.decoded
+        stream.encoded_data
+      end
+
+      # Maps a CID to its glyph index : the CID itself for Identity, or
+      # the big-endian uint16 at offset 2·CID of the /CIDToGIDMap stream.
+      private def cid_to_gid(cid : Int64, gid_map : Bytes?) : Int64
+        return cid unless gid_map
+        offset = cid * 2
+        return -1_i64 if offset < 0 || offset + 1 >= gid_map.size
+        (gid_map[offset].to_i64 << 8) | gid_map[offset + 1].to_i64
+      end
+
       # The base encoding name of a font's /Encoding value : the name
       # itself when /Encoding is a name, or the /BaseEncoding of an
       # encoding dictionary. nil when absent or unrecognised.

@@ -7,6 +7,34 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.34.0 — 2026-06-04 — CIDFontType2 glyph widths (§ 6.2.11.5)
+
+=== Added
+
+* **`cidfont_widths_consistent` (§ 6.2.11.5)** — for an embedded
+  CIDFontType2, each width declared in the /W array must equal the
+  advance width in the TrueType program scaled by 1000 / unitsPerEm.
+  The CID → glyph index mapping follows /CIDToGIDMap (Identity, or a
+  stream of big-endian uint16). A 1-unit tolerance absorbs rounding.
+* `Context` accessor : `cidfont_width_violations`, with the private
+  helpers `cidfont_width_mismatches`, `parse_cid_widths`,
+  `cidtogidmap_bytes` and `cid_to_gid`.
+* Specs : a forged sfnt (head/hhea/maxp/hmtx, advance 1000 @ unitsPerEm
+  1000) with a /W declaring 500 (detected) and 1000 (clean).
+
+=== Validation
+
+Empirically verified against the corpus before shipping : the real
+CIDFontType2 fonts of the 36 conformant PDFs match exactly (maximum
+observed difference : 0), so the rule yields zero false positives on
+real data — unlike the simple-TrueType tests, this check is exercised
+against real fonts because ALOLI's documents use composite fonts.
+
+=== Coverage (regenerated via `doc/gap-analysis/run.sh`)
+
+§ 6.2 rises to **47/56 (84 %)**. Total clause-level coverage :
+**129/144 → 130/144 (89 % → 90 %)**.
+
 == v0.33.0 — 2026-06-04 — Embedded TrueType cmap (§ 6.2.11.6 t1/t4)
 
 === Added

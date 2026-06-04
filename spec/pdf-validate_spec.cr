@@ -383,6 +383,77 @@ private def truetype_program_with_cmap(records : Array(Tuple(Int32, Int32))) : B
   io.to_slice
 end
 
+# Builds a minimal sfnt TrueType program with head + hhea + maxp + hmtx
+# tables, giving each glyph the supplied advance width (font units) and
+# the supplied unitsPerEm. Enough for the § 6.2.11.5 width check.
+private def truetype_program_with_metrics(advances : Array(Int32), units_per_em : Int32) : Bytes
+  be = IO::ByteFormat::BigEndian
+  num = advances.size
+
+  head = IO::Memory.new
+  head.write_bytes(1_u16, be)               # majorVersion
+  head.write_bytes(0_u16, be)               # minorVersion
+  head.write_bytes(0_u32, be)               # fontRevision
+  head.write_bytes(0_u32, be)               # checkSumAdjustment
+  head.write_bytes(0x5F0F3CF5_u32, be)      # magicNumber
+  head.write_bytes(0_u16, be)               # flags
+  head.write_bytes(units_per_em.to_u16, be) # unitsPerEm (offset 18)
+  34.times { head.write_byte(0_u8) }        # created..glyphDataFormat → 54 total
+
+  hhea = IO::Memory.new
+  hhea.write_bytes(1_u16, be)        # majorVersion
+  hhea.write_bytes(0_u16, be)        # minorVersion
+  30.times { hhea.write_byte(0_u8) } # ascent..metricDataFormat
+  hhea.write_bytes(num.to_u16, be)   # numberOfHMetrics (offset 34)
+
+  maxp = IO::Memory.new
+  maxp.write_bytes(0x00005000_u32, be) # version 0.5 (numGlyphs only)
+  maxp.write_bytes(num.to_u16, be)     # numGlyphs
+
+  hmtx = IO::Memory.new
+  advances.each do |advance|
+    hmtx.write_bytes(advance.to_u16, be) # advanceWidth
+    hmtx.write_bytes(0_i16, be)          # leftSideBearing
+  end
+
+  tables = {"head" => head.to_slice, "hhea" => hhea.to_slice, "maxp" => maxp.to_slice, "hmtx" => hmtx.to_slice}
+  io = IO::Memory.new
+  io.write_bytes(0x00010000_u32, be)     # sfnt version
+  io.write_bytes(tables.size.to_u16, be) # numTables
+  io.write_bytes(0_u16, be)              # searchRange
+  io.write_bytes(0_u16, be)              # entrySelector
+  io.write_bytes(0_u16, be)              # rangeShift
+  offset = 12 + tables.size * 16
+  tables.each do |tag, bytes|
+    io.write(tag.to_slice)
+    io.write_bytes(0_u32, be) # checksum
+    io.write_bytes(offset.to_u32, be)
+    io.write_bytes(bytes.size.to_u32, be)
+    offset += bytes.size
+  end
+  tables.each_value { |bytes| io.write(bytes) }
+  io.to_slice
+end
+
+# A CIDFontType2 (Identity-H Type0 wrapper) embedding a program where
+# every glyph advances 1000 units at unitsPerEm 1000 (→ width 1000),
+# with the given /W array string.
+private def pdf_with_cidfont_widths(declared_w : String) : Bytes
+  program = truetype_program_with_metrics([1000, 1000], 1000)
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] " \
+    "/Resources << /Font << /F1 4 0 R >> >> >>",
+    "<< /Type /Font /Subtype /Type0 /BaseFont /Emb /Encoding /Identity-H /DescendantFonts [5 0 R] >>",
+    "<< /Type /Font /Subtype /CIDFontType2 /BaseFont /Emb " \
+    "/CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> " \
+    "/CIDToGIDMap /Identity /FontDescriptor 6 0 R /W #{declared_w} >>",
+    "<< /Type /FontDescriptor /FontName /Emb /FontFile2 7 0 R >>",
+    {"<< /Length1 #{program.size} >>", program},
+  ] of ObjBody)
+end
+
 # A simple TrueType font embedding the given program as /FontFile2, with
 # the given FontDescriptor /Flags (4 = symbolic, 32 = non-symbolic).
 private def pdf_with_truetype_program(records : Array(Tuple(Int32, Int32)), flags : Int32) : Bytes
@@ -1316,6 +1387,16 @@ describe PDF::Validate do
   it "does not flag a non-symbolic TrueType program with a (3,1) cmap (§ 6.2.11.6 t1)" do
     report = PDF::Validate.bytes(pdf_with_truetype_program([{3, 1}], 32), "pdf-a-2b")
     report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.11.6-truetype-cmap")
+  end
+
+  it "detects a CIDFontType2 /W width inconsistent with the program (§ 6.2.11.5)" do
+    report = PDF::Validate.bytes(pdf_with_cidfont_widths("[1 [500]]"), "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.2.11.5-cidfont-widths")
+  end
+
+  it "does not flag a CIDFontType2 /W width matching the program (§ 6.2.11.5)" do
+    report = PDF::Validate.bytes(pdf_with_cidfont_widths("[1 [1000]]"), "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.2.11.5-cidfont-widths")
   end
 
   it "detects a non-predefined, non-embedded CMap name (§ 6.2.11.3.3 t1)" do

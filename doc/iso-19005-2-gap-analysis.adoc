@@ -39,7 +39,7 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | Section | Thème | Règles veraPDF | Couvertes | %
 
 | § 6.1  | Structure de fichier (trailer, /ID, chiffrement, xref)     | 27  | 25  | 93 %
-| § 6.2  | Graphiques — couleur, polices, transparence, images        | 56  | 46  | 82 %
+| § 6.2  | Graphiques — couleur, polices, transparence, images        | 56  | 47  | 84 %
 | § 6.3  | Annotations                                                | 7   | 7   | 100 %
 | § 6.4  | Formulaires interactifs & signatures                       | 8   | 6   | 75 %
 | § 6.5  | Actions (JavaScript, /AA, actions nommées)                 | 4   | 4   | 100 %
@@ -48,7 +48,7 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | § 6.9  | Contenu optionnel (calques OCG)                            | 4   | 4   | 100 %
 | § 6.10 | Présentations alternatives                                 | 2   | 2   | 100 %
 | § 6.11 | Clé Requirements                                          | 1   | 1   | 100 %
-| *Total* | *PDF/A-2b*                                                | *144* | *129* | *89 %*
+| *Total* | *PDF/A-2b*                                                | *144* | *130* | *90 %*
 |===
 
 NOTE: Chiffres régénérés le 2026-06-03. Lot 1 (§ 6.2.5 fonctions de
@@ -282,6 +282,18 @@ avoir exactement une sous-table ou une (3,0). Parsing tolérant (échec
 → pas de violation). Le corpus n'a aucune TrueType simple → validé sur
 fixtures forgées (sfnt minimal + table cmap contrôlée). § 6.2 passe à
 **46/56 (82 %)**, le total à **129/144 (89 %)**.
++
+Enfin lot § 6.2.11.5 (0.34.0) : cohérence des largeurs de glyphes des
+polices **CIDFontType2** — chaque largeur déclarée dans /W doit égaler
+la largeur d'avance du programme TrueType embarqué, mise à l'échelle
+1000/unitsPerEm. Le mappage CID → index de glyphe suit /CIDToGIDMap
+(Identity, ou un flux d'uint16 big-endian). Tolérance de 1 unité pour
+l'arrondi. **Validé empiriquement** : l'exploration des CIDFontType2
+réelles du corpus donne un écart maximal de 0 — la règle ne produit
+aucun faux positif sur les 36 conformes + Ghostscript (contrairement
+aux tests TrueType simples, ce test bénéficie du garde-fou sur données
+réelles, ALOLI utilisant des polices composites). § 6.2 passe à
+**47/56 (84 %)**, le total à **130/144 (90 %)** — cap des 90 % atteint.
 +
 NOTE: § 6.1.8 t1 (« les noms de polices, de colorants et de types de
 structure, après expansion des séquences `#XX`, doivent être de l'UTF-8

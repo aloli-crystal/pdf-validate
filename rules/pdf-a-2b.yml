@@ -197,6 +197,13 @@
   check: truetype_program_cmap_valid
   args: []
 
+- id: pdfa2-6.2.11.5-cidfont-widths
+  clause: "ISO 19005-2 § 6.2.11.5"
+  title: "CIDFontType2 /W widths match the embedded program's scaled advance widths"
+  severity: error
+  check: cidfont_widths_consistent
+  args: []
+
 - id: pdfa2-6.2.11.4.1-fonts-embedded
   clause: "ISO 19005-2 § 6.2.11.4.1"
   title: "Font programs for all rendered fonts shall be embedded"

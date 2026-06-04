@@ -302,6 +302,12 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : bad.join(", ")
           )
+        when "cidfont_widths_consistent"
+          bad = ctx.cidfont_width_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
         when "devicen_separation_valid"
           bad = ctx.devicen_separation_violations
           Outcome.new(
