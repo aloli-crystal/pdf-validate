@@ -656,6 +656,31 @@ private def pdfua_two_child_h : Bytes
   ] of ObjBody)
 end
 
+# Numbered headings that skip a level (H1 then H3) — violating § 7.4.2.
+private def pdfua_skipped_heading : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R /Lang (fr) /StructTreeRoot 4 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+    "<< /Type /StructTreeRoot /K [5 0 R 6 0 R] >>",
+    "<< /Type /StructElem /S /H1 /P 4 0 R >>",
+    "<< /Type /StructElem /S /H3 /P 4 0 R >>",
+  ] of ObjBody)
+end
+
+# Properly nested numbered headings (H1, H2, H3) — conformant § 7.4.2.
+private def pdfua_proper_headings : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R /Lang (fr) /StructTreeRoot 4 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+    "<< /Type /StructTreeRoot /K [5 0 R 6 0 R 7 0 R] >>",
+    "<< /Type /StructElem /S /H1 /P 4 0 R >>",
+    "<< /Type /StructElem /S /H2 /P 4 0 R >>",
+    "<< /Type /StructElem /S /H3 /P 4 0 R >>",
+  ] of ObjBody)
+end
+
 # A Figure with /Alt but the document declares no /Lang anywhere —
 # violating § 7.2 (language of Alt not determinable).
 private def pdfua_alt_no_lang : Bytes
@@ -1747,6 +1772,7 @@ describe "pdf-ua-1 profile" do
     ids.should_not contain("pdfua1-7.9-note-id")
     ids.should_not contain("pdfua1-7.4.4-heading-structure")
     ids.should_not contain("pdfua1-7.2-attribute-language")
+    ids.should_not contain("pdfua1-7.4.2-heading-nesting")
   end
 
   it "flags a Figure without /Alt or /ActualText (§ 7.3)" do
@@ -1787,6 +1813,16 @@ describe "pdf-ua-1 profile" do
   it "flags an /Alt with no determinable language (§ 7.2)" do
     report = PDF::Validate.bytes(pdfua_alt_no_lang, "pdf-ua-1")
     report.failures.map(&.rule.id).should contain("pdfua1-7.2-attribute-language")
+  end
+
+  it "flags numbered headings that skip a level (§ 7.4.2)" do
+    report = PDF::Validate.bytes(pdfua_skipped_heading, "pdf-ua-1")
+    report.failures.map(&.rule.id).should contain("pdfua1-7.4.2-heading-nesting")
+  end
+
+  it "does not flag properly nested headings (§ 7.4.2)" do
+    report = PDF::Validate.bytes(pdfua_proper_headings, "pdf-ua-1")
+    report.failures.map(&.rule.id).should_not contain("pdfua1-7.4.2-heading-nesting")
   end
 
   it "flags an untagged document as non-conformant for pdf-ua-1" do

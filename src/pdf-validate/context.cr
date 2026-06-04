@@ -1683,6 +1683,47 @@ module PDF
         end
       end
 
+      # Heading-nesting violations (ISO 14289-1 § 7.4.2) : in documents
+      # that use numbered headings (H1–H6), the levels must not skip when
+      # going deeper — the first heading is H1 and each heading is at
+      # most one level deeper than the previous one (reading order).
+      getter pdfua_heading_nesting_violations : Array(String) do
+        issues = [] of String
+        levels = heading_levels_in_order
+        previous = 0
+        levels.each do |level|
+          if level > previous + 1
+            issues << (previous.zero? ? "first heading is H#{level} (must be H1)" : "heading H#{level} skips a level after H#{previous}")
+          end
+          previous = level
+        end
+        issues.uniq
+      end
+
+      # The H1–H6 heading levels in document (reading) order, walking the
+      # structure tree depth-first in /K order.
+      private def heading_levels_in_order : Array(Int32)
+        levels = [] of Int32
+        root = catalog["StructTreeRoot"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+        return levels unless root
+        collect_heading_levels(root, levels, Set(UInt64).new)
+        levels
+      end
+
+      private def collect_heading_levels(node : PDF::Objects::Dictionary, levels : Array(Int32), visited : Set(UInt64))
+        kids = node["K"]?.try { |ref| resolve(ref) }
+        return unless kids
+        entries = kids.as?(PDF::Objects::Array).try(&.to_a) || [kids]
+        entries.each do |entry|
+          dict = resolve(entry).as?(PDF::Objects::Dictionary)
+          next unless dict && visited.add?(dict.object_id)
+          if (type = struct_type(dict)) && (match = type.match(/\AH([1-6])\z/))
+            levels << match[1].to_i
+          end
+          collect_heading_levels(dict, levels, visited)
+        end
+      end
+
       # Structure elements whose /Alt, /ActualText or /E attribute has no
       # determinable natural language (ISO 14289-1 § 7.2 t21–t23). When
       # the catalog declares a default /Lang the requirement is met

@@ -7,6 +7,22 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.41.0 — 2026-06-04 — PDF/UA-1 heading nesting (§ 7.4.2)
+
+=== Added
+
+* **`heading_nesting_valid` (§ 7.4.2)** — in documents using numbered
+  headings (H1–H6), the levels must not skip when going deeper : the
+  first heading is H1 and each heading is at most one level below the
+  previous one, in reading order. Implemented with a document-order
+  (depth-first, /K-order) traversal of the structure tree.
+* `Context` accessor : `pdfua_heading_nesting_violations`, with the
+  private helpers `heading_levels_in_order` and `collect_heading_levels`.
+* Specs : H1→H3 (skip, detected) ; H1→H2→H3 (clean).
+
+This palier targets the PDF/UA-1 profile and does not change the
+PDF/A-2b figure.
+
 == v0.40.0 — 2026-06-04 — PDF/UA-1 headings & attribute language (palier 2)
 
 === Added

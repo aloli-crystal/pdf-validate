@@ -398,6 +398,12 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : bad.join(", ")
           )
+        when "heading_nesting_valid"
+          bad = ctx.pdfua_heading_nesting_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
         when "content_resources_associated"
           bad = ctx.resource_inheritance_violations
           Outcome.new(

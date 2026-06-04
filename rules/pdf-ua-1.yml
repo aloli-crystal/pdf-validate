@@ -90,3 +90,10 @@
   severity: error
   check: attribute_language_determinable
   args: []
+
+- id: pdfua1-7.4.2-heading-nesting
+  clause: "ISO 14289-1 § 7.4.2"
+  title: "Numbered headings do not skip levels (first is H1; deeper by at most one)"
+  severity: error
+  check: heading_nesting_valid
+  args: []

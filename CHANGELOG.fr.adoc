@@ -7,6 +7,22 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.41.0 — 2026-06-04 — PDF/UA-1 hiérarchie de titres (§ 7.4.2)
+
+=== Ajouté
+
+* **`heading_nesting_valid` (§ 7.4.2)** — dans les documents utilisant
+  des titres numérotés (H1–H6), les niveaux ne doivent pas sauter en
+  descendant : le premier titre est H1 et chaque titre est au plus un
+  niveau sous le précédent, en ordre de lecture. Implémenté via un
+  parcours en ordre document (DFS, ordre des /K) de l'arbre de
+  structure.
+* Accesseur `Context` : `pdfua_heading_nesting_violations`, avec les
+  aides privées `heading_levels_in_order` et `collect_heading_levels`.
+* Specs : H1→H3 (saut, détecté) ; H1→H2→H3 (propre).
+
+Ce palier vise le profil PDF/UA-1 et ne change pas le chiffre PDF/A-2b.
+
 == v0.40.0 — 2026-06-04 — PDF/UA-1 titres & langue des attributs (palier 2)
 
 === Ajouté
