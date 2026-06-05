@@ -7,6 +7,18 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.47.0 — 2026-06-05 — CLI appelable depuis la bibliothèque
+
+=== Modifié
+
+* **`PDF::Validate::CLI` déplacé dans la bibliothèque**
+  (`src/pdf-validate/cli.cr`), `src/cli.cr` n'étant plus qu'un wrapper
+  d'une ligne (`exit PDF::Validate::CLI.run(ARGV)`). `CLI.run(argv) :
+  Int32` était déjà une méthode ; la déplacer permet au validateur de
+  s'exécuter à la fois comme binaire `pdf-validate` autonome ET en
+  interne depuis le binaire unifié `alolipdf` (aloli-crystal/pdf-tools).
+  Comportement inchangé — 160 specs au vert, ameba propre.
+
 == v0.46.0 — 2026-06-05 — Profil PDF/A-1b (ISO 19005-1)
 
 === Ajouté
