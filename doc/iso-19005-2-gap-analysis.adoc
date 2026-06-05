@@ -392,8 +392,37 @@ mapper un CID > 65535 : seul un flux `/Encoding` (CMap embarquée) peut
 le faire (Identity-H/V et les CMaps prédéfinies plafonnent à 65535 par
 construction) ; on lit les CID destination des blocs `cidrange`/`cidchar`
 du contenu décodé. 0 faux positif sur le corpus conforme. § 6.1 passe à
-**27/27 (100 %)**, le total à **143/144 (99 %)**. Reste § 6.2.11.4.2 t1
-(CharSet d'une police Type1 embarquée).
+**27/27 (100 %)**, le total à **143/144 (99 %)**.
+
+=== Le dernier 1 % : § 6.2.11.4.2 t1 (CharSet Type1) — exclusion étayée
+
+99 % est le **maximum honnête** : le seul test restant, § 6.2.11.4.2 t1
+(le `/CharSet` d'une police Type 1 embarquée), a été **instruit contre
+l'oracle réel** et délibérément non livré.
+
+Un parseur Type 1 a été écrit et **validé sur une vraie police** (Nimbus
+Sans PFB de ghostscript) : segmentation PFB, déchiffrement `eexec`
+(R=55665) et extraction des noms de glyphes du `/CharStrings` →
+**560 glyphes corrects** (.notdef, A, space, ccedilla…). La partie
+technique difficile fonctionne.
+
+Mais l'**oracle veraPDF refuse de corroborer** : on a embarqué cette
+vraie police dans des PDF de test et veraPDF parse bien la police (la
+règle s'évalue, `passedChecks=1`), pourtant elle **passe dans tous les
+cas** — `/CharSet (/A)` (1 glyphe sur 560), comme `/CharSet` listant un
+glyphe **fantôme** absent du programme. Impossible donc de produire un
+cas *échouant* connu pour fixer la sémantique exacte de
+`charSetListsAllGlyphs` : le texte de la règle dit « lister tous les
+glyphes » mais veraPDF accepte 1 glyphe sur 560.
+
+Livrer un check dont on ne peut pas confirmer la sémantique face à
+l'oracle violerait la discipline du projet (**0 faux positif, validé
+contre les outils réels**). Le parseur est donc retiré du build ; la
+règle reste exclue (`not_covered_tests`). En pratique ALOLI n'émet
+**jamais** de police Type 1 PFB (TrueType/OTF uniquement), donc ce test
+ne se déclencherait de toute façon jamais sur nos documents. Réactivable
+le jour où un corpus Type 1 *connu-échouant* permettra de caler la
+sémantique sur veraPDF.
 
 == Lecture honnête du chiffre
 
