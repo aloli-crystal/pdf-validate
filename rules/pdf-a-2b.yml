@@ -41,11 +41,25 @@
   check: stream_keyword_eol_valid
   args: []
 
+- id: pdfa2-6.1.8-name-utf8
+  clause: "ISO 19005-2 § 6.1.8"
+  title: "Name objects form a valid UTF-8 byte sequence (after #XX resolution)"
+  severity: error
+  check: name_objects_utf8
+  args: []
+
 - id: pdfa2-6.1.9-indirect-spacing
   clause: "ISO 19005-2 § 6.1.9"
   title: "Indirect objects/references use single white-space separators"
   severity: error
   check: indirect_object_spacing_valid
+  args: []
+
+- id: pdfa2-6.1.13-cid-limit
+  clause: "ISO 19005-2 § 6.1.13"
+  title: "No CID value greater than 65535 (embedded CMap)"
+  severity: error
+  check: cid_values_within_limit
   args: []
 
 - id: pdfa2-6.1.13-implementation-limits

@@ -37,12 +37,10 @@ not_covered = set()
 
 # Individual tests we do NOT implement, counted at test granularity so
 # a heterogeneous clause is not over-claimed :
-#   6.1.13 t10 — maximum CID value (needs a CMap interpreter)
 #   6.2.11.4.2 t1 — the Type1 CharSet must list all glyphs (Type1/CFF
 #                   charset parsing ; only the CIDFont /CIDSet, t2, is
 #                   implemented)
 not_covered_tests = {
-    ("6.1.13", "10"),
     ("6.2.11.4.2", "1"),
 }
 

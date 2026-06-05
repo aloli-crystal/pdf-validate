@@ -282,6 +282,44 @@ module PDF
         end
       end
 
+      # Maximum CID value (ISO 19005-2 § 6.1.13, t10) : a conforming file
+      # shall not map a CID greater than 65535. Only an *embedded* CMap
+      # (a stream /Encoding) can break this — predefined CMaps and
+      # Identity-H/V map 2-byte codes, capped at 65535 by construction.
+      # The CMap's `cidrange` / `cidchar` destination CIDs are read from
+      # the decoded content (a `cidrange` spans `dstCID … dstCID+(hi-lo)`).
+      getter cid_value_violations : Array(String) do
+        issues = [] of String
+        each_font_dict do |dict|
+          next unless dict["Subtype"]?.try(&.as?(PDF::Objects::Name)).try(&.value) == "Type0"
+          stream = dict["Encoding"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Stream)
+          next unless stream && stream.decoded
+          max = max_cid_in_cmap(String.new(stream.encoded_data))
+          issues << "CMap maps a CID (#{max}) greater than 65535" if max > 65535
+        end
+        issues.uniq
+      end
+
+      # The largest CID mapped by a CMap's content, scanning every
+      # `begincidrange…endcidrange` and `begincidchar…endcidchar` block.
+      private def max_cid_in_cmap(text : String) : Int64
+        max = 0_i64
+        text.scan(/begincidrange(.*?)endcidrange/m) do |block|
+          block[1].scan(/<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s+(\d+)/) do |row|
+            span = row[2].to_i64(16) - row[1].to_i64(16)
+            candidate = row[3].to_i64 + (span > 0 ? span : 0_i64)
+            max = candidate if candidate > max
+          end
+        end
+        text.scan(/begincidchar(.*?)endcidchar/m) do |block|
+          block[1].scan(/<[0-9A-Fa-f]+>\s+(\d+)/) do |row|
+            value = row[1].to_i64
+            max = value if value > max
+          end
+        end
+        max
+      end
+
       # Simple TrueType font encoding violations (ISO 19005-2
       # § 6.2.11.6, the dictionary-level tests t2/t3) :
       #   t2 — a non-symbolic TrueType font's /Encoding (a name, or the
@@ -1884,6 +1922,15 @@ module PDF
       # Indirect object/reference spacing violations (§ 6.1.9).
       getter indirect_spacing_violations : Array(String) do
         byte_scan.indirect_spacing_violations
+      end
+
+      # Name-object UTF-8 violations (ISO 19005-2 § 6.1.8, t1) : a name's
+      # bytes, after `#XX` escape resolution, must form a valid UTF-8
+      # string. Read at the byte level because the object parser
+      # normalises each escape to a Unicode code point (losing the raw
+      # bytes). Empty when the raw bytes are unavailable.
+      getter name_utf8_violations : Array(String) do
+        byte_scan.name_utf8_violations
       end
 
       # File-header violations (ISO 19005-2 § 6.1.2), read from the raw

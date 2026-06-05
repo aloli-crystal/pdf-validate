@@ -164,6 +164,18 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : "hexadecimal string issue(s): #{bad.join(", ")}"
           )
+        when "name_objects_utf8"
+          bad = ctx.name_utf8_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
+        when "cid_values_within_limit"
+          bad = ctx.cid_value_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
         when "stream_keyword_eol_valid"
           bad = ctx.stream_eol_violations
           Outcome.new(

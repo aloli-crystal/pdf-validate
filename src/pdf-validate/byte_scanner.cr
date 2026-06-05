@@ -22,6 +22,7 @@ module PDF
       getter hex_string_violations = [] of String
       getter stream_eol_violations = [] of String
       getter indirect_spacing_violations = [] of String
+      getter name_utf8_violations = [] of String
       # Byte ranges of stream data, as {keyword_end, data_end} pairs :
       # data starts right after the EOL following `stream`, and ends at
       # the `endstream` keyword. Used by the Context for the § 6.1.7.1
@@ -54,6 +55,8 @@ module PDF
             end
           when keyword_at?(i, "stream")
             i = skip_stream(i)
+          when byte == 0x2F # '/' name object
+            i = scan_name(i)
           when digit?(byte) && token_start?(i)
             i = try_indirect(i)
           else
@@ -64,6 +67,7 @@ module PDF
         @hex_string_violations.uniq!
         @stream_eol_violations.uniq!
         @indirect_spacing_violations.uniq!
+        @name_utf8_violations.uniq!
         self
       end
 
@@ -139,6 +143,49 @@ module PDF
           end
         end
         j
+      end
+
+      # Scans a name object `/...` from the '/' at `i`, resolving `#XX`
+      # escapes to their raw bytes, and records a § 6.1.8 t1 violation
+      # when the resulting byte sequence is not valid UTF-8. (The object
+      # parser re-encodes each `#XX` to a Unicode code point, so this
+      # byte-level view is the only place the original bytes survive.)
+      # Returns the index past the name.
+      private def scan_name(i : Int32) : Int32
+        raw = @raw
+        size = raw.size
+        decoded = [] of UInt8
+        j = i + 1
+        while j < size
+          byte = raw[j]
+          break if whitespace?(byte) || delimiter?(byte)
+          if byte == 0x23 && j + 2 < size && hex_digit?(raw[j + 1]) && hex_digit?(raw[j + 2])
+            decoded << ((hex_value(raw[j + 1]) << 4) | hex_value(raw[j + 2])).to_u8
+            j += 3
+          else
+            decoded << byte
+            j += 1
+          end
+        end
+        unless valid_utf8?(decoded)
+          @name_utf8_violations << "name object is not a valid UTF-8 byte sequence"
+        end
+        j
+      end
+
+      private def valid_utf8?(bytes : Array(UInt8)) : Bool
+        return true if bytes.empty?
+        String.new(Bytes.new(bytes.size) { |k| bytes[k] }).valid_encoding?
+      end
+
+      private def hex_value(byte : UInt8) : Int32
+        if byte >= 0x30 && byte <= 0x39
+          (byte - 0x30).to_i
+        elsif byte >= 0x41 && byte <= 0x46
+          (byte - 0x41 + 10).to_i
+        else
+          (byte - 0x61 + 10).to_i
+        end
       end
 
       # Scans a hexadecimal string `<...>` from the opening '<' at `i`.

@@ -771,6 +771,52 @@ private def pdf_with_bad_signature : Bytes
   ] of ObjBody)
 end
 
+# A file with a name object whose bytes, after #XX resolution, are not
+# valid UTF-8 (`/Bad#80Name` → a lone 0x80 continuation byte), § 6.1.8 t1.
+private def pdf_with_bad_name : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R /Custom /Bad#80Name >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+  ] of ObjBody)
+end
+
+# A file with a name whose #XX escapes spell valid UTF-8 (`/Caf#C3#A9`
+# = "Café") — must NOT be flagged by § 6.1.8 t1.
+private def pdf_with_utf8_name : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R /Custom /Caf#C3#A9 >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+  ] of ObjBody)
+end
+
+# A Type0 font whose embedded CMap maps a CID greater than 65535
+# (`<0000> <0000> 70000`), violating § 6.1.13 t10.
+private def pdf_with_big_cid : Bytes
+  cmap = "/CIDInit /ProcSet findresource begin\n1 begincidrange\n<0000> <0000> 70000\nendcidrange\nend"
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F0 4 0 R >> >> >>",
+    "<< /Type /Font /Subtype /Type0 /BaseFont /Foo /Encoding 5 0 R /DescendantFonts [6 0 R] >>",
+    {"<< /Type /CMap >>", cmap.to_slice},
+    "<< /Type /Font /Subtype /CIDFontType2 /BaseFont /Foo >>",
+  ] of ObjBody)
+end
+
+# A Type0 font with Identity-H (a name, no embedded CMap) — CID == code,
+# capped at 65535 ; must NOT be flagged by § 6.1.13 t10.
+private def pdf_with_identity_cid : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F0 4 0 R >> >> >>",
+    "<< /Type /Font /Subtype /Type0 /BaseFont /Foo /Encoding /Identity-H /DescendantFonts [5 0 R] >>",
+    "<< /Type /Font /Subtype /CIDFontType2 /BaseFont /Foo >>",
+  ] of ObjBody)
+end
+
 # A signed file whose signature /Contents carries the given PKCS#7 DER.
 private def pdf_with_signature(pkcs7 : Bytes) : Bytes
   build_pdf([
@@ -1563,6 +1609,26 @@ describe PDF::Validate do
   it "detects a signature whose /ByteRange does not cover the document (§ 6.4.3)" do
     report = PDF::Validate.bytes(pdf_with_bad_signature, "pdf-a-2b")
     report.failures.map(&.rule.id).should contain("pdfa2-6.4.3-signature-byterange")
+  end
+
+  it "detects a name object that is not valid UTF-8 after #XX (§ 6.1.8 t1)" do
+    report = PDF::Validate.bytes(pdf_with_bad_name, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.1.8-name-utf8")
+  end
+
+  it "does not flag a name whose #XX escapes spell valid UTF-8 (§ 6.1.8 t1)" do
+    report = PDF::Validate.bytes(pdf_with_utf8_name, "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.1.8-name-utf8")
+  end
+
+  it "detects an embedded CMap mapping a CID greater than 65535 (§ 6.1.13 t10)" do
+    report = PDF::Validate.bytes(pdf_with_big_cid, "pdf-a-2b")
+    report.failures.map(&.rule.id).should contain("pdfa2-6.1.13-cid-limit")
+  end
+
+  it "does not flag Identity-H (CID == code, capped at 65535) (§ 6.1.13 t10)" do
+    report = PDF::Validate.bytes(pdf_with_identity_cid, "pdf-a-2b")
+    report.failures.map(&.rule.id).should_not contain("pdfa2-6.1.13-cid-limit")
   end
 
   it "analyse un PKCS#7 réel : certificat présent, un seul signer (§ 6.4.3)" do

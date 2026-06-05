@@ -7,6 +7,29 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.44.0 — 2026-06-05 — Noms UTF-8 + limite CID (§ 6.1.8 t1, § 6.1.13 t10)
+
+=== Ajouté
+
+* **§ 6.1.8 t1 — les noms doivent être de l'UTF-8 valide.** Le
+  `ByteScanner` gagne un cas `/` : il résout les échappements `#XX` en
+  octets bruts et signale un nom dont la séquence d'octets n'est pas de
+  l'UTF-8 valide. Fait au niveau octet car le parseur d'objets réencode
+  chaque échappement en code point (octets d'origine perdus). Check
+  `name_objects_utf8`.
+* **§ 6.1.13 t10 — aucun CID supérieur à 65535.** Seule une CMap
+  *embarquée* (flux `/Encoding`) peut l'enfreindre — Identity-H/V et les
+  CMaps prédéfinies plafonnent les codes 2 octets à 65535. Les CID
+  destination des blocs `cidrange` / `cidchar` sont lus dans le contenu
+  décodé de la CMap (`max_cid_in_cmap`). Check `cid_values_within_limit`.
+
+=== Couverture
+
+§ 6.1 Structure de fichier atteint **27/27 (100 %)** ; la couverture
+clause-level passe à **143/144 = 99 %** (run veraPDF 1.30.1 autoritaire).
+0 faux positif sur le corpus conforme. Dernier manque : § 6.2.11.4.2 t1
+(le CharSet d'une police Type 1 embarquée).
+
 == v0.43.0 — 2026-06-05 — Objet PKCS#7 de signature (§ 6.4.3 t2/t3)
 
 === Ajouté
