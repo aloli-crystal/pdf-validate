@@ -362,6 +362,12 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : bad.join(", ")
           )
+        when "associated_files_have_relationship"
+          bad = ctx.associated_file_relationship_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
         when "overprint_iccbased_cmyk_valid"
           bad = ctx.overprint_icc_cmyk_violations
           Outcome.new(

@@ -1,0 +1,488 @@
+# PDF/A-3b conformance rule set (ISO 19005-3:2012, level B).
+#
+# PDF/A-3 is PDF/A-2 with ONE relaxation : an embedded file may be of
+# ANY format (not only PDF/A), provided each is an *associated file*
+# carrying an /AFRelationship. Every other requirement is identical to
+# PDF/A-2b, so this rule set IS the 2b set with § 6.8 adapted : the
+# "embedded file must itself be PDF/A" rule (2b § 6.8 t5) is dropped,
+# and the /AFRelationship requirement (3b § 6.8 t3) is added. Clause
+# numbers track the veraPDF 1.30.1 PDF/A-3B profile ; the ISO text is
+# paywalled and is NOT reproduced here, only clause numbers and short
+# factual labels.
+#
+# See doc/iso-19005-2-gap-analysis.adoc for the shared 2b/3b backlog.
+
+# --- § 6.1 File structure ---
+
+- id: pdfa3-6.1.2-file-header
+  clause: "ISO 19005-3 § 6.1.2"
+  title: "File begins with %PDF-1.n + EOL and a binary-marker comment (≥ 4 bytes > 127)"
+  severity: error
+  check: file_header_valid
+  args: []
+
+- id: pdfa3-6.1.3-no-data-after-eof
+  clause: "ISO 19005-3 § 6.1.3"
+  title: "No data after the final %%EOF except a single optional EOL"
+  severity: error
+  check: no_data_after_eof
+  args: []
+
+- id: pdfa3-6.1.6-hex-strings
+  clause: "ISO 19005-3 § 6.1.6"
+  title: "Hexadecimal strings have an even count of hex digits only"
+  severity: error
+  check: hex_strings_valid
+  args: []
+
+- id: pdfa3-6.1.7.1-stream-eol
+  clause: "ISO 19005-3 § 6.1.7.1"
+  title: "stream keyword followed by CRLF/LF; endstream preceded by an EOL"
+  severity: error
+  check: stream_keyword_eol_valid
+  args: []
+
+- id: pdfa3-6.1.8-name-utf8
+  clause: "ISO 19005-3 § 6.1.8"
+  title: "Name objects form a valid UTF-8 byte sequence (after #XX resolution)"
+  severity: error
+  check: name_objects_utf8
+  args: []
+
+- id: pdfa3-6.1.9-indirect-spacing
+  clause: "ISO 19005-3 § 6.1.9"
+  title: "Indirect objects/references use single white-space separators"
+  severity: error
+  check: indirect_object_spacing_valid
+  args: []
+
+- id: pdfa3-6.1.13-cid-limit
+  clause: "ISO 19005-3 § 6.1.13"
+  title: "No CID value greater than 65535 (embedded CMap)"
+  severity: error
+  check: cid_values_within_limit
+  args: []
+
+- id: pdfa3-6.1.13-implementation-limits
+  clause: "ISO 19005-3 § 6.1.13"
+  title: "Implementation limits: number ranges, name/string lengths, object count, DeviceN colorants, page box sizes"
+  severity: error
+  check: implementation_limits_respected
+  args: []
+
+- id: pdfa3-6.1.12-permissions-dictionary
+  clause: "ISO 19005-3 § 6.1.12"
+  title: "Permissions dictionary holds only /UR3 and /DocMDP; with /DocMDP, no Digest* keys in signature references"
+  severity: error
+  check: permissions_dictionary_valid
+  args: []
+
+- id: pdfa3-6.1.10-inline-image-filter
+  clause: "ISO 19005-3 § 6.1.10"
+  title: "Inline image /F (Filter) shall not be LZW or Crypt"
+  severity: error
+  check: inline_image_filters_valid
+  args: []
+
+- id: pdfa3-6.1.4-xref-eol
+  clause: "ISO 19005-3 § 6.1.4"
+  title: "The xref keyword and the subsection header are separated by a single EOL marker"
+  severity: error
+  check: xref_eol_valid
+  args: []
+
+- id: pdfa3-6.1.3-no-encryption
+  clause: "ISO 19005-3 § 6.1.3"
+  title: "The trailer shall not contain the Encrypt key"
+  severity: error
+  check: trailer_key_absent
+  args: ["Encrypt"]
+
+- id: pdfa3-6.1.3-file-id
+  clause: "ISO 19005-3 § 6.1.3"
+  title: "The trailer shall contain a file identifier (/ID)"
+  severity: error
+  check: trailer_key_present
+  args: ["ID"]
+
+- id: pdfa3-6.1.7.1-no-external-streams
+  clause: "ISO 19005-3 § 6.1.7.1"
+  title: "A stream dictionary shall not reference an external file (/F, /FFilter, /FDecodeParms)"
+  severity: error
+  check: no_external_stream_files
+  args: []
+
+- id: pdfa3-6.1.7.2-stream-filters
+  clause: "ISO 19005-3 § 6.1.7.2"
+  title: "Stream filters shall be ISO 32000-1 standard filters (no LZWDecode)"
+  severity: error
+  check: stream_filters_allowed
+  args: []
+
+# --- § 6.2 Graphics (colour & fonts) ---
+
+- id: pdfa3-6.2.2-defined-operators
+  clause: "ISO 19005-3 § 6.2.2"
+  title: "Content streams shall use only ISO 32000-1 operators"
+  severity: error
+  check: content_operators_defined
+  args: []
+
+- id: pdfa3-6.2.2-resources-associated
+  clause: "ISO 19005-3 § 6.2.2"
+  title: "A content stream referencing resources has its own Resources dictionary (not inherited)"
+  severity: error
+  check: content_resources_associated
+  args: []
+
+- id: pdfa3-6.2.10-output-intent
+  clause: "ISO 19005-3 § 6.2.10"
+  title: "Device colour spaces require a PDF/A OutputIntent (present)"
+  severity: error
+  check: catalog_key_present
+  args: ["OutputIntents"]
+
+- id: pdfa3-6.2.4.3-image-colorspaces
+  clause: "ISO 19005-3 § 6.2.4.3"
+  title: "Image DeviceRGB/DeviceCMYK requires a device-independent default (OutputIntent)"
+  severity: error
+  check: image_colorspaces_calibrated
+  args: []
+
+- id: pdfa3-6.2.4.3-content-device-colours
+  clause: "ISO 19005-3 § 6.2.4.3"
+  title: "Content-stream DeviceRGB/CMYK/Gray require a matching OutputIntent or Default* space"
+  severity: error
+  check: device_colours_anchored
+  args: []
+
+- id: pdfa3-6.2.4.2-iccbased-profile
+  clause: "ISO 19005-3 § 6.2.4.2"
+  title: "ICCBased colour space profile: valid device class and colour space"
+  severity: error
+  check: iccbased_profiles_valid
+  args: []
+
+- id: pdfa3-6.2.4.2-overprint-cmyk
+  clause: "ISO 19005-3 § 6.2.4.2"
+  title: "ICCBased CMYK colour shall not be painted with overprint while OPM=1"
+  severity: error
+  check: overprint_iccbased_cmyk_valid
+  args: []
+
+- id: pdfa3-6.2.4.4-devicen-separation
+  clause: "ISO 19005-3 § 6.2.4.4"
+  title: "DeviceN/NChannel spot colorants are in /Colorants; Separations with one name share alternate & tint"
+  severity: error
+  check: devicen_separation_valid
+  args: []
+
+- id: pdfa3-6.2.11.2-font-dictionary
+  clause: "ISO 19005-3 § 6.2.11.2"
+  title: "Font dictionary: valid /Subtype, /BaseFont, FirstChar/LastChar/Widths, FontFile3 subtype"
+  severity: error
+  check: font_dictionaries_valid
+  args: []
+
+- id: pdfa3-6.2.11.3.1-type0-encoding
+  clause: "ISO 19005-3 § 6.2.11.3.1"
+  title: "Type0 CMap is Identity-H/V or shares the CIDFont's Registry/Ordering"
+  severity: error
+  check: type0_encoding_valid
+  args: []
+
+- id: pdfa3-6.2.11.3.2-cidtogidmap
+  clause: "ISO 19005-3 § 6.2.11.3.2"
+  title: "An embedded CIDFontType2 shall contain /CIDToGIDMap"
+  severity: error
+  check: cidfont_gidmap_present
+  args: []
+
+- id: pdfa3-6.2.11.3.3-cmap-restrictions
+  clause: "ISO 19005-3 § 6.2.11.3.3"
+  title: "CMap is predefined (Table 118) or embedded; WMode consistent; /UseCMap predefined"
+  severity: error
+  check: cmaps_valid
+  args: []
+
+- id: pdfa3-6.2.11.6-truetype-encoding
+  clause: "ISO 19005-3 § 6.2.11.6"
+  title: "Non-symbolic TrueType uses MacRoman/WinAnsi encoding; symbolic TrueType has no Encoding entry"
+  severity: error
+  check: truetype_encodings_valid
+  args: []
+
+- id: pdfa3-6.2.11.6-truetype-cmap
+  clause: "ISO 19005-3 § 6.2.11.6"
+  title: "Embedded TrueType program cmap: non-symbolic has a usable subtable; symbolic has one subtable or a (3,0) table"
+  severity: error
+  check: truetype_program_cmap_valid
+  args: []
+
+- id: pdfa3-6.2.11.5-cidfont-widths
+  clause: "ISO 19005-3 § 6.2.11.5"
+  title: "CIDFontType2 /W widths match the embedded program's scaled advance widths"
+  severity: error
+  check: cidfont_widths_consistent
+  args: []
+
+- id: pdfa3-6.2.11.4.2-cidset
+  clause: "ISO 19005-3 § 6.2.11.4.2"
+  title: "A subset CIDFontType2 /CIDSet marks every CID present in the font program"
+  severity: error
+  check: cidset_lists_all_glyphs
+  args: []
+
+- id: pdfa3-6.2.11.4.1-fonts-embedded
+  clause: "ISO 19005-3 § 6.2.11.4.1"
+  title: "Font programs for all rendered fonts shall be embedded"
+  severity: error
+  check: all_fonts_embedded
+  args: []
+
+- id: pdfa3-6.2.11.4.1-glyphs-present
+  clause: "ISO 19005-3 § 6.2.11.4.1"
+  title: "Embedded fonts define every glyph referenced for rendering (Type0/Identity)"
+  severity: error
+  check: referenced_glyphs_present
+  args: []
+
+- id: pdfa3-6.2.11.8-notdef
+  clause: "ISO 19005-3 § 6.2.11.8"
+  title: "Text-showing operators shall not reference the .notdef glyph"
+  severity: error
+  check: no_notdef_references
+  args: []
+
+- id: pdfa3-6.2.5-extgstate-no-transfer
+  clause: "ISO 19005-3 § 6.2.5"
+  title: "ExtGState shall not contain /TR or /HTP, and /TR2 only with value /Default"
+  severity: error
+  check: extgstate_no_transfer_functions
+  args: []
+
+- id: pdfa3-6.2.9-no-forbidden-xobjects
+  clause: "ISO 19005-3 § 6.2.9"
+  title: "No PostScript, reference (/Ref) or OPI XObjects"
+  severity: error
+  check: no_forbidden_xobjects
+  args: []
+
+- id: pdfa3-6.2.10-standard-blend-modes
+  clause: "ISO 19005-3 § 6.2.10"
+  title: "ExtGState blend modes (/BM) shall be ISO 32000-1 standard modes"
+  severity: error
+  check: standard_blend_modes
+  args: []
+
+- id: pdfa3-6.2.10-page-transparency-group
+  clause: "ISO 19005-3 § 6.2.10"
+  title: "A page with transparency needs a /Group with /CS when no PDF/A OutputIntent is present"
+  severity: error
+  check: page_transparency_groups_valid
+  args: []
+
+- id: pdfa3-6.2.3-output-intent-profile
+  clause: "ISO 19005-3 § 6.2.3"
+  title: "DestOutputProfile shall be a prtr/mntr ICC profile (RGB/CMYK/GRAY, version < 5); shared & no PDF/X ref"
+  severity: error
+  check: output_intent_profiles_valid
+  args: []
+
+- id: pdfa3-6.2.6-rendering-intent
+  clause: "ISO 19005-3 § 6.2.6"
+  title: "Rendering intents shall be one of the four ISO 32000-1 values"
+  severity: error
+  check: rendering_intents_valid
+  args: []
+
+- id: pdfa3-6.2.8-image-dictionary-keys
+  clause: "ISO 19005-3 § 6.2.8"
+  title: "Image XObject keys: no /Alternates, no /OPI, /Interpolate false, valid /BitsPerComponent"
+  severity: error
+  check: image_dictionary_keys_valid
+  args: []
+
+- id: pdfa3-6.2.8.3-jpeg2000
+  clause: "ISO 19005-3 § 6.2.8.3"
+  title: "JPEG2000 codestream: 1/3/4 channels, valid colr METH/APPROX/EnumCS, uniform bit-depth 1..38"
+  severity: error
+  check: jpeg2000_valid
+  args: []
+
+# --- § 6.3 Annotations ---
+
+- id: pdfa3-6.3.1-annotation-types
+  clause: "ISO 19005-3 § 6.3.1"
+  title: "Annotation subtypes shall be ISO 32000-1 types (no 3D/Sound/Screen/Movie)"
+  severity: error
+  check: annotation_types_allowed
+  args: []
+
+- id: pdfa3-6.3.2-annotation-flags
+  clause: "ISO 19005-3 § 6.3.2"
+  title: "Annotations carry /F (except Popup); Print set, Hidden/Invisible/NoView/ToggleNoView clear"
+  severity: error
+  check: annotation_flags_valid
+  args: []
+
+- id: pdfa3-6.3.3-annotation-appearances
+  clause: "ISO 19005-3 § 6.3.3"
+  title: "Annotations have a conformant appearance (/AP with only /N; correct N type)"
+  severity: error
+  check: annotation_appearances_valid
+  args: []
+
+# --- § 6.4 Interactive forms & signatures ---
+
+- id: pdfa3-6.4.1-interactive-forms
+  clause: "ISO 19005-3 § 6.4.1"
+  title: "Widgets/fields free of /A and /AA; AcroForm /NeedAppearances not true"
+  severity: error
+  check: interactive_forms_valid
+  args: []
+
+- id: pdfa3-6.4.2-no-dynamic-forms
+  clause: "ISO 19005-3 § 6.4.2"
+  title: "No /XFA in AcroForm and no /NeedsRendering in the catalog"
+  severity: error
+  check: no_dynamic_forms
+  args: []
+
+- id: pdfa3-6.4.3-signature-byterange
+  clause: "ISO 19005-3 § 6.4.3"
+  title: "A signature's /ByteRange shall cover the entire document"
+  severity: error
+  check: signature_byterange_valid
+  args: []
+
+- id: pdfa3-6.4.3-signing-certificate
+  clause: "ISO 19005-3 § 6.4.3"
+  title: "A signature's PKCS#7 object shall embed the signer's X.509 certificate"
+  severity: error
+  check: signature_signing_certificate
+  args: []
+
+- id: pdfa3-6.4.3-single-signer
+  clause: "ISO 19005-3 § 6.4.3"
+  title: "A signature's PKCS#7 object shall contain a single SignerInfo"
+  severity: error
+  check: signature_single_signer
+  args: []
+
+# --- § 6.5 Actions ---
+
+- id: pdfa3-6.5.1-no-javascript
+  clause: "ISO 19005-3 § 6.5.1"
+  title: "No JavaScript (or other forbidden) actions"
+  severity: error
+  check: no_javascript
+  args: []
+
+- id: pdfa3-6.5.2-no-catalog-aa
+  clause: "ISO 19005-3 § 6.5.2"
+  title: "The document Catalog shall not include an /AA additional-actions entry"
+  severity: error
+  check: catalog_key_absent
+  args: ["AA"]
+
+# --- § 6.6 Metadata ---
+
+- id: pdfa3-6.6.2.1-metadata-present
+  clause: "ISO 19005-3 § 6.6.2.1"
+  title: "The Catalog shall contain an XMP /Metadata stream"
+  severity: error
+  check: catalog_key_present
+  args: ["Metadata"]
+
+- id: pdfa3-6.6.2.1-xmp-well-formed
+  clause: "ISO 19005-3 § 6.6.2.1"
+  title: "XMP packet: no bytes/encoding header attribute, well-formed XML"
+  severity: error
+  check: xmp_well_formed
+  args: []
+
+- id: pdfa3-6.6.4-pdfaid-part
+  clause: "ISO 19005-3 § 6.6.4"
+  title: "PDF/A version identification (pdfaid:part) present in XMP"
+  severity: error
+  check: xmp_property_present
+  args: ["pdfaid:part"]
+
+- id: pdfa3-6.6.4-pdfaid-conformance
+  clause: "ISO 19005-3 § 6.6.4"
+  title: "PDF/A conformance level (pdfaid:conformance) present in XMP"
+  severity: error
+  check: xmp_property_present
+  args: ["pdfaid:conformance"]
+
+- id: pdfa3-6.6.4-pdfaid-part-2
+  clause: "ISO 19005-3 § 6.6.4"
+  title: "Declared PDF/A part is 2"
+  severity: error
+  check: xmp_property_equals
+  args: ["pdfaid:part", "2"]
+
+- id: pdfa3-6.6.2.3-extension-schema
+  clause: "ISO 19005-3 § 6.6.2.3"
+  title: "PDF/A extension schema structure (pdfaSchema/Property/Type/Field) is well-formed"
+  severity: error
+  check: xmp_extension_schema_valid
+  args: []
+
+- id: pdfa3-6.6.2.3.1-property-schemas
+  clause: "ISO 19005-3 § 6.6.2.3.1"
+  title: "Every XMP property belongs to a predefined schema or a declared extension schema"
+  severity: error
+  check: xmp_property_schemas_valid
+  args: []
+
+- id: pdfa3-6.6.4-conformance-level
+  clause: "ISO 19005-3 § 6.6.4"
+  title: "pdfaid:conformance is A, B or U"
+  severity: error
+  check: pdfaid_conformance_valid
+  args: []
+
+# --- § 6.8 Embedded files ---
+
+- id: pdfa3-6.8-embedded-filespec
+  clause: "ISO 19005-3 § 6.8"
+  title: "A file specification with an embedded file (/EF) shall contain /F and /UF"
+  severity: error
+  check: embedded_filespecs_valid
+  args: []
+
+- id: pdfa3-6.8-af-relationship
+  clause: "ISO 19005-3 § 6.8"
+  title: "Each embedded file specification shall carry an /AFRelationship name"
+  severity: error
+  check: associated_files_have_relationship
+  args: []
+
+# --- § 6.9 Optional content ---
+
+- id: pdfa3-6.9-optional-content
+  clause: "ISO 19005-3 § 6.9"
+  title: "OCG configuration dictionaries: non-empty unique /Name, no /AS"
+  severity: error
+  check: optional_content_valid
+  args: []
+
+# --- § 6.10 Alternate presentations ---
+
+- id: pdfa3-6.10-no-alternate-presentations
+  clause: "ISO 19005-3 § 6.10"
+  title: "No /AlternatePresentations (Names) and no /PresSteps (pages)"
+  severity: error
+  check: no_alternate_presentations
+  args: []
+
+# --- § 6.11 Requirements ---
+
+- id: pdfa3-6.11-no-requirements
+  clause: "ISO 19005-3 § 6.11"
+  title: "The document Catalog shall not contain the /Requirements key"
+  severity: error
+  check: catalog_key_absent
+  args: ["Requirements"]

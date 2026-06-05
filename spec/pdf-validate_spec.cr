@@ -482,6 +482,20 @@ private def pdf_with_embedded_file(content : Bytes) : Bytes
   ] of ObjBody)
 end
 
+# Like `pdf_with_embedded_file` but the file specification carries an
+# /AFRelationship name and is referenced from the catalog /AF array —
+# i.e. an *associated file*, as PDF/A-3 § 6.8 requires.
+private def pdf_with_associated_file(content : Bytes, relationship : String = "/Data") : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R /AF [4 0 R] " \
+    "/Names << /EmbeddedFiles << /Names [(data) 4 0 R] >> >> >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+    "<< /Type /Filespec /F (data) /UF (data) /AFRelationship #{relationship} /EF << /F 5 0 R >> >>",
+    {"<< /Type /EmbeddedFile /Subtype /text#2Fxml >>", content},
+  ] of ObjBody)
+end
+
 # Builds a minimal JP2 byte stream : signature box + jp2h{ihdr, colr}.
 # `bpc` is the raw BPC byte (depth-1, or 0xFF for varying) ; a colr box
 # with METH=1 carries `enum_cs`.
@@ -1476,6 +1490,30 @@ describe PDF::Validate do
     failed = report.failures.map(&.rule.id)
     failed.should_not contain("pdfa2-6.8-embedded-filespec")
     failed.should_not contain("pdfa2-6.9-optional-content")
+  end
+
+  # --- PDF/A-3b profile (ISO 19005-3) ---
+
+  it "registers the pdf-a-3b profile" do
+    PDF::Validate::RuleSet.profiles.should contain("pdf-a-3b")
+  end
+
+  it "PDF/A-3 accepts a non-PDF associated file that PDF/A-2 rejects (§ 6.8)" do
+    xml = "<?xml version=\"1.0\"?><Invoice/>".to_slice
+    under_a2 = PDF::Validate.bytes(pdf_with_associated_file(xml), "pdf-a-2b").failures.map(&.rule.id)
+    under_a3 = PDF::Validate.bytes(pdf_with_associated_file(xml), "pdf-a-3b").failures.map(&.rule.id)
+    under_a2.should contain("pdfa2-6.8-embedded-pdfa") # A-2 forbids non-PDF/A payloads
+    under_a3.should_not contain("pdfa3-6.8-af-relationship")
+  end
+
+  it "PDF/A-3 flags an embedded file with no /AFRelationship (§ 6.8 t3)" do
+    report = PDF::Validate.bytes(pdf_with_embedded_file("x".to_slice), "pdf-a-3b")
+    report.failures.map(&.rule.id).should contain("pdfa3-6.8-af-relationship")
+  end
+
+  it "PDF/A-3 accepts an embedded file that carries /AFRelationship (§ 6.8 t3)" do
+    report = PDF::Validate.bytes(pdf_with_associated_file("x".to_slice), "pdf-a-3b")
+    report.failures.map(&.rule.id).should_not contain("pdfa3-6.8-af-relationship")
   end
 
   it "detects an /Order that omits an OCG (§ 6.9 t3)" do

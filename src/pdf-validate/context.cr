@@ -1252,6 +1252,27 @@ module PDF
         issues.uniq
       end
 
+      # Associated-file relationship (ISO 19005-3 § 6.8 t3) : in PDF/A-3
+      # every file specification that embeds a file (/EF) is an
+      # *associated file* and shall carry an /AFRelationship name
+      # (Source, Data, Alternative, Supplement, EncryptedPayload,
+      # FormData, Schema or Unspecified). PDF/A-2 has no such key, so this
+      # getter is only wired into the pdf-a-3b profile.
+      getter associated_file_relationship_violations : Array(String) do
+        issues = [] of String
+        each_object do |obj|
+          dict = obj.as?(PDF::Objects::Dictionary)
+          next unless dict && dict.has_key?("EF")
+          rel = dict["AFRelationship"]?
+          if rel.nil?
+            issues << "embedded-file specification missing /AFRelationship"
+          elsif rel.as?(PDF::Objects::Name).nil?
+            issues << "/AFRelationship is not a name object"
+          end
+        end
+        issues.uniq
+      end
+
       # Recursion guard for the embedded-file PDF/A check : bounds how
       # deep we descend into embedded-file-within-embedded-file nesting.
       @@embedded_recursion_depth = 0

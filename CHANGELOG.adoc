@@ -7,6 +7,24 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.45.0 — 2026-06-05 — PDF/A-3b profile (ISO 19005-3)
+
+=== Added
+
+* **New conformance profile `pdf-a-3b`** (ISO 19005-3:2012, level B).
+  PDF/A-3 is PDF/A-2 with a single relaxation: an embedded file may be
+  of *any* format, provided it is an *associated file* carrying an
+  `/AFRelationship`. The profile therefore reuses the entire pdf-a-2b
+  rule set, with § 6.8 adapted:
+** the 2b rule "each embedded file must itself be PDF/A" (§ 6.8 t5) is
+   *dropped* — it would wrongly reject a Factur-X XML or any non-PDF
+   payload;
+** a new rule requires every embedded-file specification to carry an
+   `/AFRelationship` name (§ 6.8 t3, check `associated_files_have_relationship`).
+* Clause-level coverage against the veraPDF 1.30.1 PDF/A-3B profile:
+  **145/146 = 99 %** (same single exclusion as 2b, § 6.2.11.4.2 t1).
+  0 false positive on the conformant corpus.
+
 == v0.44.0 — 2026-06-05 — Name UTF-8 + CID limit (§ 6.1.8 t1, § 6.1.13 t10)
 
 === Added
