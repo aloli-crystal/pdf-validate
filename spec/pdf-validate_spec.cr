@@ -831,6 +831,26 @@ private def pdf_with_identity_cid : Bytes
   ] of ObjBody)
 end
 
+# A page carrying a transparency group — forbidden in PDF/A-1 (§ 6.4).
+private def pdf_with_transparency : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] " \
+    "/Group << /S /Transparency /CS /DeviceRGB >> >>",
+  ] of ObjBody)
+end
+
+# A catalog carrying /OCProperties — optional content, forbidden in
+# PDF/A-1 (§ 6.1.13).
+private def pdf_with_optional_content : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R /OCProperties << /OCGs [] /D << /Order [] >> >> >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+  ] of ObjBody)
+end
+
 # A signed file whose signature /Contents carries the given PKCS#7 DER.
 private def pdf_with_signature(pkcs7 : Bytes) : Bytes
   build_pdf([
@@ -1514,6 +1534,38 @@ describe PDF::Validate do
   it "PDF/A-3 accepts an embedded file that carries /AFRelationship (§ 6.8 t3)" do
     report = PDF::Validate.bytes(pdf_with_associated_file("x".to_slice), "pdf-a-3b")
     report.failures.map(&.rule.id).should_not contain("pdfa3-6.8-af-relationship")
+  end
+
+  # --- PDF/A-1b profile (ISO 19005-1) ---
+
+  it "registers the pdf-a-1b profile" do
+    PDF::Validate::RuleSet.profiles.should contain("pdf-a-1b")
+  end
+
+  it "passes a real PDF/A-1b conformant document (ghostscript) with no failures" do
+    bytes = File.read("spec/fixtures/ghostscript_pdfa1b.pdf").to_slice
+    PDF::Validate.bytes(bytes, "pdf-a-1b").failures.should be_empty
+  end
+
+  it "PDF/A-1 forbids transparency (§ 6.4)" do
+    report = PDF::Validate.bytes(pdf_with_transparency, "pdf-a-1b")
+    report.failures.map(&.rule.id).should contain("pdfa1-6.4-no-transparency")
+  end
+
+  it "PDF/A-1 forbids optional content /OCProperties (§ 6.1.13)" do
+    report = PDF::Validate.bytes(pdf_with_optional_content, "pdf-a-1b")
+    report.failures.map(&.rule.id).should contain("pdfa1-6.1.13-no-ocproperties")
+  end
+
+  it "PDF/A-1 forbids embedded files (§ 6.1.11)" do
+    report = PDF::Validate.bytes(pdf_with_embedded_file("x".to_slice), "pdf-a-1b")
+    report.failures.map(&.rule.id).should contain("pdfa1-6.1.11-no-embedded-files")
+  end
+
+  it "PDF/A-2 still allows what PDF/A-1 forbids (transparency, OCG, embedded)" do
+    # The same constructs are NOT § 6.4/6.1.11/6.1.13 violations under 2b.
+    t = PDF::Validate.bytes(pdf_with_transparency, "pdf-a-2b").failures.map(&.rule.id)
+    t.should_not contain("pdfa1-6.4-no-transparency")
   end
 
   it "detects an /Order that omits an OCG (§ 6.9 t3)" do

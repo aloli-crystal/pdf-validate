@@ -7,6 +7,34 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.46.0 — 2026-06-05 — Profil PDF/A-1b (ISO 19005-1)
+
+=== Ajouté
+
+* **Nouveau profil de conformité `pdf-a-1b`** (ISO 19005-1:2005,
+  niveau B) — la partie PDF/A originelle, la plus stricte (base PDF 1.4).
+  Sa numérotation de clauses diffère d'A-2/-3 (les polices sont en § 6.3,
+  les annotations en § 6.5, les actions en § 6.6, les métadonnées en
+  § 6.7), mais l'essentiel des exigences se recoupe : les règles
+  réutilisent donc les checks existants sous les numéros de clause A-1.
+  Les *interdits* PDF-1.4 propres à A-1 ont des checks dédiés :
+** **pas de transparence** (§ 6.4) — aucun `/Group /S /Transparency`,
+   aucun masque doux d'ExtGState, mode de fusion ≠ Normal, ou alpha
+   constant < 1 (check `no_transparency`) ;
+** **pas de contenu optionnel** (§ 6.1.13) — le catalogue ne doit pas
+   porter `/OCProperties` (`catalog_key_absent` générique) ;
+** **pas de fichiers embarqués** (§ 6.1.11) — pas d'arbre
+   `/EmbeddedFiles` ni de fichiers associés `/AF` (check
+   `no_embedded_files`).
+* Oracle de validation : un **vrai document PDF/A-1b conforme** généré
+  avec Ghostscript (`-dPDFA=1`, OutputIntent RGB) et confirmé conforme
+  par veraPDF — livré comme `spec/fixtures/ghostscript_pdfa1b.pdf` et
+  asserté à **zéro** échec sous `pdf-a-1b`.
+* Couverture clause-level face au profil veraPDF 1.30.1 PDF/A-1B :
+  **118/129 = 91 %**. Deux clauses honnêtement exclues : § 6.6.1
+  (liste blanche des actions nommées — pas de check précis) et § 6.7.3
+  (égalité ModDate Info/XMP).
+
 == v0.45.0 — 2026-06-05 — Profil PDF/A-3b (ISO 19005-3)
 
 === Ajouté

@@ -13,20 +13,28 @@ toc::[]
 
 == État
 
-Premier palier (0.1.0) : le moteur est réel. Il parse le PDF via
-`PDF::Reader` et évalue un vocabulaire de checks contre le catalog,
-le trailer et les métadonnées XMP réels. Le jeu de règles `pdf-a-2b`
-fourni couvre les exigences PDF/A-2b de niveau document
-(identification PDF/A, output intent, absence de chiffrement,
-présence des métadonnées).
+Le moteur parse le PDF via `PDF::Reader` et trois analyseurs de plus
+bas niveau (scanner d'octets bruts, scanner de content stream, parseurs
+de programmes de police), puis évalue un jeu de règles YAML. Chaque
+clause trace vers l'encodage ouvert veraPDF de la norme, et la
+couverture est mesurée face au profil veraPDF 1.30.1 correspondant.
 
-Ce n'est **pas encore** le validateur à parité veraPDF complète. Les
-règles par ressource (embarquement/subsetting des polices, espaces
-de couleur calibrés, groupes de transparence, vérifs au niveau
-glyphe) et le critère des 95 % d'accord sur corpus viennent dans des
-paliers ultérieurs. Un résultat `conformant?` reflète donc les
-règles *implémentées*, pas un certificat ISO 19005 complet — et le
-rapport le dit.
+.Profils pris en charge
+[cols="1,3,1",options="header"]
+|===
+| Profil | Norme | Couverture clause vs veraPDF
+
+| `pdf-a-1b` | PDF/A-1b (ISO 19005-1:2005) | 118/129 = 91 %
+| `pdf-a-2b` | PDF/A-2b (ISO 19005-2:2011) | 143/144 = 99 %
+| `pdf-a-3b` | PDF/A-3b (ISO 19005-3:2012) | 145/146 = 99 %
+| `pdf-ua-1` | PDF/UA-1 (ISO 14289-1)      | checks par élément
+|===
+
+Discipline : chaque règle est validée face à l'oracle veraPDF réel
+avec **zéro faux positif** sur les corpus conformes. Quand la sémantique
+exacte d'une règle ne peut être confirmée face à veraPDF, elle n'est
+*pas* livrée mais documentée comme exclusion étayée (cf.
+`doc/iso-19005-2-gap-analysis.adoc`).
 
 == Installation
 

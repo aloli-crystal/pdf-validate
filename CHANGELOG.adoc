@@ -7,6 +7,32 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.46.0 — 2026-06-05 — PDF/A-1b profile (ISO 19005-1)
+
+=== Added
+
+* **New conformance profile `pdf-a-1b`** (ISO 19005-1:2005, level B) —
+  the original, strictest PDF/A part (PDF 1.4 based). Its clause
+  numbering differs from A-2/-3 (fonts are § 6.3, annotations § 6.5,
+  actions § 6.6, metadata § 6.7), but most requirements overlap, so the
+  rules reuse the existing checks under A-1 clause numbers. The PDF-1.4
+  *prohibitions* that set A-1 apart get dedicated checks:
+** **no transparency** (§ 6.4) — no `/Group /S /Transparency`, no
+   ExtGState soft mask, non-Normal blend mode, or constant alpha < 1
+   (check `no_transparency`);
+** **no optional content** (§ 6.1.13) — the catalog must not carry
+   `/OCProperties` (generic `catalog_key_absent`);
+** **no embedded files** (§ 6.1.11) — no `/EmbeddedFiles` name tree and
+   no `/AF` associated files (check `no_embedded_files`).
+* Validation oracle: a **real PDF/A-1b conformant document** generated
+  with Ghostscript (`-dPDFA=1`, RGB OutputIntent) and confirmed
+  compliant by veraPDF — shipped as `spec/fixtures/ghostscript_pdfa1b.pdf`
+  and asserted to produce **zero** failures under `pdf-a-1b`.
+* Clause-level coverage against the veraPDF 1.30.1 PDF/A-1B profile:
+  **118/129 = 91 %**. Two clauses are honestly excluded: § 6.6.1
+  (named-action whitelist — no precise check) and § 6.7.3 (Info/XMP
+  ModDate equality).
+
 == v0.45.0 — 2026-06-05 — PDF/A-3b profile (ISO 19005-3)
 
 === Added

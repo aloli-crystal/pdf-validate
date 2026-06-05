@@ -368,6 +368,18 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : bad.join(", ")
           )
+        when "no_embedded_files"
+          bad = ctx.embedded_files_present
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
+        when "no_transparency"
+          bad = ctx.transparency_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
         when "overprint_iccbased_cmyk_valid"
           bad = ctx.overprint_icc_cmyk_violations
           Outcome.new(

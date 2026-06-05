@@ -1273,6 +1273,49 @@ module PDF
         issues.uniq
       end
 
+      # Embedded files are forbidden in PDF/A-1 (ISO 19005-1 § 6.1.11) :
+      # the name dictionary shall not contain an /EmbeddedFiles entry, and
+      # there shall be no /AF associated files. (PDF/A-2 and -3 allow
+      # them, so this getter is only wired into the pdf-a-1b profile.)
+      getter embedded_files_present : Array(String) do
+        issues = [] of String
+        names = catalog["Names"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+        if names && names.has_key?("EmbeddedFiles")
+          issues << "name dictionary contains /EmbeddedFiles"
+        end
+        issues << "catalog contains /AF associated files" if catalog.has_key?("AF")
+        issues
+      end
+
+      # Transparency is forbidden in PDF/A-1 (ISO 19005-1 § 6.4) : no
+      # transparency group (/Group /S /Transparency) anywhere, and no
+      # ExtGState soft mask, non-Normal blend mode, or constant alpha < 1.
+      # (PDF/A-2 allows transparency under conditions ; this getter is
+      # only wired into the pdf-a-1b profile.)
+      getter transparency_violations : Array(String) do
+        issues = [] of String
+        each_object do |obj|
+          dict = obj.as?(PDF::Objects::Dictionary)
+          next unless dict
+          grp = dict["Group"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Dictionary)
+          if grp && grp["S"]?.try(&.as?(PDF::Objects::Name)).try(&.value) == "Transparency"
+            issues << "transparency group (/Group /S /Transparency)"
+          end
+          next unless dict["Type"]?.try(&.as?(PDF::Objects::Name)).try(&.value) == "ExtGState"
+          smask = dict["SMask"]?
+          if smask && smask.as?(PDF::Objects::Name).try(&.value) != "None"
+            issues << "ExtGState soft mask /SMask"
+          end
+          bm = dict["BM"]?.try(&.as?(PDF::Objects::Name)).try(&.value)
+          issues << "ExtGState blend mode /BM /#{bm}" if bm && bm != "Normal" && bm != "Compatible"
+          alpha = dict["CA"]?.try(&.as?(PDF::Objects::Number)).try(&.value)
+          issues << "ExtGState stroking alpha /CA < 1" if alpha && alpha < 1.0
+          nonstroke = dict["ca"]?.try(&.as?(PDF::Objects::Number)).try(&.value)
+          issues << "ExtGState non-stroking alpha /ca < 1" if nonstroke && nonstroke < 1.0
+        end
+        issues.uniq
+      end
+
       # Recursion guard for the embedded-file PDF/A check : bounds how
       # deep we descend into embedded-file-within-embedded-file nesting.
       @@embedded_recursion_depth = 0

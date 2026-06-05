@@ -1,0 +1,297 @@
+# PDF/A-1b conformance rule set (ISO 19005-1:2005, level B).
+#
+# PDF/A-1 is the original, strictest PDF/A part (PDF 1.4 based). Its
+# clause numbering differs from PDF/A-2/-3 — fonts are § 6.3 (not
+# § 6.2.11), annotations § 6.5, actions § 6.6, metadata § 6.7 — but the
+# underlying requirements largely overlap, so most rules reuse the same
+# checks as pdf-a-2b under A-1 clause numbers. The PDF-1.4 *prohibitions*
+# that distinguish A-1 from A-2 get dedicated checks : no transparency
+# (§ 6.4), no optional content (§ 6.1.13), no embedded files (§ 6.1.11).
+#
+# Clause numbers track the veraPDF 1.30.1 PDF/A-1B profile ; the ISO
+# text is paywalled and is NOT reproduced here, only clause numbers and
+# short factual labels. Two veraPDF clauses are honestly NOT covered :
+# § 6.6.1 (named-action whitelist — no precise check) and § 6.7.3
+# (Info/XMP ModDate equality).
+
+# --- § 6.1 File structure ---
+
+- id: pdfa1-6.1.2-file-header
+  clause: "ISO 19005-1 § 6.1.2"
+  title: "File header at byte 0 with %PDF-1.n and a binary marker"
+  severity: error
+  check: file_header_valid
+  args: []
+
+- id: pdfa1-6.1.3-no-encrypt
+  clause: "ISO 19005-1 § 6.1.3"
+  title: "The trailer shall not contain the Encrypt key"
+  severity: error
+  check: trailer_key_absent
+  args: ["Encrypt"]
+
+- id: pdfa1-6.1.4-xref-eol
+  clause: "ISO 19005-1 § 6.1.4"
+  title: "Cross-reference table EOL / subsection-header conventions"
+  severity: error
+  check: xref_eol_valid
+  args: []
+
+- id: pdfa1-6.1.6-hex-strings
+  clause: "ISO 19005-1 § 6.1.6"
+  title: "Hexadecimal strings: even digit count, hex digits only"
+  severity: error
+  check: hex_strings_valid
+  args: []
+
+- id: pdfa1-6.1.7-stream-eol
+  clause: "ISO 19005-1 § 6.1.7"
+  title: "stream keyword followed by CRLF/LF; endstream preceded by an EOL"
+  severity: error
+  check: stream_keyword_eol_valid
+  args: []
+
+- id: pdfa1-6.1.8-indirect-spacing
+  clause: "ISO 19005-1 § 6.1.8"
+  title: "Indirect objects/references use single white-space separators"
+  severity: error
+  check: indirect_object_spacing_valid
+  args: []
+
+- id: pdfa1-6.1.10-no-lzw
+  clause: "ISO 19005-1 § 6.1.10"
+  title: "LZWDecode forbidden; only the allowed stream filters are used"
+  severity: error
+  check: stream_filters_allowed
+  args: []
+
+- id: pdfa1-6.1.11-no-embedded-files
+  clause: "ISO 19005-1 § 6.1.11"
+  title: "No /EmbeddedFiles in the name dictionary (attachments forbidden)"
+  severity: error
+  check: no_embedded_files
+  args: []
+
+- id: pdfa1-6.1.12-cid-limit
+  clause: "ISO 19005-1 § 6.1.12"
+  title: "No CID value greater than 65535 (embedded CMap)"
+  severity: error
+  check: cid_values_within_limit
+  args: []
+
+- id: pdfa1-6.1.13-no-ocproperties
+  clause: "ISO 19005-1 § 6.1.13"
+  title: "Catalog shall not contain /OCProperties (optional content forbidden)"
+  severity: error
+  check: catalog_key_absent
+  args: ["OCProperties"]
+
+# --- § 6.2 Graphics ---
+
+- id: pdfa1-6.2.2-output-intent
+  clause: "ISO 19005-1 § 6.2.2"
+  title: "OutputIntent is well-formed with an embedded ICC destination profile"
+  severity: error
+  check: output_intent_profiles_valid
+  args: []
+
+- id: pdfa1-6.2.3.2-iccbased
+  clause: "ISO 19005-1 § 6.2.3.2"
+  title: "ICCBased colour spaces embed a valid ICC profile stream"
+  severity: error
+  check: iccbased_profiles_valid
+  args: []
+
+- id: pdfa1-6.2.3.3-device-colour
+  clause: "ISO 19005-1 § 6.2.3.3"
+  title: "Device colour spaces require a matching PDF/A-1 OutputIntent"
+  severity: error
+  check: device_colours_anchored
+  args: []
+
+- id: pdfa1-6.2.4-image-keys
+  clause: "ISO 19005-1 § 6.2.4"
+  title: "Image dictionary keys (Interpolate, BitsPerComponent, ...) constraints"
+  severity: error
+  check: image_dictionary_keys_valid
+  args: []
+
+- id: pdfa1-6.2.5-no-ps-subtype2
+  clause: "ISO 19005-1 § 6.2.5"
+  title: "A form XObject shall not carry /Subtype2 /PS"
+  severity: error
+  check: no_forbidden_xobjects
+  args: []
+
+- id: pdfa1-6.2.6-no-reference-xobject
+  clause: "ISO 19005-1 § 6.2.6"
+  title: "No reference XObjects"
+  severity: error
+  check: no_forbidden_xobjects
+  args: []
+
+- id: pdfa1-6.2.7-no-postscript-xobject
+  clause: "ISO 19005-1 § 6.2.7"
+  title: "No PostScript XObjects"
+  severity: error
+  check: no_forbidden_xobjects
+  args: []
+
+- id: pdfa1-6.2.8-no-tr2
+  clause: "ISO 19005-1 § 6.2.8"
+  title: "ExtGState shall not carry transfer functions (TR/TR2)"
+  severity: error
+  check: extgstate_no_transfer_functions
+  args: []
+
+- id: pdfa1-6.2.9-rendering-intent
+  clause: "ISO 19005-1 § 6.2.9"
+  title: "Rendering intents are one of the four standard names"
+  severity: error
+  check: rendering_intents_valid
+  args: []
+
+- id: pdfa1-6.2.10-operators
+  clause: "ISO 19005-1 § 6.2.10"
+  title: "Content streams use only operators defined in PDF Reference"
+  severity: error
+  check: content_operators_defined
+  args: []
+
+# --- § 6.3 Fonts ---
+
+- id: pdfa1-6.3.2-font-dictionaries
+  clause: "ISO 19005-1 § 6.3.2"
+  title: "Font dictionaries are well-formed (required keys present)"
+  severity: error
+  check: font_dictionaries_valid
+  args: []
+
+- id: pdfa1-6.3.3.1-type0-cidsysteminfo
+  clause: "ISO 19005-1 § 6.3.3.1"
+  title: "Type0 font /Encoding and CIDSystemInfo are consistent"
+  severity: error
+  check: type0_encoding_valid
+  args: []
+
+- id: pdfa1-6.3.3.2-cidfont-gidmap
+  clause: "ISO 19005-1 § 6.3.3.2"
+  title: "CIDFontType2 carries a /CIDToGIDMap"
+  severity: error
+  check: cidfont_gidmap_present
+  args: []
+
+- id: pdfa1-6.3.3.3-cmap-wmode
+  clause: "ISO 19005-1 § 6.3.3.3"
+  title: "Embedded CMap /WMode matches the stream's WMode"
+  severity: error
+  check: cmaps_valid
+  args: []
+
+- id: pdfa1-6.3.4-fonts-embedded
+  clause: "ISO 19005-1 § 6.3.4"
+  title: "All fonts used for rendering are embedded"
+  severity: error
+  check: all_fonts_embedded
+  args: []
+
+- id: pdfa1-6.3.5-cidset
+  clause: "ISO 19005-1 § 6.3.5"
+  title: "A CIDFont subset's /CIDSet lists every CID in the program"
+  severity: error
+  check: cidset_lists_all_glyphs
+  args: []
+
+- id: pdfa1-6.3.6-glyphs-present
+  clause: "ISO 19005-1 § 6.3.6"
+  title: "Every glyph referenced from content is present in the font program"
+  severity: error
+  check: referenced_glyphs_present
+  args: []
+
+- id: pdfa1-6.3.7-symbolic-cmap
+  clause: "ISO 19005-1 § 6.3.7"
+  title: "Symbolic TrueType fonts carry a usable cmap subtable"
+  severity: error
+  check: truetype_program_cmap_valid
+  args: []
+
+# --- § 6.4 Transparency (forbidden in PDF/A-1) ---
+
+- id: pdfa1-6.4-no-transparency
+  clause: "ISO 19005-1 § 6.4"
+  title: "No transparency (groups, soft masks, blend modes, alpha < 1)"
+  severity: error
+  check: no_transparency
+  args: []
+
+# --- § 6.5 Annotations ---
+
+- id: pdfa1-6.5.2-annotation-types
+  clause: "ISO 19005-1 § 6.5.2"
+  title: "Only annotation types defined in PDF Reference are used"
+  severity: error
+  check: annotation_types_allowed
+  args: []
+
+- id: pdfa1-6.5.3-annotation-flags
+  clause: "ISO 19005-1 § 6.5.3"
+  title: "Annotation /F flags satisfy the Print/Hidden/NoView constraints"
+  severity: error
+  check: annotation_flags_valid
+  args: []
+
+# --- § 6.6 Actions ---
+
+- id: pdfa1-6.6.2-no-catalog-aa
+  clause: "ISO 19005-1 § 6.6.2"
+  title: "The document Catalog shall not include an /AA additional-actions entry"
+  severity: error
+  check: catalog_key_absent
+  args: ["AA"]
+
+# --- § 6.7 Metadata ---
+
+- id: pdfa1-6.7.2-metadata-present
+  clause: "ISO 19005-1 § 6.7.2"
+  title: "The document catalog carries a /Metadata stream"
+  severity: error
+  check: catalog_key_present
+  args: ["Metadata"]
+
+- id: pdfa1-6.7.5-xmp-packet
+  clause: "ISO 19005-1 § 6.7.5"
+  title: "The XMP packet header carries no bytes/encoding attribute and is well-formed"
+  severity: error
+  check: xmp_well_formed
+  args: []
+
+- id: pdfa1-6.7.8-extension-schema
+  clause: "ISO 19005-1 § 6.7.8"
+  title: "PDF/A extension schemas are well-formed (category, value types)"
+  severity: error
+  check: xmp_extension_schema_valid
+  args: []
+
+- id: pdfa1-6.7.9-xmp-well-formed
+  clause: "ISO 19005-1 § 6.7.9"
+  title: "The metadata stream conforms to XMP and is well-formed"
+  severity: error
+  check: xmp_well_formed
+  args: []
+
+- id: pdfa1-6.7.11-conformance
+  clause: "ISO 19005-1 § 6.7.11"
+  title: "The PDF/A identification conformance level is A or B"
+  severity: error
+  check: pdfaid_conformance_valid
+  args: []
+
+# --- § 6.9 Interactive forms ---
+
+- id: pdfa1-6.9-needappearances
+  clause: "ISO 19005-1 § 6.9"
+  title: "The AcroForm /NeedAppearances flag is absent or false"
+  severity: error
+  check: interactive_forms_valid
+  args: []
