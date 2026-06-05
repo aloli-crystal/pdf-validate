@@ -41,14 +41,14 @@ couverture ci-dessous est *clause-level* : une clause est comptée
 | § 6.1  | Structure de fichier (trailer, /ID, chiffrement, xref)     | 27  | 25  | 93 %
 | § 6.2  | Graphiques — couleur, polices, transparence, images        | 56  | 55  | 98 %
 | § 6.3  | Annotations                                                | 7   | 7   | 100 %
-| § 6.4  | Formulaires interactifs & signatures                       | 8   | 6   | 75 %
+| § 6.4  | Formulaires interactifs & signatures                       | 8   | 8   | 100 %
 | § 6.5  | Actions (JavaScript, /AA, actions nommées)                 | 4   | 4   | 100 %
 | § 6.6  | Métadonnées (XMP, schéma d'extension PDF/A, pdfaid)        | 33  | 33  | 100 %
 | § 6.8  | Fichiers embarqués                                         | 2   | 2   | 100 %
 | § 6.9  | Contenu optionnel (calques OCG)                            | 4   | 4   | 100 %
 | § 6.10 | Présentations alternatives                                 | 2   | 2   | 100 %
 | § 6.11 | Clé Requirements                                          | 1   | 1   | 100 %
-| *Total* | *PDF/A-2b*                                                | *144* | *139* | *96 %*
+| *Total* | *PDF/A-2b*                                                | *144* | *141* | *97 %*
 |===
 
 NOTE: Chiffres régénérés le 2026-06-03. Lot 1 (§ 6.2.5 fonctions de
@@ -153,11 +153,11 @@ signature doit couvrir tout le document (début à l'octet 0, second
 segment finissant en fin de fichier ; le trou est la zone /Contents).
 Calcul d'octets sur le dictionnaire de signature et la taille du
 fichier, sans cryptographie. § 6.4 passe à 6/8, le total à
-**103/144 (71 %)**. Reportés (exclus via `not_covered_tests`) :
-§ 6.4.3 t2-t3 (certificat de signature et nombre de SignerInfo dans le
-PKCS#7) — ils exigent un parseur ASN.1/DER qui a naturellement sa
-place dans le projet `aloli-crystal/pdf-signature`, et un corpus de
-PDF réellement signés.
+**103/144 (71 %)**. À l'époque reportés (exclus via
+`not_covered_tests`) : § 6.4.3 t2-t3 (certificat de signature et nombre
+de SignerInfo dans le PKCS#7) — *complétés depuis* en 0.43.0 avec le
+marcheur DER `Pkcs7`, une fois le parseur ASN.1 éprouvé dans
+`aloli-crystal/pdf-signature`.
 +
 Enfin lot § 6.2.11 polices (0.21.0) : § 6.2.11.2 (sous-type de police
 défini, /BaseFont présent, /FirstChar/LastChar/Widths pour une police
@@ -369,6 +369,18 @@ ensemble des espaces ICCBased à 4 canaux). Au moment de peindre, une
 couleur ICCBased CMYK peinte avec overprint actif et OPM = 1 est une
 violation. Le corpus n'a ni /OPM ni overprint → 0 faux positif. § 6.2
 passe à **55/56 (98 %)**, le total à **139/144 (96 %)**.
++
+Enfin lot § 6.4.3 t2/t3 (0.43.0) : l'objet PKCS#7 de la signature.
+Nouveau composant `Pkcs7` — un marcheur DER minimal et autonome (forme
+à tag court, longueurs définies, padding de réserve ignoré) — analyse
+le `SignedData` du `/Contents` : **t2** la présence du certificat X.509
+du signataire (champ `certificates [0]` non vide), **t3** le nombre de
+`SignerInfo` (== 1). Aucune dépendance openssl/réseau au moment de la
+validation — cohérent avec les autres analyseurs maison (`Jpeg2000`,
+`ContentStreamScanner`). Les `/Contents` qui ne se décodent pas en CMS
+sont ignorés (0 faux positif). Specs adossés à de vrais PKCS#7 openssl
+(cert présent / `-nocerts` / 2 signers). § 6.4 passe à **8/8 (100 %)**,
+le total à **141/144 (97 %)**.
 
 == Lecture honnête du chiffre
 
@@ -482,10 +494,6 @@ passe à **55/56 (98 %)**, le total à **139/144 (96 %)**.
 
 === Priorité basse (rare en pratique ALOLI)
 
-* **§ 6.4.3 signatures (crypto, reste)** — le /ByteRange est vérifié
-  (t1) ; restent l'objet PKCS#7 (certificat de signature t2,
-  SignerInfo t3) qui nécessitent un parseur ASN.1/DER (idéalement
-  mutualisé avec `aloli-crystal/pdf-signature`) et un corpus signé.
 * **§ 6.6 schéma d'extension PDF/A** (§ 6.6.2.3, 21 règles) — la
   structure RDF des schémas d'extension (pdfaExtension / pdfaSchema /
   pdfaProperty / pdfaType / pdfaField, avec types et préfixes) ;

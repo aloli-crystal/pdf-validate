@@ -7,6 +7,32 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.43.0 — 2026-06-05 — PKCS#7 signature object (§ 6.4.3 t2/t3)
+
+=== Added
+
+* **`Pkcs7` — minimal self-contained DER walker.** Analyses the
+  PKCS#7/CMS `SignedData` carried in a signature dictionary's
+  `/Contents` to answer the two structural questions ISO 19005-2
+  § 6.4.3 asks : **t2** is the signer's X.509 certificate embedded
+  (a non-empty `certificates [0]` field) ? **t3** is there exactly one
+  `SignerInfo` ? No openssl, no networking — a pure byte walk, like the
+  other in-house analysers (`Jpeg2000`, `ContentStreamScanner`).
+* **`signature_signing_certificate` (§ 6.4.3 t2)** and
+  **`signature_single_signer` (§ 6.4.3 t3)** checks, fed by the
+  `signature_pkcs7_analyses` / `signing_certificate_violations` /
+  `signer_info_count_violations` accessors. `/Contents` that do not
+  parse as a CMS are skipped (no false positive on non-PKCS#7
+  signatures).
+
+=== Coverage
+
+§ 6.4 Digital signatures reaches **8/8 (100 %)** ; clause-level
+coverage rises to **141/144 = 97 %** (authoritative veraPDF 1.30.1
+run on the conformant Ghostscript fixture). 0 false positive on the
+conformant corpus. Specs back the analyser with real openssl PKCS#7
+objects (certificate present / `-nocerts` / two signers).
+
 == v0.42.0 — 2026-06-04 — PDF/UA-1 /RoleMap integrity (§ 7.1)
 
 === Added

@@ -236,6 +236,18 @@ module PDF
             bad.empty?,
             bad.empty? ? nil : bad.join(", ")
           )
+        when "signature_signing_certificate"
+          bad = ctx.signing_certificate_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
+        when "signature_single_signer"
+          bad = ctx.signer_info_count_violations
+          Outcome.new(
+            bad.empty?,
+            bad.empty? ? nil : bad.join(", ")
+          )
         when "iccbased_profiles_valid"
           bad = ctx.iccbased_profile_violations
           Outcome.new(

@@ -7,6 +7,33 @@ Toutes les évolutions notables de pdf-validate sont consignées ici.
 Le format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v0.43.0 — 2026-06-05 — Objet PKCS#7 de signature (§ 6.4.3 t2/t3)
+
+=== Ajouté
+
+* **`Pkcs7` — marcheur DER minimal et autonome.** Analyse le
+  `SignedData` PKCS#7/CMS porté par le `/Contents` d'un dictionnaire de
+  signature pour répondre aux deux questions structurelles d'ISO
+  19005-2 § 6.4.3 : **t2** le certificat X.509 du signataire est-il
+  embarqué (champ `certificates [0]` non vide) ? **t3** y a-t-il
+  exactement un `SignerInfo` ? Sans openssl ni réseau — un simple
+  parcours d'octets, comme les autres analyseurs maison (`Jpeg2000`,
+  `ContentStreamScanner`).
+* Checks **`signature_signing_certificate` (§ 6.4.3 t2)** et
+  **`signature_single_signer` (§ 6.4.3 t3)**, alimentés par les
+  accesseurs `signature_pkcs7_analyses` /
+  `signing_certificate_violations` / `signer_info_count_violations`.
+  Les `/Contents` qui ne se décodent pas en CMS sont ignorés (aucun
+  faux positif sur les signatures non-PKCS#7).
+
+=== Couverture
+
+§ 6.4 Signatures numériques atteint **8/8 (100 %)** ; la couverture
+clause-level passe à **141/144 = 97 %** (run veraPDF 1.30.1 autoritaire
+sur la fixture Ghostscript conforme). 0 faux positif sur le corpus
+conforme. Les specs s'appuient sur de vrais objets PKCS#7 openssl
+(certificat présent / `-nocerts` / deux signers).
+
 == v0.42.0 — 2026-06-04 — Intégrité du /RoleMap PDF/UA-1 (§ 7.1)
 
 === Ajouté

@@ -341,6 +341,20 @@
   check: signature_byterange_valid
   args: []
 
+- id: pdfa2-6.4.3-signing-certificate
+  clause: "ISO 19005-2 § 6.4.3"
+  title: "A signature's PKCS#7 object shall embed the signer's X.509 certificate"
+  severity: error
+  check: signature_signing_certificate
+  args: []
+
+- id: pdfa2-6.4.3-single-signer
+  clause: "ISO 19005-2 § 6.4.3"
+  title: "A signature's PKCS#7 object shall contain a single SignerInfo"
+  severity: error
+  check: signature_single_signer
+  args: []
+
 # --- § 6.5 Actions ---
 
 - id: pdfa2-6.5.1-no-javascript

@@ -771,6 +771,49 @@ private def pdf_with_bad_signature : Bytes
   ] of ObjBody)
 end
 
+# A signed file whose signature /Contents carries the given PKCS#7 DER.
+private def pdf_with_signature(pkcs7 : Bytes) : Bytes
+  build_pdf([
+    "<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [4 0 R] /SigFlags 3 >> >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+    "<< /FT /Sig /T (Sig1) /V 5 0 R >>",
+    "<< /Type /Sig /Filter /Adobe.PPKLite /ByteRange [0 10 20 5] /Contents <#{pkcs7.hexstring}> >>",
+  ] of ObjBody)
+end
+
+# Produces a DER PKCS#7 SignedData over fixed data via openssl, with or
+# without the signer certificate (`nocerts`) and with `signers`
+# SignerInfo structures. Returns nil when openssl is unavailable.
+private def make_pkcs7(nocerts : Bool, signers : Int32) : Bytes?
+  return nil unless Process.find_executable("openssl")
+  dir = File.tempname("pdfval-p7", "")
+  Dir.mkdir_p(dir)
+  begin
+    data = File.join(dir, "data.bin")
+    der_path = File.join(dir, "sig.der")
+    File.write(data, "byte range data")
+    args = ["cms", "-sign", "-binary", "-outform", "DER", "-nosmimecap",
+            "-md", "sha256", "-in", data, "-out", der_path]
+    args << "-nocerts" if nocerts
+    signers.times do |i|
+      key = File.join(dir, "k#{i}.pem")
+      cert = File.join(dir, "c#{i}.pem")
+      return nil unless run_openssl(["genrsa", "-out", key, "2048"])
+      return nil unless run_openssl(["req", "-new", "-x509", "-key", key, "-out", cert, "-days", "2", "-subj", "/CN=Signer#{i}"])
+      args.concat(["-signer", cert, "-inkey", key])
+    end
+    return nil unless run_openssl(args)
+    File.open(der_path, "rb", &.getb_to_end)
+  ensure
+    FileUtils.rm_rf(dir)
+  end
+end
+
+private def run_openssl(args : Array(String)) : Bool
+  Process.run("openssl", args, output: Process::Redirect::Close, error: Process::Redirect::Close).success?
+end
+
 # A file with an ICCBased colour space whose ICC profile declares an
 # invalid "abst" device class, violating § 6.2.4.2.
 private def pdf_with_bad_iccbased : Bytes
@@ -1520,6 +1563,55 @@ describe PDF::Validate do
   it "detects a signature whose /ByteRange does not cover the document (§ 6.4.3)" do
     report = PDF::Validate.bytes(pdf_with_bad_signature, "pdf-a-2b")
     report.failures.map(&.rule.id).should contain("pdfa2-6.4.3-signature-byterange")
+  end
+
+  it "analyse un PKCS#7 réel : certificat présent, un seul signer (§ 6.4.3)" do
+    der = make_pkcs7(nocerts: false, signers: 1)
+    pending! "openssl indisponible" if der.nil?
+    if der
+      analysis = PDF::Validate::Pkcs7.analyze(der)
+      analysis.should_not be_nil
+      if analysis
+        analysis.certificate_present?.should be_true
+        analysis.signer_info_count.should eq(1)
+      end
+    end
+  end
+
+  it "detects a PKCS#7 signature missing the signing certificate (§ 6.4.3 t2)" do
+    der = make_pkcs7(nocerts: true, signers: 1)
+    pending! "openssl indisponible" if der.nil?
+    if der
+      PDF::Validate::Pkcs7.analyze(der).try(&.certificate_present?).should eq(false)
+      ids = PDF::Validate.bytes(pdf_with_signature(der), "pdf-a-2b").failures.map(&.rule.id)
+      ids.should contain("pdfa2-6.4.3-signing-certificate")
+    end
+  end
+
+  it "detects a PKCS#7 signature with more than one SignerInfo (§ 6.4.3 t3)" do
+    der = make_pkcs7(nocerts: false, signers: 2)
+    pending! "openssl indisponible" if der.nil?
+    if der
+      PDF::Validate::Pkcs7.analyze(der).try(&.signer_info_count).should eq(2)
+      ids = PDF::Validate.bytes(pdf_with_signature(der), "pdf-a-2b").failures.map(&.rule.id)
+      ids.should contain("pdfa2-6.4.3-single-signer")
+    end
+  end
+
+  it "passe une signature PKCS#7 conforme (ni t2 ni t3)" do
+    der = make_pkcs7(nocerts: false, signers: 1)
+    pending! "openssl indisponible" if der.nil?
+    if der
+      ids = PDF::Validate.bytes(pdf_with_signature(der), "pdf-a-2b").failures.map(&.rule.id)
+      ids.should_not contain("pdfa2-6.4.3-signing-certificate")
+      ids.should_not contain("pdfa2-6.4.3-single-signer")
+    end
+  end
+
+  it "ne signale ni t2 ni t3 quand /Contents n'est pas un PKCS#7 (0 faux positif)" do
+    ids = PDF::Validate.bytes(pdf_with_bad_signature, "pdf-a-2b").failures.map(&.rule.id)
+    ids.should_not contain("pdfa2-6.4.3-signing-certificate")
+    ids.should_not contain("pdfa2-6.4.3-single-signer")
   end
 
   it "detects a font dictionary missing /BaseFont (§ 6.2.11.2)" do

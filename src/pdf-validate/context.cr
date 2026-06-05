@@ -1350,8 +1350,8 @@ module PDF
       # byte 0 and the second segment must end at end-of-file (the gap
       # between the two segments is the /Contents hole). Needs the raw
       # bytes ; empty when they are unavailable. (t2/t3 — the PKCS#7
-      # signing certificate and SignerInfo count — need an ASN.1/DER
-      # parser and live in the pdf-signature project.)
+      # signing certificate and SignerInfo count — are handled below via
+      # the in-house `Pkcs7` DER walker.)
       getter signature_byterange_violations : Array(String) do
         issues = [] of String
         raw = @raw
@@ -1374,6 +1374,41 @@ module PDF
           end
         end
         issues.uniq
+      end
+
+      # Structural PKCS#7 analysis of every signature `/Contents`
+      # (ISO 19005-2 § 6.4.3, t2/t3). A signature dictionary is detected
+      # the same way as for /ByteRange (a dict carrying both /ByteRange
+      # and /Contents). `/Contents` that do not parse as a CMS SignedData
+      # are skipped — no false positive on non-PKCS#7 signatures.
+      getter signature_pkcs7_analyses : Array(Pkcs7::Analysis) do
+        analyses = [] of Pkcs7::Analysis
+        each_object do |obj|
+          dict = obj.as?(PDF::Objects::Dictionary)
+          next unless dict && dict.has_key?("ByteRange") && dict.has_key?("Contents")
+          str = dict["Contents"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Str)
+          next unless str
+          if analysis = Pkcs7.analyze(str.value.to_slice)
+            analyses << analysis
+          end
+        end
+        analyses
+      end
+
+      # § 6.4.3 t2 : the DER-encoded PKCS#7 object shall embed the
+      # signer's X.509 signing certificate.
+      getter signing_certificate_violations : Array(String) do
+        signature_pkcs7_analyses.reject(&.certificate_present?).map do
+          "signature PKCS#7 object does not embed the signer's X.509 certificate"
+        end
+      end
+
+      # § 6.4.3 t3 : the PKCS#7 object shall contain exactly one
+      # SignerInfo (a single signer).
+      getter signer_info_count_violations : Array(String) do
+        signature_pkcs7_analyses.reject(&.single_signer?).map do |analysis|
+          "signature PKCS#7 object has #{analysis.signer_info_count} SignerInfo structures instead of one"
+        end
       end
 
       # Dynamic / XFA form violations (ISO 19005-2 § 6.4.2) : the
