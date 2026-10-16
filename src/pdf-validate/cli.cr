@@ -13,25 +13,25 @@ require "json"
 # Exit code : 0 if conformant, 1 if violations, 2 on usage/IO error.
 module PDF::Validate::CLI
   USAGE = <<-USAGE
-  pdf-validate — declarative PDF conformance validator (ALOLI ISO PDF suite)
+    pdf-validate — declarative PDF conformance validator (ALOLI ISO PDF suite)
 
-  Usage:
-    pdf-validate <file.pdf> [options]
-    pdf-validate help [<topic>]
-    pdf-validate --version | -v
+    Usage:
+      pdf-validate <file.pdf> [options]
+      pdf-validate help [<topic>]
+      pdf-validate --version | -v
 
-  Options:
-    -p, --profile <id>   Conformance profile (default: pdf-a-2b)
-    -j, --json           Emit the report as JSON instead of text
-    -q, --quiet          Print nothing; rely on the exit code
-    -h, --help           Show this help
+    Options:
+      -p, --profile <id>   Conformance profile (default: pdf-a-2b)
+      -j, --json           Emit the report as JSON instead of text
+      -q, --quiet          Print nothing; rely on the exit code
+      -h, --help           Show this help
 
-  Profiles:
-    #{PDF::Validate::RuleSet.profiles.join(", ")}
+    Profiles:
+      #{PDF::Validate::RuleSet.profiles.join(", ")}
 
-  Exit codes:
-    0  conformant       1  violations found       2  usage / IO error
-  USAGE
+    Exit codes:
+      0  conformant       1  violations found       2  usage / IO error
+    USAGE
 
   # ameba:disable Metrics/CyclomaticComplexity
   def self.run(argv : Array(String)) : Int32

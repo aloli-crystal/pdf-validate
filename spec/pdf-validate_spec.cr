@@ -3,83 +3,83 @@ require "./spec_helper"
 # A well-formed PDF/A extension schema (validated against veraPDF :
 # all § 6.6.2.3 rules pass). Mutated in specs to forge violations.
 VALID_EXTENSION_XMP = <<-XMP
-<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
-<x:xmpmeta xmlns:x="adobe:ns:meta/">
- <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-  <rdf:Description rdf:about="" xmlns:pdfaExtension="http://www.aiim.org/pdfa/ns/extension/" xmlns:pdfaSchema="http://www.aiim.org/pdfa/ns/schema#" xmlns:pdfaProperty="http://www.aiim.org/pdfa/ns/property#">
-   <pdfaExtension:schemas>
-    <rdf:Bag>
-     <rdf:li rdf:parseType="Resource">
-      <pdfaSchema:schema>Custom Schema</pdfaSchema:schema>
-      <pdfaSchema:namespaceURI>http://ns.example.com/custom/1.0/</pdfaSchema:namespaceURI>
-      <pdfaSchema:prefix>custom</pdfaSchema:prefix>
-      <pdfaSchema:property>
-       <rdf:Seq>
-        <rdf:li rdf:parseType="Resource">
-         <pdfaProperty:name>myProp</pdfaProperty:name>
-         <pdfaProperty:valueType>Text</pdfaProperty:valueType>
-         <pdfaProperty:category>internal</pdfaProperty:category>
-         <pdfaProperty:description>A custom property</pdfaProperty:description>
-        </rdf:li>
-       </rdf:Seq>
-      </pdfaSchema:property>
-     </rdf:li>
-    </rdf:Bag>
-   </pdfaExtension:schemas>
-  </rdf:Description>
- </rdf:RDF>
-</x:xmpmeta>
-<?xpacket end="w"?>
-XMP
+  <?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
+  <x:xmpmeta xmlns:x="adobe:ns:meta/">
+   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+    <rdf:Description rdf:about="" xmlns:pdfaExtension="http://www.aiim.org/pdfa/ns/extension/" xmlns:pdfaSchema="http://www.aiim.org/pdfa/ns/schema#" xmlns:pdfaProperty="http://www.aiim.org/pdfa/ns/property#">
+     <pdfaExtension:schemas>
+      <rdf:Bag>
+       <rdf:li rdf:parseType="Resource">
+        <pdfaSchema:schema>Custom Schema</pdfaSchema:schema>
+        <pdfaSchema:namespaceURI>http://ns.example.com/custom/1.0/</pdfaSchema:namespaceURI>
+        <pdfaSchema:prefix>custom</pdfaSchema:prefix>
+        <pdfaSchema:property>
+         <rdf:Seq>
+          <rdf:li rdf:parseType="Resource">
+           <pdfaProperty:name>myProp</pdfaProperty:name>
+           <pdfaProperty:valueType>Text</pdfaProperty:valueType>
+           <pdfaProperty:category>internal</pdfaProperty:category>
+           <pdfaProperty:description>A custom property</pdfaProperty:description>
+          </rdf:li>
+         </rdf:Seq>
+        </pdfaSchema:property>
+       </rdf:li>
+      </rdf:Bag>
+     </pdfaExtension:schemas>
+    </rdf:Description>
+   </rdf:RDF>
+  </x:xmpmeta>
+  <?xpacket end="w"?>
+  XMP
 
 # XMP using a property in a custom namespace that is neither predefined
 # nor declared by an extension schema — violating § 6.6.2.3.1.
 UNDECLARED_PROPERTY_XMP = <<-XMP
-<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
-<x:xmpmeta xmlns:x="adobe:ns:meta/">
- <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-  <rdf:Description rdf:about="" xmlns:custom="http://ns.example.com/custom/1.0/">
-   <custom:myProp>value</custom:myProp>
-  </rdf:Description>
- </rdf:RDF>
-</x:xmpmeta>
-<?xpacket end="w"?>
-XMP
+  <?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
+  <x:xmpmeta xmlns:x="adobe:ns:meta/">
+   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+    <rdf:Description rdf:about="" xmlns:custom="http://ns.example.com/custom/1.0/">
+     <custom:myProp>value</custom:myProp>
+    </rdf:Description>
+   </rdf:RDF>
+  </x:xmpmeta>
+  <?xpacket end="w"?>
+  XMP
 
 # XMP that both declares the custom namespace via a PDF/A extension
 # schema and uses a property in it — conformant under § 6.6.2.3.1.
 DECLARED_PROPERTY_XMP = <<-XMP
-<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
-<x:xmpmeta xmlns:x="adobe:ns:meta/">
- <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-  <rdf:Description rdf:about="" xmlns:pdfaExtension="http://www.aiim.org/pdfa/ns/extension/" xmlns:pdfaSchema="http://www.aiim.org/pdfa/ns/schema#" xmlns:pdfaProperty="http://www.aiim.org/pdfa/ns/property#">
-   <pdfaExtension:schemas>
-    <rdf:Bag>
-     <rdf:li rdf:parseType="Resource">
-      <pdfaSchema:schema>Custom Schema</pdfaSchema:schema>
-      <pdfaSchema:namespaceURI>http://ns.example.com/custom/1.0/</pdfaSchema:namespaceURI>
-      <pdfaSchema:prefix>custom</pdfaSchema:prefix>
-      <pdfaSchema:property>
-       <rdf:Seq>
-        <rdf:li rdf:parseType="Resource">
-         <pdfaProperty:name>myProp</pdfaProperty:name>
-         <pdfaProperty:valueType>Text</pdfaProperty:valueType>
-         <pdfaProperty:category>internal</pdfaProperty:category>
-         <pdfaProperty:description>A custom property</pdfaProperty:description>
-        </rdf:li>
-       </rdf:Seq>
-      </pdfaSchema:property>
-     </rdf:li>
-    </rdf:Bag>
-   </pdfaExtension:schemas>
-  </rdf:Description>
-  <rdf:Description rdf:about="" xmlns:custom="http://ns.example.com/custom/1.0/">
-   <custom:myProp>value</custom:myProp>
-  </rdf:Description>
- </rdf:RDF>
-</x:xmpmeta>
-<?xpacket end="w"?>
-XMP
+  <?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
+  <x:xmpmeta xmlns:x="adobe:ns:meta/">
+   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+    <rdf:Description rdf:about="" xmlns:pdfaExtension="http://www.aiim.org/pdfa/ns/extension/" xmlns:pdfaSchema="http://www.aiim.org/pdfa/ns/schema#" xmlns:pdfaProperty="http://www.aiim.org/pdfa/ns/property#">
+     <pdfaExtension:schemas>
+      <rdf:Bag>
+       <rdf:li rdf:parseType="Resource">
+        <pdfaSchema:schema>Custom Schema</pdfaSchema:schema>
+        <pdfaSchema:namespaceURI>http://ns.example.com/custom/1.0/</pdfaSchema:namespaceURI>
+        <pdfaSchema:prefix>custom</pdfaSchema:prefix>
+        <pdfaSchema:property>
+         <rdf:Seq>
+          <rdf:li rdf:parseType="Resource">
+           <pdfaProperty:name>myProp</pdfaProperty:name>
+           <pdfaProperty:valueType>Text</pdfaProperty:valueType>
+           <pdfaProperty:category>internal</pdfaProperty:category>
+           <pdfaProperty:description>A custom property</pdfaProperty:description>
+          </rdf:li>
+         </rdf:Seq>
+        </pdfaSchema:property>
+       </rdf:li>
+      </rdf:Bag>
+     </pdfaExtension:schemas>
+    </rdf:Description>
+    <rdf:Description rdf:about="" xmlns:custom="http://ns.example.com/custom/1.0/">
+     <custom:myProp>value</custom:myProp>
+    </rdf:Description>
+   </rdf:RDF>
+  </x:xmpmeta>
+  <?xpacket end="w"?>
+  XMP
 
 private def pdf_with_undeclared_xmp_property : Bytes
   build_pdf([
@@ -866,7 +866,7 @@ end
 # without the signer certificate (`nocerts`) and with `signers`
 # SignerInfo structures. Returns nil when openssl is unavailable.
 private def make_pkcs7(nocerts : Bool, signers : Int32) : Bytes?
-  return nil unless Process.find_executable("openssl")
+  return unless Process.find_executable("openssl")
   dir = File.tempname("pdfval-p7", "")
   Dir.mkdir_p(dir)
   begin
@@ -879,11 +879,11 @@ private def make_pkcs7(nocerts : Bool, signers : Int32) : Bytes?
     signers.times do |i|
       key = File.join(dir, "k#{i}.pem")
       cert = File.join(dir, "c#{i}.pem")
-      return nil unless run_openssl(["genrsa", "-out", key, "2048"])
-      return nil unless run_openssl(["req", "-new", "-x509", "-key", key, "-out", cert, "-days", "2", "-subj", "/CN=Signer#{i}"])
+      return unless run_openssl(["genrsa", "-out", key, "2048"])
+      return unless run_openssl(["req", "-new", "-x509", "-key", key, "-out", cert, "-days", "2", "-subj", "/CN=Signer#{i}"])
       args.concat(["-signer", cert, "-inkey", key])
     end
-    return nil unless run_openssl(args)
+    return unless run_openssl(args)
     File.open(der_path, "rb", &.getb_to_end)
   ensure
     FileUtils.rm_rf(dir)
@@ -1738,7 +1738,7 @@ describe PDF::Validate do
     der = make_pkcs7(nocerts: true, signers: 1)
     pending! "openssl indisponible" if der.nil?
     if der
-      PDF::Validate::Pkcs7.analyze(der).try(&.certificate_present?).should eq(false)
+      PDF::Validate::Pkcs7.analyze(der).try(&.certificate_present?).should be_false
       ids = PDF::Validate.bytes(pdf_with_signature(der), "pdf-a-2b").failures.map(&.rule.id)
       ids.should contain("pdfa2-6.4.3-signing-certificate")
     end

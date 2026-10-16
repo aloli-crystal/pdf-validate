@@ -7,6 +7,13 @@ All notable changes to pdf-validate are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v0.47.1 — 2026-10-16
+
+=== Changed
+
+* ameba 1.7 and Crystal 1.22.0 in CI; new rules applied, no behaviour change.
+* Dependencies taken from GitHub: `pdf` 1.6.0 → 1.22.1 (shard.lock); the committed ameba copy (`bin/ameba`, `bin/ameba.cr`, 1.6.4) is removed, ameba comes from the declared shard.
+
 == v0.47.0 — 2026-06-05 — CLI callable from a library entry point
 
 === Changed

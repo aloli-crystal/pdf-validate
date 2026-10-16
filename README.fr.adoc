@@ -43,7 +43,7 @@ exacte d'une règle ne peut être confirmée face à veraPDF, elle n'est
 dependencies:
   pdf-validate:
     github: aloli-crystal/pdf-validate
-    version: "~> 0.1.0"
+    version: "~> 0.47.1"
 ----
 
 == Utilisation bibliothèque

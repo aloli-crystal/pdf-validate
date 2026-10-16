@@ -275,7 +275,7 @@ module PDF
       # The WMode integer declared inside a CMap stream's content
       # (`/WMode n def`), or nil if absent/unreadable.
       private def cmap_stream_wmode(stream : PDF::Objects::Stream) : Int64?
-        return nil unless stream.decoded
+        return unless stream.decoded
         text = String.new(stream.encoded_data)
         if md = text.match(/\/WMode\s+(\d+)\s+def/)
           md[1].to_i64
@@ -395,7 +395,7 @@ module PDF
       # cmap (lenient — parsing failures are not reported as violations).
       private def truetype_cmap_records(bytes : Bytes) : Array(Tuple(UInt16, UInt16))?
         parser = PDF::Fonts::TrueType::Parser.parse(bytes)
-        return nil unless parser.has_table?("cmap")
+        return unless parser.has_table?("cmap")
         parser.cmap.encoding_records.map { |record| {record.platform_id, record.encoding_id} }
       rescue
         nil
@@ -552,6 +552,8 @@ module PDF
       # Resolves the glyphs a Type0 Identity-H/V font shows, appending
       # absent-glyph and .notdef messages. Only CIDFontType2 descendants
       # with an embedded /FontFile2 are resolved (others are skipped).
+      # Suite de gardes `return unless` linéaires sur la structure de la police : les découper nuirait à la lisibilité.
+      # ameba:disable Metrics/CyclomaticComplexity
       private def scan_type0_glyphs(font : PDF::Objects::Dictionary, bytes : Bytes, absent : Array(String), notdef : Array(String))
         return unless font["Subtype"]?.try(&.as?(PDF::Objects::Name)).try(&.value) == "Type0"
         encoding = font["Encoding"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Name).try(&.value)
@@ -640,7 +642,7 @@ module PDF
       private def cidtogidmap_bytes(dict : PDF::Objects::Dictionary) : Bytes?
         value = dict["CIDToGIDMap"]?.try { |ref| resolve(ref) }
         stream = value.as?(PDF::Objects::Stream)
-        return nil unless stream && stream.decoded
+        return unless stream && stream.decoded
         stream.encoded_data
       end
 
@@ -657,7 +659,7 @@ module PDF
       # itself when /Encoding is a name, or the /BaseEncoding of an
       # encoding dictionary. nil when absent or unrecognised.
       private def truetype_base_encoding(encoding : PDF::Objects::Base?) : String?
-        return nil unless encoding
+        return unless encoding
         resolved = resolve(encoding)
         if name = resolved.as?(PDF::Objects::Name)
           return name.value
@@ -671,18 +673,18 @@ module PDF
       # The descendant CIDFont of a Type0 font (/DescendantFonts[0]).
       private def descendant_cidfont(type0 : PDF::Objects::Dictionary) : PDF::Objects::Dictionary?
         list = type0["DescendantFonts"]?.try { |ref| resolve(ref) }.as?(PDF::Objects::Array)
-        return nil if list.nil? || list.empty?
+        return if list.nil? || list.empty?
         resolve(list[0]).as?(PDF::Objects::Dictionary)
       end
 
       # The {Registry, Ordering} pair of a /CIDSystemInfo value, or nil.
       private def registry_ordering(value : PDF::Objects::Base?) : Tuple(String, String)?
-        return nil unless value
+        return unless value
         info = resolve(value).as?(PDF::Objects::Dictionary)
-        return nil unless info
+        return unless info
         registry = info["Registry"]?.try(&.as?(PDF::Objects::Str)).try(&.value)
         ordering = info["Ordering"]?.try(&.as?(PDF::Objects::Str)).try(&.value)
-        return nil unless registry && ordering
+        return unless registry && ordering
         {registry, ordering}
       end
 
@@ -891,9 +893,9 @@ module PDF
       # colorant name ; returns a message when a later Separation of the
       # same name disagrees (ISO 19005-2 § 6.2.4.4 t2).
       private def separation_consistency_issue(arr : PDF::Objects::Array, seen : Hash(String, Tuple(String, UInt64))) : String?
-        return nil unless arr.size >= 4
+        return unless arr.size >= 4
         cname = resolve(arr[1]).as?(PDF::Objects::Name).try(&.value)
-        return nil unless cname
+        return unless cname
         signature = {colour_space_signature(arr[2]), resolve(arr[3]).object_id}
         if prev = seen[cname]?
           return "Separation /#{cname} has inconsistent alternate space or tint transform across the file" if prev != signature
@@ -1176,9 +1178,9 @@ module PDF
       # `gOutputCS`, the anchor for the § 6.2.4.3 device-colour rules.
       getter output_intent_colour_space : String? do
         oi = catalog["OutputIntents"]?
-        return nil unless oi
+        return unless oi
         arr = resolve(oi).as?(PDF::Objects::Array)
-        return nil unless arr
+        return unless arr
         arr.each do |entry|
           intent = resolve(entry).as?(PDF::Objects::Dictionary)
           next unless intent
@@ -1953,13 +1955,13 @@ module PDF
       # Returns {width, height} of a page-boundary array, or nil if the
       # value is absent or not a 4-number array.
       private def box_dimensions(value : PDF::Objects::Base?) : Tuple(Float64, Float64)?
-        return nil unless value
+        return unless value
         arr = resolve(value).as?(PDF::Objects::Array)
-        return nil unless arr && arr.size == 4
+        return unless arr && arr.size == 4
         coords = [] of Float64
         arr.each do |elem|
           num = resolve(elem).as?(PDF::Objects::Number)
-          return nil unless num
+          return unless num
           coords << num.to_f64
         end
         {(coords[2] - coords[0]).abs, (coords[3] - coords[1]).abs}
@@ -2313,7 +2315,7 @@ module PDF
             return ft
           end
           parent = node["Parent"]?.try { |obj| resolve(obj) }.as?(PDF::Objects::Dictionary)
-          return nil unless parent
+          return unless parent
           node = parent
         end
         nil

@@ -2,7 +2,7 @@ version: 2.0
 shards:
   ameba:
     git: https://github.com/crystal-ameba/ameba.git
-    version: 1.6.4
+    version: 1.7.0
 
   matrix:
     git: https://github.com/exilor/matrix.git
@@ -10,7 +10,7 @@ shards:
 
   pdf:
     git: https://github.com/aloli-crystal/pdf.git
-    version: 1.6.0
+    version: 1.22.1
 
   stumpy_core:
     git: https://github.com/stumpycr/stumpy_core.git

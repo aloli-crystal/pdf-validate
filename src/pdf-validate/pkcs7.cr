@@ -40,13 +40,13 @@ module PDF
       # `/Contents` never yields a false positive).
       def self.analyze(der : ::Bytes) : Analysis?
         content_info = read_tlv(der, 0)
-        return nil unless content_info && content_info.tag == 0x30_u8
+        return unless content_info && content_info.tag == 0x30_u8
 
         # ContentInfo ::= SEQUENCE { contentType OID, content [0] EXPLICIT }
         explicit = children(der, content_info).find { |tlv| tlv.tag == 0xA0_u8 }
-        return nil unless explicit
+        return unless explicit
         signed_data = children(der, explicit).first?
-        return nil unless signed_data && signed_data.tag == 0x30_u8
+        return unless signed_data && signed_data.tag == 0x30_u8
 
         # SignedData ::= SEQUENCE { version, digestAlgorithms SET,
         #   encapContentInfo, certificates [0] OPTIONAL, crls [1] OPTIONAL,
@@ -77,31 +77,31 @@ module PDF
       # Reads one TLV at `pos` (definite length, low-tag-number only), or
       # `nil` on a malformed / truncated encoding.
       def self.read_tlv(der : ::Bytes, pos : Int32) : TLV?
-        return nil if pos < 0 || pos >= der.size
+        return if pos < 0 || pos >= der.size
         tag = der[pos]
-        return nil if (tag & 0x1F_u8) == 0x1F_u8 # high-tag-number unsupported
-        length, cursor = read_length(der, pos + 1) || return nil
-        return nil if cursor + length > der.size
+        return if (tag & 0x1F_u8) == 0x1F_u8 # high-tag-number unsupported
+        length, cursor = read_length(der, pos + 1) || return
+        return if cursor + length > der.size
         TLV.new(tag, cursor, length, cursor + length)
       end
 
       # Reads a DER length at `pos`, returning `{length, next_pos}` or
       # `nil` on a malformed / indefinite / truncated length.
       def self.read_length(der : ::Bytes, pos : Int32) : Tuple(Int32, Int32)?
-        return nil if pos >= der.size
+        return if pos >= der.size
         first = der[pos]
         cursor = pos + 1
         return {first.to_i, cursor} if first < 0x80_u8
 
         count = (first & 0x7F_u8).to_i
-        return nil if count == 0 || count > 4
+        return if count == 0 || count > 4
         length = 0
         count.times do
-          return nil if cursor >= der.size
+          return if cursor >= der.size
           length = (length << 8) | der[cursor].to_i
           cursor += 1
         end
-        return nil if length < 0
+        return if length < 0
         {length, cursor}
       end
     end

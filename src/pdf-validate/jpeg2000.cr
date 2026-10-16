@@ -24,7 +24,7 @@ module PDF
         elsif data.size >= 4 && data[0] == 0xFF && data[1] == 0x4F
           instance.read_codestream(data)
         else
-          return nil
+          return
         end
         instance
       end

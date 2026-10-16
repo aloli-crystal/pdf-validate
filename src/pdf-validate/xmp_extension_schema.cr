@@ -165,7 +165,7 @@ module PDF
 
       private def field_seq(node : XML::Node, ns : String, local : String) : XML::Node?
         element = child_element(node, ns, local)
-        return nil unless element
+        return unless element
         child_element(element, RDF_NS, "Seq")
       end
 

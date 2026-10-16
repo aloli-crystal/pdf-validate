@@ -418,7 +418,6 @@ module PDF
         when 0x30..0x39 then (byte - 0x30).to_i
         when 0x41..0x46 then (byte - 0x41 + 10).to_i
         when 0x61..0x66 then (byte - 0x61 + 10).to_i
-        else                 nil
         end
       end
 

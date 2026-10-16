@@ -4,3 +4,5 @@
 /.shards/
 *.dwarf
 /.crystal/
+/bin/ameba
+/bin/ameba.cr
